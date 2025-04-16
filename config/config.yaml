@@ -1,0 +1,14 @@
+# 飞书 app
+client:
+  appID: "cli_a776ce7b17335013"
+  appSecret: "CsPtMn60HlagjR4Q7L5xFbBPWrJzbred"
+
+# JWT 配置
+jwt:
+  secretKey: "serendipity"  # JWT 加密秘钥
+  timeout: 2592000          # 一个月过期一次
+
+# 中间件配置
+middleware:
+  allowedOrigins:
+    - "*"  # 允许跨域访问的来源地址，例如前端开发服务器地址
