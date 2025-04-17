@@ -8,9 +8,9 @@ type CreateAppReq struct {
 type CopyAppReq struct {
 	AppToken       string `json:"app_token" binding:"required"` // 需要复制的表格的token
 	Name           string `json:"name" binding:"required"`
-	FolderToken    string `json:"folder_token,omitempty"`             // 可以为空，但是要有
-	WithoutContent bool   `json:"without_content" binding:"required"` // 是否复制内容
-	TimeZone       string `json:"time_zone" binding:"required"`       //时区,例如: Asia/Shanghai
+	FolderToken    string `json:"folder_token,omitempty"`       // 可以为空，但是要有
+	WithoutContent bool   `json:"without_content"`              // 是否复制内容
+	TimeZone       string `json:"time_zone" binding:"required"` //时区,例如: Asia/Shanghai
 }
 
 type CreateAppTableRecordReq struct {
