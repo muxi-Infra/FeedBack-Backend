@@ -18,6 +18,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"time"
 )
 
 type Oauth struct {
@@ -190,56 +191,75 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 //	@Failure		500		{object}	response.Response		"服务器内部错误"
 //	@Router			/refresh_token [post]
 func (o Oauth) RefreshToken(c *gin.Context, r request.RefreshTokenReq) (response.Response, error) {
-	// 准备请求体
-	requestBody := map[string]string{
-		"grant_type":    "refresh_token",
-		"refresh_token": r.RefreshToken,
-		"client_id":     o.oauthConfig.ClientID,
-		"client_secret": o.oauthConfig.ClientSecret,
-	}
-	jsonBody, _ := json.Marshal(requestBody)
+	key := "refresh_token_" + r.RefreshToken
+	// 使用 singleflight 防止同一时间内多次请求造成频繁刷新 token
+	// 使用 DoChan 异步发起合并请求
+	ch := o.group.DoChan(key, func() (any, error) {
+		// 准备请求体
+		requestBody := map[string]string{
+			"grant_type":    "refresh_token",
+			"refresh_token": r.RefreshToken,
+			"client_id":     o.oauthConfig.ClientID,
+			"client_secret": o.oauthConfig.ClientSecret,
+		}
+		jsonBody, _ := json.Marshal(requestBody)
 
-	// 调用飞书 token 接口
-	resp, err := http.Post(
-		"https://open.feishu.cn/open-apis/authen/v2/oauth/token",
-		"application/json; charset=utf-8",
-		bytes.NewBuffer(jsonBody),
-	)
-	if err != nil {
+		// 调用飞书 token 接口
+		resp, err := http.Post(
+			"https://open.feishu.cn/open-apis/authen/v2/oauth/token",
+			"application/json; charset=utf-8",
+			bytes.NewBuffer(jsonBody),
+		)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		// 解析响应体
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		// 解析 JSON
+		var tokenResp map[string]interface{}
+		if err := json.Unmarshal(body, &tokenResp); err != nil {
+			return nil, err
+		}
+
+		// 返回 token 数据
+		return tokenResp, nil
+	})
+	// 等待结果
+	select {
+	case result := <-ch:
+		if result.Err != nil {
+			// 如果请求失败，可以调用 Forget 防止下次复用失败缓存
+			o.group.Forget(key)
+			return response.Response{
+				Code:    500,
+				Message: "Failed to refresh token: " + result.Err.Error(),
+				Data:    nil,
+			}, result.Err
+		}
+
+		go func() {
+			time.Sleep(time.Minute * 25)
+			o.group.Forget(key)
+		}()
 		return response.Response{
-			Code:    500,
-			Message: "Failed to call token endpoint",
-			Data:    nil,
-		}, err
-	}
-	defer resp.Body.Close()
-
-	// 解析响应体
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+			Code:    0,
+			Message: "Success",
+			Data:    result.Val,
+		}, nil
+	case <-c.Request.Context().Done():
+		// 如果请求被取消，也调用 Forget 释放资源
+		o.group.Forget(key)
 		return response.Response{
-			Code:    500,
-			Message: "Failed to read response body",
+			Code:    499,
+			Message: "Request cancelled by client",
 			Data:    nil,
-		}, err
+		}, c.Request.Context().Err()
 	}
-
-	// 解析 JSON
-	var tokenResp map[string]interface{}
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return response.Response{
-			Code:    500,
-			Message: "Invalid JSON response",
-			Data:    nil,
-		}, err
-	}
-
-	// 返回 token 数据
-	return response.Response{
-		Code:    0,
-		Message: "Success",
-		Data:    tokenResp,
-	}, nil
 }
 
 // GenerateToken  封装 token 接口
