@@ -276,8 +276,7 @@ const docTemplate = `{
             "required": [
                 "app_token",
                 "name",
-                "time_zone",
-                "without_content"
+                "time_zone"
             ],
             "properties": {
                 "app_token": {

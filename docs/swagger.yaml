@@ -19,7 +19,6 @@ definitions:
     - app_token
     - name
     - time_zone
-    - without_content
     type: object
   request.CreateAppReq:
     properties:
