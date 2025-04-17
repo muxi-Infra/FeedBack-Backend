@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/singleflight"
 	"io"
 	"log"
 	"math/rand"
@@ -22,6 +23,7 @@ import (
 type Oauth struct {
 	oauthConfig *oauth2.Config
 	jwtHandler  *ijwt.JWT
+	group       *singleflight.Group
 }
 
 var oauthEndpoint = oauth2.Endpoint{
@@ -39,17 +41,11 @@ func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT) *Oauth {
 			Scopes:       []string{"offline_access", "bitable:app", "base:app:create"},
 		},
 		jwtHandler: jwtHandler,
+		group:      &singleflight.Group{},
 	}
 }
 
 // IndexController godoc
-//
-//	@Summary		首页
-//	@Description	显示欢迎页面并提供飞书登录入口
-//	@Tags			Auth
-//	@Produce		html
-//	@Success		200	{string}	string	"HTML 页面"
-//	@Router			/ [get]
 func (o Oauth) IndexController(c *gin.Context) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	var username string
@@ -62,13 +58,6 @@ func (o Oauth) IndexController(c *gin.Context) {
 }
 
 // LoginController godoc
-//
-//	@Summary		跳转飞书授权
-//	@Description	重定向到飞书 OAuth2 授权页面
-//	@Tags			Auth
-//	@Produce		json
-//	@Success		302	{string}	string	"重定向到飞书登录"
-//	@Router			/login [get]
 func (o Oauth) LoginController(c *gin.Context) {
 	session := sessions.Default(c)
 
@@ -91,16 +80,6 @@ func (o Oauth) LoginController(c *gin.Context) {
 }
 
 // OauthCallbackController godoc
-//
-//	@Summary		授权回调
-//	@Description	处理飞书 OAuth2 回调并获取用户信息
-//	@Tags			Auth
-//	@Produce		html
-//	@Param			state	query		string	true	"OAuth 状态"
-//	@Param			code	query		string	true	"授权码"
-//	@Success		200		{string}	string	"HTML 页面"
-//	@Failure		302		{string}	string	"重定向回首页"
-//	@Router			/callback [get]
 func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error) {
 	session := sessions.Default(c)
 	ctx := context.Background()

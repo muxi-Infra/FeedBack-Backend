@@ -24,16 +24,7 @@ func NewOldToken(c config.ClientConfig) *OldToken {
 }
 
 // GetAppAccessToken godoc
-//
-//	@Summary		获取 App Access Token
-//	@Description	通过 app_id 和 app_secret 获取 app_access_token
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Success		200		{object}	response.Response	"成功返回 app_access_token"
-//	@Failure		400		{object}	response.Response	"请求参数错误或飞书接口调用失败"
-//	@Failure		500		{object}	response.Response	"服务器内部错误"
-//	@Router			/app_access_token [post]
+// 暂时弃用
 func (o OldToken) GetAppAccessToken(c *gin.Context) (response.Response, error) {
 	// 创建请求体
 	requestBody := map[string]string{

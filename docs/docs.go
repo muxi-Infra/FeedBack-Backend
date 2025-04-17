@@ -15,68 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/": {
-            "get": {
-                "description": "显示欢迎页面并提供飞书登录入口",
-                "produces": [
-                    "text/html"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "首页",
-                "responses": {
-                    "200": {
-                        "description": "HTML 页面",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/callback": {
-            "get": {
-                "description": "处理飞书 OAuth2 回调并获取用户信息",
-                "produces": [
-                    "text/html"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "授权回调",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "OAuth 状态",
-                        "name": "state",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "授权码",
-                        "name": "code",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "HTML 页面",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "302": {
-                        "description": "重定向回首页",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/generate_token": {
             "post": {
                 "description": "封装 token 接口，将飞书 token 简单封装成 JWT 令牌",
@@ -118,26 +56,6 @@ const docTemplate = `{
                         "description": "服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/login": {
-            "get": {
-                "description": "重定向到飞书 OAuth2 授权页面",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "跳转飞书授权",
-                "responses": {
-                    "302": {
-                        "description": "重定向到飞书登录",
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 }
