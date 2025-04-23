@@ -179,19 +179,8 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 }
 
 // RefreshToken godoc
-//
-//	@Summary		刷新Token
-//	@Description	使用 refresh_token 刷新 access_token
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		request.RefreshTokenReq	true	"刷新 token 请求参数"
-//	@Success		200		{object}	response.Response		"成功返回新的 token 信息"
-//	@Failure		400		{object}	response.Response		"请求参数错误或飞书接口调用失败"
-//	@Failure		500		{object}	response.Response		"服务器内部错误"
-//	@Router			/refresh_token [post]
 func (o Oauth) RefreshToken(c *gin.Context, r request.RefreshTokenReq) (response.Response, error) {
-	key := "refresh_token_" + r.RefreshToken
+	key := r.RefreshToken
 	// 使用 singleflight 防止同一时间内多次请求造成频繁刷新 token
 	// 使用 DoChan 异步发起合并请求
 	ch := o.group.DoChan(key, func() (any, error) {
@@ -240,17 +229,18 @@ func (o Oauth) RefreshToken(c *gin.Context, r request.RefreshTokenReq) (response
 				Message: "Failed to refresh token: " + result.Err.Error(),
 				Data:    nil,
 			}, result.Err
-		}
+		} else {
+			go func() {
+				time.Sleep(time.Second * 10)
+				o.group.Forget(key)
+			}()
 
-		go func() {
-			time.Sleep(time.Minute * 25)
-			o.group.Forget(key)
-		}()
-		return response.Response{
-			Code:    0,
-			Message: "Success",
-			Data:    result.Val,
-		}, nil
+			return response.Response{
+				Code:    0,
+				Message: "Success",
+				Data:    result.Val,
+			}, nil
+		}
 	case <-c.Request.Context().Done():
 		// 如果请求被取消，也调用 Forget 释放资源
 		o.group.Forget(key)
@@ -263,17 +253,6 @@ func (o Oauth) RefreshToken(c *gin.Context, r request.RefreshTokenReq) (response
 }
 
 // GenerateToken  封装 token 接口
-//
-//	@Summary		封装 token 接口
-//	@Description	封装 token 接口，将飞书 token 简单封装成 JWT 令牌
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		request.GenerateTokenReq	true	"封装 token 请求参数"
-//	@Success		200		{object}	response.Response			"成功返回 JWT 令牌"
-//	@Failure		400		{object}	response.Response			"请求参数错误"
-//	@Failure		500		{object}	response.Response			"服务器内部错误"
-//	@Router			/generate_token [post]
 func (o Oauth) GenerateToken(c *gin.Context, r request.GenerateTokenReq) (response.Response, error) {
 	token, err := o.jwtHandler.SetJWTToken(r.Token)
 	if err != nil {
