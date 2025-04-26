@@ -15,9 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/generate_token": {
+        "/get_token": {
             "post": {
-                "description": "封装 token 接口，将飞书 token 简单封装成 JWT 令牌",
+                "description": "获取 token 接口",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,18 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "封装 token 接口",
-                "parameters": [
-                    {
-                        "description": "封装 token 请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.GenerateTokenReq"
-                        }
-                    }
-                ],
+                "summary": "获取 token 接口",
                 "responses": {
                     "200": {
                         "description": "成功返回 JWT 令牌",
@@ -61,9 +50,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/refresh_token": {
+        "/init_token": {
             "post": {
-                "description": "使用 refresh_token 刷新 access_token",
+                "description": "初始化 token 接口",
                 "consumes": [
                     "application/json"
                 ],
@@ -73,27 +62,27 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "刷新Token",
+                "summary": "初始化 token 接口",
                 "parameters": [
                     {
-                        "description": "刷新 token 请求参数",
+                        "description": "初始化请求参数",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.RefreshTokenReq"
+                            "$ref": "#/definitions/request.InitTokenReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回新的 token 信息",
+                        "description": "成功返回初始化结果",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -340,23 +329,16 @@ const docTemplate = `{
                 }
             }
         },
-        "request.GenerateTokenReq": {
+        "request.InitTokenReq": {
             "type": "object",
             "required": [
-                "token"
-            ],
-            "properties": {
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
-        "request.RefreshTokenReq": {
-            "type": "object",
-            "required": [
+                "access_token",
                 "refresh_token"
             ],
             "properties": {
+                "access_token": {
+                    "type": "string"
+                },
                 "refresh_token": {
                     "type": "string"
                 }
