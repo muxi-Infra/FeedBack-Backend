@@ -8,6 +8,7 @@ import (
 	"feedback/pkg/feishu"
 	"feedback/pkg/ijwt"
 	log "feedback/pkg/logger"
+	"feedback/service"
 	"feedback/web"
 	"github.com/google/wire"
 )
@@ -19,6 +20,7 @@ func InitApp() *App {
 		log.ProviderSet,
 		feishu.ProviderSet,
 		ijwt.NewJWT,
+		service.ProviderSet,
 		middleware.NewCorsMiddleware,
 		middleware.NewAuthMiddleware,
 		web.ProviderSet,
