@@ -108,7 +108,7 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	//if test {
 	//	return response.Response{
 	//		Code:    0,
-	//		Message: "get code success",
+	//		Message: "get old code success",
 	//		Data:    code,
 	//	}, nil
 	//}
@@ -201,11 +201,20 @@ func (o Oauth) GetToken(c *gin.Context) (response.Response, error) {
 		}, fmt.Errorf("access_token not initialized")
 	}
 
+	token, err := o.jwtHandler.SetJWTToken(accessToken)
+	if err != nil {
+		return response.Response{
+			Code:    500,
+			Message: "生成 token 失败",
+			Data:    nil,
+		}, err
+	}
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",
 		Data: map[string]string{
-			"access_token": accessToken,
+			"access_token": token,
 		},
 	}, nil
 }
