@@ -2,7 +2,7 @@ package web
 
 import (
 	"feedback/controller"
-	oauth "feedback/controller/oauth/v2"
+	oauth "feedback/controller/oauth/v3"
 	"feedback/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
