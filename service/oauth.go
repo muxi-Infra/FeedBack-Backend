@@ -18,6 +18,7 @@ type AuthService struct {
 	mutex        sync.RWMutex
 	accessToken  string
 	refreshToken string // 不对外展示
+	first        bool   // 是否为第一次设定
 }
 
 func NewOauth(c config.ClientConfig) *AuthService {
@@ -32,6 +33,9 @@ func NewOauth(c config.ClientConfig) *AuthService {
 			},
 			Scopes: []string{"offline_access", "bitable:app", "base:app:create"},
 		},
+		accessToken:  "",
+		refreshToken: "",
+		first:        true,
 	}
 }
 
@@ -42,19 +46,23 @@ func (o *AuthService) StartAutoRefresh(accessToken string, refreshToken string, 
 	o.refreshToken = refreshToken
 	o.mutex.Unlock()
 
-	go func() {
-		ticker := time.NewTicker(t)
-		defer ticker.Stop()
-
-		for {
-			<-ticker.C
-			err := o.AutoRefreshToken()
-			if err != nil {
-				// TODO log
-				fmt.Printf("refresh token failed:%v\n", err)
+	if o.first == true {
+		go func(t time.Duration) {
+			o.mutex.Lock()
+			o.first = false
+			o.mutex.Unlock()
+			ticker := time.NewTicker(t)
+			defer ticker.Stop()
+			for {
+				<-ticker.C
+				err := o.AutoRefreshToken()
+				if err != nil {
+					// TODO log
+					fmt.Printf("refresh token failed:%v\n", err)
+				}
 			}
-		}
-	}()
+		}(t)
+	}
 }
 
 func (o *AuthService) AutoRefreshToken() error {
