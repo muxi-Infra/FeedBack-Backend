@@ -9,7 +9,6 @@ package main
 import (
 	"feedback/config"
 	"feedback/controller"
-	"feedback/controller/oauth/v3"
 	"feedback/middleware"
 	"feedback/pkg/feishu"
 	"feedback/pkg/ijwt"
@@ -31,7 +30,7 @@ func InitApp() *App {
 	zapLogger := logger.NewZapLogger()
 	sheet := controller.NewSheet(client, zapLogger)
 	authService := service.NewOauth(clientConfig)
-	oauth := v3.NewOauth(clientConfig, jwt, authService)
+	oauth := controller.NewOauth(clientConfig, jwt, authService)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, sheet, oauth)
 	app := &App{
 		r: engine,
