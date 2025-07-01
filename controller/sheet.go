@@ -241,7 +241,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(uc.Token))
+	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
