@@ -21,3 +21,15 @@ type CreateAppTableRecordReq struct {
 	IgnoreConsistencyCheck bool                   `json:"ignore_consistency_check,omitempty"`
 	Fields                 map[string]interface{} `json:"fields" binding:"required"` // 记录的字段
 }
+
+type GetAppTableRecordReq struct {
+	AppToken   string   `json:"app_token" binding:"required"`
+	TableId    string   `json:"table_id" binding:"required"`
+	ViewId     string   `json:"view_id" binding:"required"`
+	FieldNames []string `json:"field_names" binding:"required"` // 需要查询的字段名
+	SortOrders string   `json:"sort_orders" binding:"required"` // 根据什么字段排序
+	Desc       bool     `json:"desc"`                           // 是否降序
+	FilterName string   `json:"filter_name" binding:"required"` // 过滤条件的字段名，根据实际的接口需要，这里只需要设计成一个
+	FilterVal  string   `json:"filter_val" binding:"required"`  // 过滤条件的值
+	PageToken  string   `json:"pagetoken,omitempty"`            // 分页参数,第一次不需要
+}

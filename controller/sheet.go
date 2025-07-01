@@ -203,3 +203,70 @@ func (f Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableReco
 		Data:    resp.Data,
 	}, nil
 }
+
+// GetAppTableRecord 获取多维表格记录
+func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+	// 创建 Client
+	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
+	// 创建请求对象
+	req := larkbitable.NewSearchAppTableRecordReqBuilder().
+		AppToken(r.AppToken).
+		TableId(r.TableId).
+		UserIdType(`open_id`).
+		PageToken(r.PageToken). // 分页参数,第一次不需要
+		PageSize(20). // 分页大小，先默认20
+		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+			ViewId(r.ViewId).
+			FieldNames(r.FieldNames).
+			Sort([]*larkbitable.Sort{
+				larkbitable.NewSortBuilder().
+					FieldName(r.SortOrders).
+					Desc(r.Desc).
+					Build(),
+			}).
+			Filter(larkbitable.NewFilterInfoBuilder().
+				Conjunction(`and`).
+				Conditions([]*larkbitable.Condition{
+					larkbitable.NewConditionBuilder().
+						FieldName(``).
+						Operator(`is`).
+						Value([]string{`P0`}).
+						Build(),
+				}).
+				Build()).
+			AutomaticFields(false).
+			Build()).
+		Build()
+
+	// 发起请求
+	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(uc.Token))
+
+	// 处理错误
+	if err != nil {
+		// TODO: log
+		// fmt.Println(err)
+		return response.Response{
+			Code:    500,
+			Message: "Internal Server Error",
+			Data:    nil,
+		}, err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		// TODO: log
+		return response.Response{
+			Code:    400,
+			Message: "Internal Server Error",
+			Data:    resp.CodeError,
+		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+	}
+
+	// 业务处理
+	// fmt.Println(larkcore.Prettify(resp))
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data:    resp.Data,
+	}, nil
+}
