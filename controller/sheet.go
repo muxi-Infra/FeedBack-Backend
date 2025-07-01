@@ -6,6 +6,7 @@ import (
 	"feedback/api/response"
 	"feedback/pkg/ijwt"
 	"feedback/pkg/logger"
+	"feedback/service"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/larksuite/oapi-sdk-go/v3"
@@ -16,6 +17,7 @@ import (
 type Sheet struct {
 	c   *lark.Client
 	log logger.Logger
+	o   service.AuthService
 }
 
 func NewSheet(client *lark.Client, log logger.Logger) *Sheet {
@@ -40,7 +42,7 @@ func NewSheet(client *lark.Client, log logger.Logger) *Sheet {
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/sheet/createapp [post]
 //	@Router			/sheet/createapp [post]
-func (f Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserClaims) (response.Response, error) {
+func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 	// 创建请求对象
@@ -52,7 +54,7 @@ func (f Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCla
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.App.Create(context.Background(), req, larkcore.WithUserAccessToken(uc.Token))
+	resp, err := f.c.Bitable.V1.App.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -97,7 +99,7 @@ func (f Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCla
 //	@Failure		400				{object}	response.Response	"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response	"服务器内部错误"
 //	@Router			/sheet/copyapp [post]
-func (f Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims) (response.Response, error) {
+func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c:= lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 	// 创建请求对象
@@ -112,7 +114,7 @@ func (f Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims)
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.App.Copy(context.Background(), req, larkcore.WithUserAccessToken(uc.Token))
+	resp, err := f.c.Bitable.V1.App.Copy(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -158,7 +160,7 @@ func (f Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims)
 //	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/createrecord [post]
-func (f Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 	// 创建请求对象
@@ -172,7 +174,7 @@ func (f Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableReco
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.AppTableRecord.Create(context.Background(), req, larkcore.WithUserAccessToken(uc.Token))
+	resp, err := f.c.Bitable.V1.AppTableRecord.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
