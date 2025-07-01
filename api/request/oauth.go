@@ -5,7 +5,9 @@ type RefreshTokenReq struct {
 }
 
 type GenerateTokenReq struct {
-	Token string `json:"token" binding:"required"`
+	// Token string `json:"token" binding:"required"`
+	// 更改为 TableName
+	TableName string `json:"table_name" binding:"required"`
 }
 
 type InitTokenReq struct {

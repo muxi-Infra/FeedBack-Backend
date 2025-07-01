@@ -2,7 +2,6 @@ package web
 
 import (
 	"feedback/controller"
-	oauth "feedback/controller/oauth/v3"
 	"feedback/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
@@ -15,8 +14,8 @@ import (
 
 var ProviderSet = wire.NewSet(
 	NewGinEngine,
-	oauth.NewOauth,
-	wire.Bind(new(OauthHandler), new(*oauth.Oauth)),
+	controller.NewOauth,
+	wire.Bind(new(OauthHandler), new(*controller.Oauth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
 )
