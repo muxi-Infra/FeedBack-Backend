@@ -42,4 +42,5 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 }
 
 func GetAppID() string {
+	return "" //TODO 改成文件读取或者有更合适的办法
 }
