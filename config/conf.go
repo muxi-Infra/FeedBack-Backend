@@ -42,5 +42,4 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 }
 
 func GetAppID() string {
-	
 }
