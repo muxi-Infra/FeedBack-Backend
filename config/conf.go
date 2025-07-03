@@ -40,3 +40,7 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 		AllowedOrigins: viper.GetStringSlice("middleware.allowedOrigins"),
 	}
 }
+
+func GetAppID() string {
+	
+}

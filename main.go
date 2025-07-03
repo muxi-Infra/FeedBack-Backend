@@ -6,6 +6,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+//	@title		木犀反馈系统 API
+//	@version	1.0
+//	@host		localhost:8080
+//	@BasePath	/
 func main() {
 	initViper()
 	app := InitApp()
