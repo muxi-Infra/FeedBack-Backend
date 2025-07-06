@@ -9,5 +9,5 @@ import (
 var ProviderSet = wire.NewSet(NewClient)
 
 func NewClient(conf config.ClientConfig) *lark.Client {
-	return lark.NewClient(conf.AppID, conf.AppSecret)
+	return lark.NewClient(conf.AppID, conf.AppSecret) // 为自建应用
 }
