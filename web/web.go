@@ -2,15 +2,13 @@ package web
 
 import (
 	"feedback/controller"
+	_ "feedback/docs" // 生成的swagger文档
 	"feedback/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
-
-//	@title			木犀反馈系统 API
-//	@version		1.0
-//	@description	木犀反馈系统 API
-//	@host			localhost:8080
 
 var ProviderSet = wire.NewSet(
 	NewGinEngine,
@@ -27,8 +25,15 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *mid
 	// 跨域
 	r.Use(corsMiddleware.MiddlewareFunc())
 
+	RegisterSwaggerHandler(r)
+
 	RegisterSheetHandler(r, sh, authMiddleware.MiddlewareFunc())
 	RegisterOauthRouter(r, oh)
 
 	return r
+}
+
+func RegisterSwaggerHandler(r *gin.Engine) {
+	
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
