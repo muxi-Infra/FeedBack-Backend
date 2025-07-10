@@ -41,7 +41,6 @@ func NewSheet(client *lark.Client, log logger.Logger) *Sheet {
 //	@Failure		400				{object}	response.Response		"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/sheet/createapp [post]
-//	@Router			/sheet/createapp [post]
 func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
@@ -216,7 +215,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 		TableId(r.TableId).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(r.ViewId).
 			FieldNames(r.FieldNames).
