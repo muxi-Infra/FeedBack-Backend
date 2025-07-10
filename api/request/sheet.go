@@ -1,8 +1,8 @@
 package request
 
 type CreateAppReq struct {
-	Name        string `json:"name" binding:"required"`
-	FolderToken string `json:"folder_token,omitempty"` // 可以为空，但是要有
+	Name        string `json:"name" binding:"required"` // 多维表格app名称
+	FolderToken string `json:"folder_token,omitempty"`  // 可以为空，但是要有 多维表格app归属目录
 }
 
 type CopyAppReq struct {
