@@ -19,7 +19,21 @@ type CreateAppTableRecordReq struct {
 	//UserIdType             string                 `json:"user_id_type,omitempty"`
 	//ClientToken            string                 `json:"client_token,omitempty"`
 	IgnoreConsistencyCheck bool                   `json:"ignore_consistency_check,omitempty"`
-	Fields                 map[string]interface{} `json:"fields" binding:"required"` // 记录的字段
+	Fields                 map[string]interface{} `json:"fields"` // 记录的字段 不再校验，required,由后端自动填充
+
+	// 必填字段
+	StudentID string `json:"student_id" binding:"required" feishu:"用户ID"` // 即学号
+	Contact   string `json:"contact" binding:"required" feishu:"联系方式（QQ/邮箱）"`
+	Content   string `json:"content" binding:"required" feishu:"反馈内容"`
+
+	// 可选字段
+	ScreenShot    []string `json:"screen_shot,omitempty" feishu:"截图"`
+	ProblemType   string   `json:"problem_type,omitempty" feishu:"问题类型"`
+	ProblemSource string   `json:"problem_source,omitempty" feishu:"问题类型"`
+
+	// 自动补充
+	SubmitTIme string `json:"-" feishu:"提交时间"` // 提交时间
+	Status     string `json:"-" feishu:"问题状态"` // "处理中“
 }
 
 type GetAppTableRecordReq struct {
