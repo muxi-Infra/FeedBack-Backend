@@ -286,7 +286,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 func fillFields(req *request.CreateAppTableRecordReq) {
 
 	// 自动填充的
-	req.SubmitTIme = time.Now().Format("2006/01/02")
+	req.SubmitTIme = time.Now().Unix() // 日期是需要时间戳的
 	req.Status = "处理中"
 
 	val := reflect.ValueOf(req).Elem()

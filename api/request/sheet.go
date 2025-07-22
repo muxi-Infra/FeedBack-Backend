@@ -27,15 +27,19 @@ type CreateAppTableRecordReq struct {
 	Content   string `json:"content" binding:"required" feishu:"反馈内容"`
 
 	// 可选字段
-	ScreenShot    []string `json:"screen_shot,omitempty" feishu:"截图"`
-	ProblemType   string   `json:"problem_type,omitempty" feishu:"问题类型"`
-	ProblemSource string   `json:"problem_source,omitempty" feishu:"问题类型"`
+	ScreenShot    []Screen_Shot `json:"screen_shot,omitempty" feishu:"截图"`
+	ProblemType   string        `json:"problem_type,omitempty" feishu:"问题类型"`
+	ProblemSource string        `json:"problem_source,omitempty" feishu:"问题来源"`
 
 	// 自动补充
-	SubmitTIme string `json:"-" feishu:"提交时间"` // 提交时间
+	SubmitTIme int64  `json:"-" feishu:"提交时间"` // 提交时间
 	Status     string `json:"-" feishu:"问题状态"` // "处理中“
 }
 
+// Screen_Shot 附件上传是需要对象的形式
+type Screen_Shot struct {
+	FileToken string `json:"file_token"`
+}
 type GetAppTableRecordReq struct {
 	AppToken   string   `json:"app_token" binding:"required"`
 	TableId    string   `json:"table_id" binding:"required"`
