@@ -12,6 +12,8 @@ import (
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
+	"reflect"
+	"time"
 )
 
 type Sheet struct {
@@ -162,6 +164,13 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
+
+	// 填充fields
+	if r.Fields == nil {
+		r.Fields = make(map[string]interface{})
+	}
+	fillFields(&r)
+
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(r.AppToken).
@@ -215,7 +224,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 		TableId(r.TableId).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(r.ViewId).
 			FieldNames(r.FieldNames).
@@ -270,4 +279,48 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 		Message: "Success",
 		Data:    resp.Data,
 	}, nil
+}
+
+// 填充filed的工具函数
+// 使用反射生成中文字段
+func fillFields(req *request.CreateAppTableRecordReq) {
+
+	// 自动填充的
+	req.SubmitTIme = time.Now().Unix() // 日期是需要时间戳的
+	req.Status = "处理中"
+
+	val := reflect.ValueOf(req).Elem()
+	valType := val.Type()
+
+	for i := 0; i < val.NumField(); i++ {
+		field := valType.Field(i)
+		// 获取中文字段标签
+		feishuKey := field.Tag.Get("feishu")
+		if feishuKey == "" {
+			continue
+		}
+
+		value := val.Field(i).Interface()
+
+		// 可选字段不填不加进去
+		if isEmptyValue(val.Field(i)) {
+			continue
+		}
+		req.Fields[feishuKey] = value
+	}
+}
+
+// 判断字段是否为空值
+func isEmptyValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.String, reflect.Slice, reflect.Map:
+		return v.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return v.IsNil()
+	default:
+		// 其他类型 int float64 bool……
+		// 与其对应的0值进行比较
+		zero := reflect.Zero(v.Type())
+		return reflect.DeepEqual(v.Interface(), zero.Interface())
+	}
 }

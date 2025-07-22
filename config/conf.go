@@ -8,7 +8,7 @@ import (
 var ProviderSet = wire.NewSet(NewClientConfig, NewJWTConfig, NewMiddlewareConfig)
 
 type ClientConfig struct {
-	AppID     string `yaml:"appID"`
+	AppID     string `yaml:"appID"` // 应用凭证
 	AppSecret string `yaml:"appSecret"`
 }
 
