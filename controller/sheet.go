@@ -12,6 +12,7 @@ import (
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
+	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	"reflect"
 	"time"
 )
@@ -215,6 +216,19 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 }
 
 // GetAppTableRecord 获取多维表格记录
+//
+//	@Summary		获取多维表格记录
+//	@Description	根据指定条件查询多维表格中的记录数据
+//	@Tags			Sheet
+//	@ID				get-app-table-record
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string							true	"Bearer Token"
+//	@Param			request			body		request.GetAppTableRecordReq	true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response				"成功返回查询结果"
+//	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response				"服务器内部错误"
+//	@Router			/sheet/getrecord [post]
 func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
@@ -224,7 +238,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 		TableId(r.TableId).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(r.ViewId).
 			FieldNames(r.FieldNames).
@@ -238,9 +252,9 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 				Conjunction(`and`).
 				Conditions([]*larkbitable.Condition{
 					larkbitable.NewConditionBuilder().
-						FieldName(``).
+						FieldName(r.FilterName).
 						Operator(`is`).
-						Value([]string{`P0`}).
+						Value([]string{r.FilterVal}).
 						Build(),
 				}).
 				Build()).
@@ -274,6 +288,63 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 
 	// 业务处理
 	// fmt.Println(larkcore.Prettify(resp))
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data:    resp.Data,
+	}, nil
+}
+
+// GetPhotoUrl 获取截图的临时 url 24小时过期
+//
+//	@Summary		获取截图临时URL
+//	@Description	根据文件Token获取截图的临时下载URL，URL有效期为24小时
+//	@Tags			Sheet
+//	@ID				get-photo-url
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string						true	"Bearer Token"
+//	@Param			request			body		request.GetPhotoUrlReq		true	"获取截图URL请求参数"
+//	@Success		200				{object}	response.Response			"成功返回临时URL信息"
+//	@Failure		400				{object}	response.Response			"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response			"服务器内部错误"
+//	@Router			/sheet/getphotourl [post]
+func (f Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error) {
+	// 创建 Client
+	//client := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
+
+	// 创建请求对象
+	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
+		FileTokens(r.FileTokens).
+		Build()
+
+	// 发起请求
+	resp, err := f.c.Drive.V1.Media.BatchGetTmpDownloadUrl(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+
+	// 处理错误
+	if err != nil {
+		// TODO: log
+		// fmt.Println(err)
+		return response.Response{
+			Code:    500,
+			Message: "Internal Server Error",
+			Data:    nil,
+		}, err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		// Todo log
+		//fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		return response.Response{
+			Code:    400,
+			Message: "Internal Server Error",
+			Data:    resp.CodeError,
+		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+	}
+
+	// 业务处理
+	//fmt.Println(larkcore.Prettify(resp))
 	return response.Response{
 		Code:    0,
 		Message: "Success",

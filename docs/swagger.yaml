@@ -24,9 +24,10 @@ definitions:
   request.CreateAppReq:
     properties:
       folder_token:
-        description: 可以为空，但是要有
+        description: 可以为空，但是要有 多维表格app归属目录
         type: string
       name:
+        description: 多维表格app名称
         type: string
     required:
     - name
@@ -35,21 +36,86 @@ definitions:
     properties:
       app_token:
         type: string
+      contact:
+        type: string
+      content:
+        type: string
       fields:
         additionalProperties: true
-        description: 记录的字段
+        description: 记录的字段 不再校验，required,由后端自动填充
         type: object
       ignore_consistency_check:
         description: |-
           UserIdType             string                 `json:"user_id_type,omitempty"`
           ClientToken            string                 `json:"client_token,omitempty"`
         type: boolean
+      problem_source:
+        type: string
+      problem_type:
+        type: string
+      screen_shot:
+        description: 可选字段
+        items:
+          $ref: '#/definitions/request.ScreenShot'
+        type: array
+      student_id:
+        description: 必填字段
+        type: string
       table_id:
         type: string
     required:
     - app_token
-    - fields
+    - contact
+    - content
+    - student_id
     - table_id
+    type: object
+  request.GetAppTableRecordReq:
+    properties:
+      app_token:
+        type: string
+      desc:
+        description: 是否降序
+        type: boolean
+      field_names:
+        description: 需要查询的字段名
+        items:
+          type: string
+        type: array
+      filter_name:
+        description: 过滤条件的字段名，根据实际的接口需要，这里只需要设计成一个
+        type: string
+      filter_val:
+        description: 过滤条件的值
+        type: string
+      pagetoken:
+        description: 分页参数,第一次不需要
+        type: string
+      sort_orders:
+        description: 根据什么字段排序
+        type: string
+      table_id:
+        type: string
+      view_id:
+        type: string
+    required:
+    - app_token
+    - field_names
+    - filter_name
+    - filter_val
+    - sort_orders
+    - table_id
+    - view_id
+    type: object
+  request.GetPhotoUrlReq:
+    properties:
+      file_tokens:
+        description: 附件token
+        items:
+          type: string
+        type: array
+    required:
+    - file_tokens
     type: object
   request.InitTokenReq:
     properties:
@@ -60,6 +126,11 @@ definitions:
     required:
     - access_token
     - refresh_token
+    type: object
+  request.ScreenShot:
+    properties:
+      file_token:
+        type: string
     type: object
   response.Response:
     properties:
@@ -72,7 +143,6 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: 木犀反馈系统 API
   title: 木犀反馈系统 API
   version: "1.0"
 paths:
@@ -235,6 +305,78 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 创建多维表格记录
+      tags:
+      - Sheet
+  /sheet/getphotourl:
+    post:
+      consumes:
+      - application/json
+      description: 根据文件Token获取截图的临时下载URL，URL有效期为24小时
+      operationId: get-photo-url
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 获取截图URL请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.GetPhotoUrlReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回临时URL信息
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误或飞书接口调用失败
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 获取截图临时URL
+      tags:
+      - Sheet
+  /sheet/getrecord:
+    post:
+      consumes:
+      - application/json
+      description: 根据指定条件查询多维表格中的记录数据
+      operationId: get-app-table-record
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 查询记录请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.GetAppTableRecordReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回查询结果
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误或飞书接口调用失败
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 获取多维表格记录
       tags:
       - Sheet
 swagger: "2.0"
