@@ -36,7 +36,7 @@ type CreateAppTableRecordReq struct {
 	Status     string `json:"-" feishu:"问题状态"` // "处理中“
 }
 
-// ScreenShot  附件上传是需要对象的形式
+// ScreenShot 附件上传是需要对象的形式
 type ScreenShot struct {
 	FileToken string `json:"file_token"`
 }
