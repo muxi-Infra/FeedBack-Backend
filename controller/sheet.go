@@ -229,7 +229,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 //	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/getrecord [post]
-func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 创建 Client
 	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 	// 创建请求对象
@@ -253,7 +253,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 				Conditions([]*larkbitable.Condition{
 					larkbitable.NewConditionBuilder().
 						FieldName(r.FilterName).
-						Operator(`is`).
+						Operator(`contains`).
 						Value([]string{r.FilterVal}).
 						Build(),
 				}).
@@ -309,7 +309,7 @@ func (f Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq,
 //	@Failure		400				{object}	response.Response			"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response			"服务器内部错误"
 //	@Router			/sheet/getphotourl [post]
-func (f Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error) {
+func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error) {
 	// 创建 Client
 	//client := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 
