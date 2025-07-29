@@ -264,6 +264,10 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📊 添加结果展示**: ![记录添加结果](public/img/img_2.png)
 
+> 💡 **Tips**: 在添加图片附件的时候，需要前端首先将图片上传到飞书云平台上，获得`file_token`，再交给后端进行添加记录。
+
+
+
 ------
 
 ### 4. 🔍 获取表格记录
