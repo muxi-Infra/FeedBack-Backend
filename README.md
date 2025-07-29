@@ -128,7 +128,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📋 请求参数**:
 
-```json
+```text 
 {
     "folder_token": "",  // 📁 文件夹标识，为空时创建在云空间根目录
     "name": "test"       // 📝 多维表格名称
@@ -137,7 +137,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **✅ 响应结果**:
 
-```json
+```text
 {
     "code": 0,
     "msg": "Success",
@@ -165,7 +165,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📋 请求参数**:
 
-```json
+```text
 {
     "app_token": "your_app_token",     // 🎯 源表格标识（要复制的表格）
     "folder_token": "",                // 📁 目标文件夹，为空时创建在根目录
@@ -177,7 +177,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **✅ 响应结果**:
 
-```json
+```text
 {
     "code": 0,
     "msg": "Success",
@@ -206,7 +206,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📋 请求参数**:
 
-```json
+```text
 {
     "app_token": "your_app_token",              // 🔑 表格标识
     "table_id": "your_table_id",                // 📊 数据表ID
@@ -226,7 +226,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **✅ 响应结果**:
 
-```json
+```text
 {
     "code": 0,
     "msg": "Success",
@@ -276,7 +276,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📋 请求参数**:
 
-```json
+```text
 {
     "app_token": "your_app_token",      // 🔑 表格标识
     "table_id": "your_table_id",        // 📊 数据表ID
@@ -302,7 +302,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **✅ 响应结果**:
 
-```json
+```text
 {
     "code": 0,
     "msg": "Success",
@@ -369,7 +369,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **📋 请求参数**:
 
-```json
+```text
 {
     "file_tokens": [                    // 📸 图片文件标识列表
         "TyxibGfV1obLvIxhvYncpxdfnyf"
@@ -379,7 +379,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 **✅ 响应结果**:
 
-```json
+```text
 {
     "code": 0,
     "msg": "Success", 
