@@ -40,6 +40,7 @@ type CreateAppTableRecordReq struct {
 type ScreenShot struct {
 	FileToken string `json:"file_token"`
 }
+
 type GetAppTableRecordReq struct {
 	AppToken   string   `json:"app_token" binding:"required"`
 	TableId    string   `json:"table_id" binding:"required"`
@@ -50,4 +51,8 @@ type GetAppTableRecordReq struct {
 	FilterName string   `json:"filter_name" binding:"required"` // 过滤条件的字段名，根据实际的接口需要，这里只需要设计成一个
 	FilterVal  string   `json:"filter_val" binding:"required"`  // 过滤条件的值
 	PageToken  string   `json:"pagetoken,omitempty"`            // 分页参数,第一次不需要
+}
+
+type GetPhotoUrlReq struct {
+	FileTokens []string `json:"file_tokens" binding:"required"` // 附件token
 }
