@@ -111,154 +111,175 @@ Authorization: Bearer xxxx
 https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=155789867120318
 
 ---
-## 完整使用实例
-> Tips: 这里仅展示各个接口使用示例，都需要携带Authorization头
+## 📚 完整使用实例
 
-### 1. 创建多维表格
-接口路径：`POST /sheet/createapp`
+> 💡 **Tips**: 以下所有接口都需要携带 `Authorization` 头进行认证
 
-请求体：
+------
+
+> 💡 **Tips**: 获取`app_token`和`tabel_id`和`view_id`
+> ![img.png](public/img/img_3.png)
+> 其中红色框内为`app_token`，`table_id`和`view_id`即链接上的黄色框内和棕色框内的内容。
+> 
+
+### 1. 🆕 创建多维表格
+
+**接口路径**: `POST /sheet/createapp`
+
+**📋 请求参数**:
+
 ```json
 {
-    "folder_token": "",
-    "name": "test"
+    "folder_token": "",  // 📁 文件夹标识，为空时创建在云空间根目录
+    "name": "test"       // 📝 多维表格名称
 }
 ```
-其中`name`是多维表格的名称，`folder_token`是多维表格的归属文件夹，为空时表示多维表格将被创建云空间跟目录下。
 
-响应体：
+**✅ 响应结果**:
+
 ```json
 {
     "code": 0,
     "msg": "Success",
     "data": {
         "app": {
-            "app_token": "KIInbGuLraO5dZsvoCdcQBAOnsy",
-            "name": "test",
-            "folder_token": "",
-            "url": "https://vcnay0rphntt.feishu.cn/base/KIInbGuLraO5dZsvoCdcQBAOnsyy",
-            "default_table_id": "tblji3vkq90Br2kP"
+            "app_token": "KIInbGuLraO5dZsvoCdcQBAOnsy",        // 🔑 表格唯一标识
+            "name": "test",                                   // 📝 表格名称
+            "folder_token": "",                               // 📁 归属文件夹
+            "url": "https://vcnay0rphntt.feishu.cn/base/...", // 🔗 表格访问链接
+            "default_table_id": "tblji3vkq90Br2kP"          // 📊 默认数据表ID
         }
     }
 }
 ```
-其中`app_token`是多维表格的唯一标识符，
-`name`是多维表格的名称
-`folder_token`是多维表格App归属文件夹，
-`url`是多维表格App的URL链接，
-`default_table_id`是多维表格默认数据表的ID。
 
-该接口的作用是创建一个多维表格，其附带创建了一个默认数据表。
-![img.png](pubilc/img/img.png)
+**🎯 功能说明**: 创建一个新的多维表格，系统会自动附带创建一个默认数据表。
 
-### 2. 从模版复制表格
-接口路径：`POST /sheet/copyapp`
+![创建表格示例](public/img/img.png)
 
-请求体：
+------
+
+### 2. 📋 从模版复制表格
+
+**接口路径**: `POST /sheet/copyapp`
+
+**📋 请求参数**:
+
 ```json
 {
-    "app_token": "your_app_token",
-    "folder_token": "",
-    "name": "test",
-    "time_zone": "Asia/Shanghai",
-    "without_content": true  
+    "app_token": "your_app_token",     // 🎯 源表格标识（要复制的表格）
+    "folder_token": "",                // 📁 目标文件夹，为空时创建在根目录
+    "name": "test",                    // 📝 新表格名称
+    "time_zone": "Asia/Shanghai",      // 🌍 文档时区
+    "without_content": true            // 🚫 是否不复制内容（true=仅结构，false=含内容）
 }
 ```
-其中`app_token`是要复制的多维表格的唯一标识，`folder_token`是多维表格的归属文件夹，为空时表示多维表格将被创建云空间跟目录下。
-`name`是多维表格的名称，`without_content`表示是否复制表格内容，true表示不复制，false表示复制。`time_zone`是文档时区。
 
-> Tips: 当多维表格记录数超50000条可复制上限时，仅可复制多维表格结构。
+**✅ 响应结果**:
 
-响应体：
 ```json
 {
     "code": 0,
     "msg": "Success",
     "data": {
         "app": {
-            "app_token": "HfHbbixFjaMtEvsnkGscSvlvnAh",
-            "name": "test",
-            "folder_token": "",
-            "url": "https://vcnay0rphntt.feishu.cn/base/HfHbbixFjaMtEvsnkGscSvlvnAhh",
-            "default_table_id": "",
-            "time_zone": "Asia/Shanghai"
+            "app_token": "HfHbbixFjaMtEvsnkGscSvlvnAh",        // 🔑 新表格唯一标识
+            "name": "test",                                   // 📝 新表格名称
+            "folder_token": "",                               // 📁 归属文件夹
+            "url": "https://vcnay0rphntt.feishu.cn/base/...", // 🔗 新表格访问链接
+            "default_table_id": "",                           // 📊 默认数据表ID
+            "time_zone": "Asia/Shanghai"                      // 🌍 时区设置
         }
     }
 }
 ```
-响应体的内容不再陈述。
 
-该接口作用是复制一个多维表格（复制内容或结构），并返回新的多维表格。
+**🎯 功能说明**: 基于现有表格创建副本，可选择复制结构或完整内容。
 
+> ⚠️ **注意**: 当源表格记录数超过 50,000 条时，仅能复制表格结构。
 
-### 3. 添加记录到表格
-接口路径：`POST /sheet/createrecord`
+------
 
-请求体：
+### 3. ➕ 添加记录到表格
+
+**接口路径**: `POST /sheet/createrecord`
+
+**📋 请求参数**:
+
 ```json
 {
-    "app_token": "your_app_token",
-    "student_id":"1",
-    "contact":"xxx@qq.com",
-    "content":"test",
-    "screen_shot" : [
+    "app_token": "your_app_token",              // 🔑 表格标识
+    "table_id": "your_table_id",                // 📊 数据表ID
+    "student_id": "1",                          // 👤 用户ID
+    "contact": "xxx@qq.com",                    // 📧 联系方式
+    "content": "test",                          // 💬 反馈内容
+    "screen_shot": [                            // 📸 截图附件
         {
-            "file_token":"your_file_token"
+            "file_token": "your_file_token"
         }
     ],
-    "problem_type":"test",
-    "problem_source":"test",
-    "ignore_consistency_check": true,
-    "table_id": "your_table_id"
+    "problem_type": "test",                     // 🏷️ 问题类型
+    "problem_source": "test",                   // 📍 问题来源
+    "ignore_consistency_check": true            // ✅ 是否忽略数据一致性检查
 }
 ```
-其中`tabel_id`是多维表格的唯一标识，而`ignore_consistency_check`表示是否忽略数据一致性检查，true表示忽略，false表示不忽略。
-而`student_id`、`contact`、`content`、`screen_shot`···是多维表格的记录字段，
-这里因为不想出现中英文互用的key，所以将相应表格的字段封装成结构体`/api/request/sheet.go`中的`CreateAppTableRecordReq`，并由`feishu`标签和反射进行映射。
-这里的表格字段如下
-![img_1.png](pubilc/img/img_1.png)
-如果需要自定义表格字段，请自行修改结构体，并修改`feishu`标签的内容。
 
-响应体：
+**✅ 响应结果**:
+
 ```json
 {
     "code": 0,
     "msg": "Success",
     "data": {
         "record": {
+            "record_id": "recuSiLkCc70QI",      // 🆔 记录唯一标识
             "fields": {
-                "反馈内容": "test",
-                "截图": [
+                "用户ID": "1",                   // 👤 用户标识
+                "反馈内容": "test",              // 💬 用户反馈
+                "截图": [                        // 📸 截图文件
                     {
                         "file_token": "TyxibGfV1obLvIxhvYncpxdfnyf"
                     }
                 ],
-                "提交时间": 1753755493,
-                "用户ID": "1",
-                "联系方式（QQ/邮箱）": "xxx@qq.com",
-                "问题来源": "test",
-                "问题状态": "处理中",
-                "问题类型": "test"
-            },
-            "record_id": "recuSiLkCc70QI"
+                "联系方式（QQ/邮箱）": "xxx@qq.com", // 📧 联系信息
+                "问题类型": "test",              // 🏷️ 分类标签
+                "问题来源": "test",              // 📍 来源渠道
+                "问题状态": "处理中",            // 🔄 当前状态
+                "提交时间": 1753755493           // ⏰ 创建时间戳
+            }
         }
     }
 }
 ```
-响应结果如下：
-![img.png](img_2.png)
 
-### 4. 获取表格记录
-接口路径：`POST /sheet/getrecored`
+**🎯 功能说明**: 向指定表格添加新的反馈记录，支持文本、附件等多种字段类型。
 
-请求体:
+**📝 字段映射说明**:
+
+- 字段定义位于 `/api/request/sheet.go` 中的 `CreateAppTableRecordReq` 结构体
+- 通过 `feishu` 标签进行中英文字段映射
+- 如需自定义字段，请修改对应结构体和标签
+
+![表格字段示例](public/img/img_1.png)
+
+**📊 添加结果展示**: ![记录添加结果](public/img/img_2.png)
+
+------
+
+### 4. 🔍 获取表格记录
+
+**接口路径**: `POST /sheet/getrecored`
+
+**📋 请求参数**:
+
 ```json
 {
-    "app_token": "your_app_token",
-    "desc": true,
-    "field_names": [
+    "app_token": "your_app_token",      // 🔑 表格标识
+    "table_id": "your_table_id",        // 📊 数据表ID
+    "view_id": "your_view_id",          // 👁️ 视图ID
+    "field_names": [                    // 📋 要查询的字段列表
         "用户ID",
-        "反馈内容",
+        "反馈内容", 
         "截图",
         "问题类型",
         "问题来源",
@@ -267,105 +288,118 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
         "问题状态",
         "关联需求"
     ],
-    "filter_name": "用户ID",
-    "filter_val": "1",
-    "pagetoken": "",
-    "sort_orders": "提交时间",
-    "table_id": "your_table_id",
-    "view_id": "your_view_id"
+    "filter_name": "用户ID",            // 🔎 过滤字段名
+    "filter_val": "1",                  // 🎯 过滤值
+    "sort_orders": "提交时间",          // 📈 排序字段
+    "desc": true,                       // ⬇️ 是否降序排列
+    "pagetoken": ""                     // 📄 分页标记（首次请求为空）
 }
 ```
-其中`field_names`是所查询的字段表格的名称，`filter_name`是过滤的字段名称，`filter_val`是过滤的字段值，`sort_orders`是排序的字段名称，`table_id`是多维表格的唯一标识符，`view_id`是多维表格的视图唯一标识符。
-`pagetoken`是分页的标识符，第一次请求时为空，后续请求时为上一次请求的返回值。
 
-> Tips: 这里的`filter_name`和`filter_val`是过滤的内容，因为业务原因，这里只设置了一个过滤字段。如需多个过滤字段，请自行修改代码。
+**✅ 响应结果**:
 
-响应体：
 ```json
 {
     "code": 0,
     "msg": "Success",
     "data": {
-        "items": [
+        "total": 1,                     // 📊 总记录数
+        "has_more": false,              // 📄 是否有更多数据
+        "items": [                      // 📋 记录列表
             {
+                "record_id": "recuSk1VpHLuvc",  // 🆔 记录ID
                 "fields": {
-                    "反馈内容": [
+                    "用户ID": [                  // 👤 用户标识
                         {
-                            "text": "test",
-                            "type": "text"
+                            "type": "text",
+                            "text": "1"
                         }
                     ],
-                    "截图": [
+                    "反馈内容": [                // 💬 反馈文本
+                        {
+                            "type": "text",
+                            "text": "test"
+                        }
+                    ],
+                    "截图": [                    // 📸 图片附件
                         {
                             "file_token": "TyxibGfV1obLvIxhvYncpxdfnyf",
                             "name": "demo01.png",
-                            "size": 1508897,
-                            "tmp_url": "https://open.feishu.cn/open-apis/drive/v1/medias/batch_get_tmp_download_url?file_tokens=TyxibGfV1obLvIxhvYncpxdfnyf",
                             "type": "image/png",
-                            "url": "https://open.feishu.cn/open-apis/drive/v1/medias/TyxibGfV1obLvIxhvYncpxdfnyf/download"
+                            "size": 1508897,
+                            "url": "https://open.feishu.cn/open-apis/drive/v1/medias/TyxibGfV1obLvIxhvYncpxdfnyf/download",
+                            "tmp_url": "https://open.feishu.cn/open-apis/drive/v1/medias/batch_get_tmp_download_url?file_tokens=TyxibGfV1obLvIxhvYncpxdfnyf"
                         }
                     ],
-                    "提交时间": 1753774223913,
-                    "用户ID": [
+                    "联系方式（QQ/邮箱）": [        // 📧 联系信息
                         {
-                            "text": "1",
-                            "type": "text"
+                            "type": "text", 
+                            "text": "xxx@qq.com"
                         }
                     ],
-                    "联系方式（QQ/邮箱）": [
-                        {
-                            "text": "xxx@qq.com",
-                            "type": "text"
-                        }
-                    ],
-                    "问题来源": "test",
-                    "问题状态": "处理中",
-                    "问题类型": "test"
-                },
-                "record_id": "recuSk1VpHLuvc"
-            }
-        ],
-        "has_more": false,
-        "total": 1
-    }
-}
-```
-其中`items`是表格记录，`fields`是表格记录的字段，`record_id`是记录ID。
-`has_more`表示是否有更多记录，当为true时，会同时返回`pagetoken`分页标记。`total`表示总记录数。
-
-
-### 5. 获取表格记录图片链接
-接口路径：`POST /sheet/getphotourl`
-
-请求体：
-```json
-{
-    "file_tokens": [
-        "TyxibGfV1obLvIxhvYncpxdfnyf"
-    ]
-}
-```
-
-`field_tokens`是图片的标识符。
-
-响应体：
-```json
-{
-    "code": 0,
-    "msg": "Success",
-    "data": {
-        "tmp_download_urls": [
-            {
-                "file_token": "TyxibGfV1obLvIxhvYncpxdfnyf",
-                "tmp_download_url": "https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=MTRkZjU4ZDM0NGE1ODZjNDhkYzVhM2U1ZTU1ZDlmNWRfYjdmMzBiYjNiMTFlYzk2MmY5NGE0MzMyYWY4NTVlODhfSUQ6NzUyOTc5ODUwNDM4MjAyMTYzM18xNzUzNzU3ODk5OjE3NTM4NDQyOTlfVjM"
+                    "问题类型": "test",          // 🏷️ 问题分类
+                    "问题来源": "test",          // 📍 来源渠道
+                    "问题状态": "处理中",        // 🔄 处理状态
+                    "提交时间": 1753774223913    // ⏰ 提交时间戳
+                }
             }
         ]
     }
 }
 ```
-此时获得的`tmp_download_url`是图片的临时下载链接，前端可以通过该链接进行渲染页面。
+
+**🎯 功能说明**: 根据条件查询表格记录，支持字段筛选、排序和分页。
+
+**🔍 查询特性**:
+
+- **字段选择**: 可指定返回特定字段
+- **条件过滤**: 支持单字段精确匹配（如需多字段过滤，请自行扩展代码）
+- **排序功能**: 支持按指定字段升序/降序排列
+- **分页支持**: 通过 `pagetoken` 实现分页查询
+
+------
+
+### 5. 🖼️ 获取表格记录图片链接
+
+**接口路径**: `POST /sheet/getphotourl`
+
+**📋 请求参数**:
+
+```json
+{
+    "file_tokens": [                    // 📸 图片文件标识列表
+        "TyxibGfV1obLvIxhvYncpxdfnyf"
+    ]
+}
+```
+
+**✅ 响应结果**:
+
+```json
+{
+    "code": 0,
+    "msg": "Success", 
+    "data": {
+        "tmp_download_urls": [          // 🔗 临时下载链接列表
+            {
+                "file_token": "TyxibGfV1obLvIxhvYncpxdfnyf",
+                "tmp_download_url": "https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=..."
+            }
+        ]
+    }
+}
+```
+
+**🎯 功能说明**: 批量获取图片文件的临时访问链接，用于前端页面渲染。
+
+**⏰ 使用注意**:
+
+- 返回的 `tmp_download_url` 为临时链接，有效期为24小时
+- 前端可直接使用该链接进行图片展示
+- 建议及时使用，避免链接过期
 
 ---
+
 
 ## 🛠️ TODO
 
