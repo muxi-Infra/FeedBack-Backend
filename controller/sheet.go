@@ -238,7 +238,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(r.TableId).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(r.ViewId).
 			FieldNames(r.FieldNames).
@@ -357,7 +357,8 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 func fillFields(req *request.CreateAppTableRecordReq) {
 
 	// 自动填充的
-	req.SubmitTIme = time.Now().Unix() // 日期是需要时间戳的
+	var loc, _ = time.LoadLocation("Asia/Shanghai")
+	req.SubmitTIme = time.Now().In(loc).UnixMilli() // 日期是需要时间戳的 // 毫秒级别的
 	req.Status = "处理中"
 
 	val := reflect.ValueOf(req).Elem()
