@@ -96,13 +96,13 @@ Authorization: Bearer xxxx
 
 ## ✅ 已支持的接口列表（需带 JWT）
 
-| 接口路径                       | 说明              |
-|----------------------------|-----------------|
-| `POST /sheet/createapp`    | 创建多维表格          |
-| `POST /sheet/copyapp`      | 从模板复制表格         |
+| 接口路径                     | 说明              |
+|--------------------------|-----------------|
+| `POST /sheet/createapp`  | 创建多维表格          |
+| `POST /sheet/copyapp`    | 从模板复制表格         |
 | `POST /sheet/createrecord` | 添加记录到表格         |
-| `POST /sheet/getrecored`   | 获取表格记录          |
-| `POST /sheet/getphotourl`  | 获取表格记录中的图片链接    |
+| `POST /sheet/getrecord`  | 获取表格记录          |
+| `POST /sheet/getphotourl` | 获取表格记录中的图片链接    |
 
 ---
 
@@ -272,7 +272,7 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 ### 4. 🔍 获取表格记录
 
-**接口路径**: `POST /sheet/getrecored`
+**接口路径**: `POST /sheet/getrecord`
 
 **📋 请求参数**:
 

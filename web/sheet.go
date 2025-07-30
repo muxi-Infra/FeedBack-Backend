@@ -22,7 +22,7 @@ func RegisterSheetHandler(r *gin.Engine, sh SheetHandler, authMiddleware gin.Han
 		c.POST("/createapp", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateApp))
 		c.POST("/copyapp", authMiddleware, ginx.WrapClaimsAndReq(sh.CopyApp))
 		c.POST("/createrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateAppTableRecord))
-		c.POST("/getrecored", authMiddleware, ginx.WrapClaimsAndReq(sh.GetAppTableRecord))
+		c.POST("/getrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.GetAppTableRecord))
 		c.POST("/getphotourl", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
 	}
 }
