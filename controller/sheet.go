@@ -73,7 +73,7 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 		// TODO: log
 		return response.Response{
 			Code:    400,
-			Message: "Internal Server Error",
+			Message: "Bad Request",
 			Data:    resp.CodeError,
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
@@ -134,7 +134,7 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 		// TODO: log
 		return response.Response{
 			Code:    400,
-			Message: "Internal Server Error",
+			Message: "Bad Request",
 			Data:    resp.CodeError,
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
@@ -201,7 +201,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 		// TODO: log
 		return response.Response{
 			Code:    400,
-			Message: "Internal Server Error",
+			Message: "Bad Request",
 			Data:    resp.CodeError,
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
@@ -238,7 +238,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(r.TableId).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(r.ViewId).
 			FieldNames(r.FieldNames).
@@ -281,7 +281,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		// TODO: log
 		return response.Response{
 			Code:    400,
-			Message: "Internal Server Error",
+			Message: "Bad Request",
 			Data:    resp.CodeError,
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
@@ -338,7 +338,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 		//fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
-			Message: "Internal Server Error",
+			Message: "Bad Request",
 			Data:    resp.CodeError,
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
