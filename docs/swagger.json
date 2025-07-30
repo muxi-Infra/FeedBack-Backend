@@ -1,7 +1,6 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "木犀反馈系统 API",
         "title": "木犀反馈系统 API",
         "contact": {},
         "version": "1.0"
@@ -251,6 +250,114 @@
                     }
                 }
             }
+        },
+        "/sheet/getphotourl": {
+            "post": {
+                "description": "根据文件Token获取截图的临时下载URL，URL有效期为24小时",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取截图临时URL",
+                "operationId": "get-photo-url",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "获取截图URL请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.GetPhotoUrlReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回临时URL信息",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sheet/getrecord": {
+            "post": {
+                "description": "根据指定条件查询多维表格中的记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取多维表格记录",
+                "operationId": "get-app-table-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "查询记录请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.GetAppTableRecordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -290,10 +397,11 @@
             ],
             "properties": {
                 "folder_token": {
-                    "description": "可以为空，但是要有",
+                    "description": "可以为空，但是要有 多维表格app归属目录",
                     "type": "string"
                 },
                 "name": {
+                    "description": "多维表格app名称",
                     "type": "string"
                 }
             }
@@ -302,15 +410,23 @@
             "type": "object",
             "required": [
                 "app_token",
-                "fields",
+                "contact",
+                "content",
+                "student_id",
                 "table_id"
             ],
             "properties": {
                 "app_token": {
                     "type": "string"
                 },
+                "contact": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
                 "fields": {
-                    "description": "记录的字段",
+                    "description": "记录的字段 不再校验，required,由后端自动填充",
                     "type": "object",
                     "additionalProperties": true
                 },
@@ -318,8 +434,90 @@
                     "description": "UserIdType             string                 `json:\"user_id_type,omitempty\"`\nClientToken            string                 `json:\"client_token,omitempty\"`",
                     "type": "boolean"
                 },
+                "problem_source": {
+                    "type": "string"
+                },
+                "problem_type": {
+                    "type": "string"
+                },
+                "screen_shot": {
+                    "description": "可选字段",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/request.ScreenShot"
+                    }
+                },
+                "student_id": {
+                    "description": "必填字段",
+                    "type": "string"
+                },
                 "table_id": {
                     "type": "string"
+                }
+            }
+        },
+        "request.GetAppTableRecordReq": {
+            "type": "object",
+            "required": [
+                "app_token",
+                "field_names",
+                "filter_name",
+                "filter_val",
+                "sort_orders",
+                "table_id",
+                "view_id"
+            ],
+            "properties": {
+                "app_token": {
+                    "type": "string"
+                },
+                "desc": {
+                    "description": "是否降序",
+                    "type": "boolean"
+                },
+                "field_names": {
+                    "description": "需要查询的字段名",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "filter_name": {
+                    "description": "过滤条件的字段名，根据实际的接口需要，这里只需要设计成一个",
+                    "type": "string"
+                },
+                "filter_val": {
+                    "description": "过滤条件的值",
+                    "type": "string"
+                },
+                "pagetoken": {
+                    "description": "分页参数,第一次不需要",
+                    "type": "string"
+                },
+                "sort_orders": {
+                    "description": "根据什么字段排序",
+                    "type": "string"
+                },
+                "table_id": {
+                    "type": "string"
+                },
+                "view_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.GetPhotoUrlReq": {
+            "type": "object",
+            "required": [
+                "file_tokens"
+            ],
+            "properties": {
+                "file_tokens": {
+                    "description": "附件token",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -334,6 +532,14 @@
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.ScreenShot": {
+            "type": "object",
+            "properties": {
+                "file_token": {
                     "type": "string"
                 }
             }
