@@ -6,8 +6,9 @@ type RefreshTokenReq struct {
 
 type GenerateTokenReq struct {
 	// Token string `json:"token" binding:"required"`
-	// 更改为 TableName
-	TableName string `json:"table_name" binding:"required"`
+	// 更改为 TableID
+	TableID       string `json:"table_id" binding:"required"` // 反馈表格ID
+	NormalTableID string `json:"normal_table_id"`             // 常见问题表格ID
 }
 
 type InitTokenReq struct {

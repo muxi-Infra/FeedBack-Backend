@@ -34,8 +34,6 @@ definitions:
     type: object
   request.CreateAppTableRecordReq:
     properties:
-      app_token:
-        type: string
       contact:
         type: string
       content:
@@ -45,9 +43,6 @@ definitions:
         description: 记录的字段 不再校验，required,由后端自动填充
         type: object
       ignore_consistency_check:
-        description: |-
-          UserIdType             string                 `json:"user_id_type,omitempty"`
-          ClientToken            string                 `json:"client_token,omitempty"`
         type: boolean
       problem_source:
         type: string
@@ -61,19 +56,13 @@ definitions:
       student_id:
         description: 必填字段
         type: string
-      table_id:
-        type: string
     required:
-    - app_token
     - contact
     - content
     - student_id
-    - table_id
     type: object
   request.GetAppTableRecordReq:
     properties:
-      app_token:
-        type: string
       desc:
         description: 是否降序
         type: boolean
@@ -94,18 +83,11 @@ definitions:
       sort_orders:
         description: 根据什么字段排序
         type: string
-      table_id:
-        type: string
-      view_id:
-        type: string
     required:
-    - app_token
     - field_names
     - filter_name
     - filter_val
     - sort_orders
-    - table_id
-    - view_id
     type: object
   request.GetPhotoUrlReq:
     properties:

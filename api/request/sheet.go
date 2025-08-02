@@ -14,10 +14,12 @@ type CopyAppReq struct {
 }
 
 type CreateAppTableRecordReq struct {
-	AppToken string `json:"app_token" binding:"required"`
-	TableId  string `json:"table_id" binding:"required"`
+	// 修改为配置，而不是请求体中字段了
+	//AppToken string `json:"app_token" binding:"required"`
+	//TableId  string `json:"table_id" binding:"required"`
 	//UserIdType             string                 `json:"user_id_type,omitempty"`
 	//ClientToken            string                 `json:"client_token,omitempty"`
+
 	IgnoreConsistencyCheck bool                   `json:"ignore_consistency_check,omitempty"`
 	Fields                 map[string]interface{} `json:"fields"` // 记录的字段 不再校验，required,由后端自动填充
 
@@ -42,9 +44,11 @@ type ScreenShot struct {
 }
 
 type GetAppTableRecordReq struct {
-	AppToken   string   `json:"app_token" binding:"required"`
-	TableId    string   `json:"table_id" binding:"required"`
-	ViewId     string   `json:"view_id" binding:"required"`
+	// 同理 从配置中获取
+	//AppToken   string   `json:"app_token" binding:"required"`
+	//TableId    string   `json:"table_id" binding:"required"`
+	//ViewId     string   `json:"view_id" binding:"required"`
+
 	FieldNames []string `json:"field_names" binding:"required"` // 需要查询的字段名
 	SortOrders string   `json:"sort_orders" binding:"required"` // 根据什么字段排序
 	Desc       bool     `json:"desc"`                           // 是否降序

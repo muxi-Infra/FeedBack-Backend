@@ -3,9 +3,15 @@ package config
 import (
 	"github.com/google/wire"
 	"github.com/spf13/viper"
+	"log"
 )
 
-var ProviderSet = wire.NewSet(NewClientConfig, NewJWTConfig, NewMiddlewareConfig)
+var ProviderSet = wire.NewSet(
+	NewClientConfig,
+	NewJWTConfig,
+	NewMiddlewareConfig,
+	NewAppTable,
+)
 
 type ClientConfig struct {
 	AppID     string `yaml:"appID"` // 应用凭证
@@ -41,6 +47,39 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 	}
 }
 
-func GetAppID() string {
-	return "" //TODO 改成文件读取或者有更合适的办法
+// viper 默认默认使用的是 mapstructure 标签 来映射字段
+// app_table
+type AppTable struct {
+	AppToken string           `yaml:"app_token" mapstructure:"app_token"`
+	Tables   map[string]Table `yaml:"tables" mapstructure:"tables"` // 使用map方便获取
+}
+
+type Table struct {
+	Name    string `yaml:"name" mapstructure:"name"`
+	TableID string `yaml:"table_id" mapstructure:"table_id"`
+	ViewID  string `yaml:"view_id" mapstructure:"view_id"`
+}
+
+func NewAppTable() *AppTable {
+	var appTable AppTable
+	// 反序列化
+	if err := viper.Sub("app_table").Unmarshal(&appTable); err != nil {
+		log.Fatalf("unmarshal app_table failed: %v", err)
+	}
+	//fmt.Println(appTable)
+	return &appTable
+}
+
+// tableIDSet 为了更方便的检测TalbeID的参数是否有误 不导出，防止误使用
+var (
+	tableIDSet = map[string]struct{}{
+		"001": {},
+		"002": {},
+		"003": {},
+	}
+)
+
+func IsValidTableID(id string) bool {
+	_, ok := tableIDSet[id]
+	return ok
 }

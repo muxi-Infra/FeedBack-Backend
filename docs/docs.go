@@ -416,16 +416,11 @@ const docTemplate = `{
         "request.CreateAppTableRecordReq": {
             "type": "object",
             "required": [
-                "app_token",
                 "contact",
                 "content",
-                "student_id",
-                "table_id"
+                "student_id"
             ],
             "properties": {
-                "app_token": {
-                    "type": "string"
-                },
                 "contact": {
                     "type": "string"
                 },
@@ -438,7 +433,6 @@ const docTemplate = `{
                     "additionalProperties": true
                 },
                 "ignore_consistency_check": {
-                    "description": "UserIdType             string                 ` + "`" + `json:\"user_id_type,omitempty\"` + "`" + `\nClientToken            string                 ` + "`" + `json:\"client_token,omitempty\"` + "`" + `",
                     "type": "boolean"
                 },
                 "problem_source": {
@@ -457,27 +451,18 @@ const docTemplate = `{
                 "student_id": {
                     "description": "必填字段",
                     "type": "string"
-                },
-                "table_id": {
-                    "type": "string"
                 }
             }
         },
         "request.GetAppTableRecordReq": {
             "type": "object",
             "required": [
-                "app_token",
                 "field_names",
                 "filter_name",
                 "filter_val",
-                "sort_orders",
-                "table_id",
-                "view_id"
+                "sort_orders"
             ],
             "properties": {
-                "app_token": {
-                    "type": "string"
-                },
                 "desc": {
                     "description": "是否降序",
                     "type": "boolean"
@@ -503,12 +488,6 @@ const docTemplate = `{
                 },
                 "sort_orders": {
                     "description": "根据什么字段排序",
-                    "type": "string"
-                },
-                "table_id": {
-                    "type": "string"
-                },
-                "view_id": {
                     "type": "string"
                 }
             }

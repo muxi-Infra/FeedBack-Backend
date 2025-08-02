@@ -12,3 +12,20 @@ jwt:
 middleware:
   allowedOrigins:
     - "*"  # 允许跨域访问的来源地址，例如前端开发服务器地址
+
+# 表格配置
+app_table:
+  app_token: "LC8aboXkCaAJaksSACOc9OS5nHf"
+  tables:
+    "001": # id
+      name: "匣子反馈"
+      table_id: "tblIV9KQ72WOZzBi"
+      view_id: "vewahjicaI"
+    "002":
+      name: "匣子常见问题"
+      table_id: "tblvVSnEa6hdmYKY"
+      view_id: "vewPPc9NGf"
+    "003":
+      name: "课栈反馈"
+      table_id: "tbllNIu7JyfycUnz"
+      view_id: "vewahjicaI"
