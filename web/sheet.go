@@ -24,5 +24,6 @@ func RegisterSheetHandler(r *gin.Engine, sh SheetHandler, authMiddleware gin.Han
 		c.POST("/createrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateAppTableRecord))
 		c.POST("/getrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.GetAppTableRecord))
 		c.POST("/getphotourl", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
+		c.POST("/getnormal", authMiddleware, ginx.WrapClaimsAndReq(sh.GetAppTableRecord))
 	}
 }
