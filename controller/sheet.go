@@ -4,6 +4,7 @@ import (
 	"context"
 	"feedback/api/request"
 	"feedback/api/response"
+	"feedback/config"
 	"feedback/pkg/ijwt"
 	"feedback/pkg/logger"
 	"feedback/service"
@@ -21,12 +22,14 @@ type Sheet struct {
 	c   *lark.Client
 	log logger.Logger
 	o   service.AuthService
+	cfg *config.AppTable
 }
 
-func NewSheet(client *lark.Client, log logger.Logger) *Sheet {
+func NewSheet(client *lark.Client, log logger.Logger, cfg *config.AppTable) *Sheet {
 	return &Sheet{
 		c:   client,
 		log: log,
+		cfg: cfg,
 	}
 }
 
@@ -163,8 +166,15 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/createrecord [post]
 func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	// 创建 Client
-	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
+	// 获取表ID
+	tabel, ok := f.cfg.Tables[uc.TableID]
+	if !ok {
+		return response.Response{
+			Code:    400,
+			Message: "Bad Request",
+			Data:    nil,
+		}, fmt.Errorf("table id %s not found", uc.TableID)
+	}
 
 	// 填充fields
 	if r.Fields == nil {
@@ -174,8 +184,8 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
-		AppToken(r.AppToken).
-		TableId(r.TableId).
+		AppToken(f.cfg.AppToken).
+		TableId(tabel.TableID).
 		IgnoreConsistencyCheck(r.IgnoreConsistencyCheck).
 		AppTableRecord(larkbitable.NewAppTableRecordBuilder().
 			Fields(r.Fields).
@@ -188,7 +198,6 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 	// 处理错误
 	if err != nil {
 		// TODO: log
-		// fmt.Println(err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -207,7 +216,6 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 	}
 
 	// 业务处理
-	// fmt.Println(larkcore.Prettify(resp))
 	return response.Response{
 		Code:    0,
 		Message: "Success",
@@ -230,17 +238,24 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/getrecord [post]
 func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	// 创建 Client
-	// c := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
+	// 获取表ID
+	tabel, ok := f.cfg.Tables[uc.TableID]
+	if !ok {
+		return response.Response{
+			Code:    400,
+			Message: "Bad Request",
+			Data:    nil,
+		}, fmt.Errorf("table id %s not found", uc.TableID)
+	}
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(r.AppToken).
-		TableId(r.TableId).
+		AppToken(f.cfg.AppToken).
+		TableId(tabel.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
 		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(r.ViewId).
+			ViewId(tabel.ViewID).
 			FieldNames(r.FieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
@@ -268,7 +283,6 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 	// 处理错误
 	if err != nil {
 		// TODO: log
-		// fmt.Println(err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -287,7 +301,91 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 	}
 
 	// 业务处理
-	// fmt.Println(larkcore.Prettify(resp))
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data:    resp.Data,
+	}, nil
+}
+
+// GetNormalRecord 获取常见问题记录
+//
+//	@Summary		获取常见问题记录
+//	@Description	根据指定条件查询多维表格中的记录数据
+//	@Tags			Sheet
+//	@ID				get-app-table-normal-problem-record
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string							true	"Bearer Token"
+//	@Param			request			body		request.GetAppTableRecordReq	true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response				"成功返回查询结果"
+//	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response				"服务器内部错误"
+//	@Router			/sheet/getnormal [post]
+func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+	// 获取表ID
+	tabel, ok := f.cfg.Tables[uc.NormalTableID]
+	if !ok {
+		return response.Response{
+			Code:    400,
+			Message: "Bad Request",
+			Data:    nil,
+		}, fmt.Errorf("table id %s not found", uc.TableID)
+	}
+	// 创建请求对象
+	req := larkbitable.NewSearchAppTableRecordReqBuilder().
+		AppToken(f.cfg.AppToken).
+		TableId(tabel.TableID).
+		UserIdType(`open_id`).
+		PageToken(r.PageToken). // 分页参数,第一次不需要
+		PageSize(20). // 分页大小，先默认20
+		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+			ViewId(tabel.ViewID).
+			FieldNames(r.FieldNames).
+			Sort([]*larkbitable.Sort{
+				larkbitable.NewSortBuilder().
+					FieldName(r.SortOrders).
+					Desc(r.Desc).
+					Build(),
+			}).
+			Filter(larkbitable.NewFilterInfoBuilder().
+				Conjunction(`and`).
+				Conditions([]*larkbitable.Condition{
+					larkbitable.NewConditionBuilder().
+						FieldName(r.FilterName).
+						Operator(`contains`).
+						Value([]string{r.FilterVal}).
+						Build(),
+				}).
+				Build()).
+			AutomaticFields(false).
+			Build()).
+		Build()
+
+	// 发起请求
+	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+
+	// 处理错误
+	if err != nil {
+		// TODO: log
+		return response.Response{
+			Code:    500,
+			Message: "Internal Server Error",
+			Data:    nil,
+		}, err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		// TODO: log
+		return response.Response{
+			Code:    400,
+			Message: "Bad Request",
+			Data:    resp.CodeError,
+		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+	}
+
+	// 业务处理
 	return response.Response{
 		Code:    0,
 		Message: "Success",
@@ -310,8 +408,6 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 //	@Failure		500				{object}	response.Response			"服务器内部错误"
 //	@Router			/sheet/getphotourl [post]
 func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error) {
-	// 创建 Client
-	//client := lark.NewClient("YOUR_APP_ID", "YOUR_APP_SECRET")
 
 	// 创建请求对象
 	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
@@ -324,7 +420,6 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 	// 处理错误
 	if err != nil {
 		// TODO: log
-		// fmt.Println(err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -335,7 +430,6 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 	// 服务端错误处理
 	if !resp.Success() {
 		// Todo log
-		//fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -344,7 +438,6 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 	}
 
 	// 业务处理
-	//fmt.Println(larkcore.Prettify(resp))
 	return response.Response{
 		Code:    0,
 		Message: "Success",
