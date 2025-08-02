@@ -14,7 +14,7 @@ type OauthHandler interface {
 	LoginController(c *gin.Context)
 	OauthCallbackController(c *gin.Context) (response.Response, error)
 	InitToken(c *gin.Context, r request.InitTokenReq) (response.Response, error)
-	GetToken(c *gin.Context) (response.Response, error)
+	GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error)
 	//RefreshToken(*gin.Context, request.RefreshTokenReq) (response.Response, error)
 	//GenerateToken(c *gin.Context, r request.GenerateTokenReq) (response.Response, error)
 }
@@ -30,5 +30,5 @@ func RegisterOauthRouter(r *gin.Engine, oh OauthHandler) {
 	//r.POST("/refresh_token", ginx.WrapReq(oh.RefreshToken))
 	//r.POST("/generate_token", ginx.WrapReq(oh.GenerateToken))
 	r.POST("/init_token", ginx.WrapReq(oh.InitToken))
-	r.POST("/get_token", ginx.Wrap(oh.GetToken))
+	r.POST("/get_token", ginx.WrapReq(oh.GetToken))
 }
