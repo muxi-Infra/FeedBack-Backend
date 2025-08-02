@@ -47,6 +47,14 @@
 ### Step ✅ - 调用 `/get_token` 获取当前 `access_token`
 
 - **接口地址**：`POST /get_token`
+- **请求体**：
+```json
+{
+    "table_id":"xxx",
+    "normal_table_id":"xxx"
+}
+```
+其中`table_id`为反馈问题表格ID，`normal_table_id`为常见问题表格ID。
 - **响应数据**：
 ```json
 {
@@ -208,8 +216,6 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 ```text
 {
-    "app_token": "your_app_token",              // 🔑 表格标识
-    "table_id": "your_table_id",                // 📊 数据表ID
     "student_id": "1",                          // 👤 用户ID
     "contact": "xxx@qq.com",                    // 📧 联系方式
     "content": "test",                          // 💬 反馈内容
@@ -278,9 +284,6 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 ```text
 {
-    "app_token": "your_app_token",      // 🔑 表格标识
-    "table_id": "your_table_id",        // 📊 数据表ID
-    "view_id": "your_view_id",          // 👁️ 视图ID
     "field_names": [                    // 📋 要查询的字段列表
         "用户ID",
         "反馈内容", 
