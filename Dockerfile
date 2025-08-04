@@ -1,5 +1,5 @@
 # 第一阶段：构建 Go 应用
-FROM golang:alpine AS builder
+FROM golang:1.24.5-alpine AS builder
 
 # 设置 Go 代理为七牛云的代理
 ENV GOPROXY=https://goproxy.cn,direct
@@ -10,7 +10,7 @@ RUN apk update && apk add --no-cache git
 # 切换到 app 目录，构建二进制文件
 WORKDIR /app
 
-# 复制 be-ccnu 服务代码
+# 复制 服务代码
 COPY . /app
 
 RUN go mod tidy && go build -o app
@@ -32,7 +32,7 @@ WORKDIR /app
 COPY --from=builder /app/app .
 
 # 复制配置文件到最终镜像（尽量不要这么做）
-# COPY --from=builder /app/config /app/config
+ COPY --from=builder /app/config /app/config/
 
 # 开放端口（根据需要设置）
 EXPOSE 8080

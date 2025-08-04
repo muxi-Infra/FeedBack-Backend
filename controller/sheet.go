@@ -239,7 +239,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 //	@Router			/sheet/getrecord [post]
 func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	tabel, ok := f.cfg.Tables[uc.TableID]
+	table, ok := f.cfg.Tables[uc.TableID]
 	if !ok {
 		return response.Response{
 			Code:    400,
@@ -250,12 +250,12 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(f.cfg.AppToken).
-		TableId(tabel.TableID).
+		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
 		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(tabel.ViewID).
+			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
@@ -324,23 +324,23 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 //	@Router			/sheet/getnormal [post]
 func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	tabel, ok := f.cfg.Tables[uc.NormalTableID]
+	table, ok := f.cfg.Tables[uc.NormalTableID]
 	if !ok {
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
 			Data:    nil,
-		}, fmt.Errorf("table id %s not found", uc.TableID)
+		}, fmt.Errorf("normal problem table %s id  not found", uc.NormalTableID)
 	}
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(f.cfg.AppToken).
-		TableId(tabel.TableID).
+		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
 		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(tabel.ViewID).
+			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
