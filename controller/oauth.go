@@ -23,8 +23,8 @@ type Oauth struct {
 	oauthConfig *oauth2.Config
 	jwtHandler  *ijwt.JWT
 	group       *singleflight.Group
-
-	ts *service.AuthService
+	tableCfg    *config.AppTable
+	ts          *service.AuthService
 }
 
 var oauthEndpoint = oauth2.Endpoint{
@@ -32,7 +32,7 @@ var oauthEndpoint = oauth2.Endpoint{
 	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
 }
 
-func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service.AuthService) *Oauth {
+func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
@@ -43,6 +43,7 @@ func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service
 		},
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
+		tableCfg:   tableCfg,
 		ts:         tokenService,
 	}
 }
@@ -201,12 +202,12 @@ func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.
 		}, fmt.Errorf("请求参数为空")
 	}
 
-	if !config.IsValidTableID(req.TableID) || !config.IsValidTableID(req.NormalTableID) {
+	if !o.tableCfg.IsValidTableID(req.TableID) || !o.tableCfg.IsValidTableID(req.NormalTableID) {
 		return response.Response{
-			Code:    404,
-			Message: "未找到相应的表格",
+			Code:    400,
+			Message: "无效的表ID",
 			Data:    nil,
-		}, fmt.Errorf("未找到相应的表格")
+		}, fmt.Errorf("无效的表ID")
 	}
 
 	token, err := o.jwtHandler.SetJWTToken(req.TableID, req.NormalTableID)

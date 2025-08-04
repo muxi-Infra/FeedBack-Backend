@@ -70,16 +70,7 @@ func NewAppTable() *AppTable {
 	return &appTable
 }
 
-// tableIDSet 为了更方便的检测TalbeID的参数是否有误 不导出，防止误使用
-var (
-	tableIDSet = map[string]struct{}{
-		"001": {},
-		"002": {},
-		"003": {},
-	}
-)
-
-func IsValidTableID(id string) bool {
-	_, ok := tableIDSet[id]
+func (t *AppTable) IsValidTableID(tableID string) bool {
+	_, ok := t.Tables[tableID]
 	return ok
 }
