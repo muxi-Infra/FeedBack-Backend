@@ -24,15 +24,17 @@ func NewJWT(conf config.JWTConfig) *JWT {
 type UserClaims struct {
 	jwt.RegisteredClaims // 内嵌标准的声明
 	//Token                string `json:"token"` // 飞书令牌
-	TableName string `json:"table_name"`
+	TableID       string `json:"table_id"`
+	NormalTableID string `json:"normal_table_id"` // 常见问题表ID
 }
 
-func (j *JWT) SetJWTToken(t string) (string, error) {
+func (j *JWT) SetJWTToken(t, nt string) (string, error) {
 	uc := UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.rcExpiration)),
 		},
-		TableName: t,
+		TableID:       t,
+		NormalTableID: nt,
 	}
 
 	token := jwt.NewWithClaims(j.signingMethod, uc)
