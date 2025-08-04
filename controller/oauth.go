@@ -23,8 +23,8 @@ type Oauth struct {
 	oauthConfig *oauth2.Config
 	jwtHandler  *ijwt.JWT
 	group       *singleflight.Group
-
-	ts *service.AuthService
+	tableCfg    *config.AppTable
+	ts          *service.AuthService
 }
 
 var oauthEndpoint = oauth2.Endpoint{
@@ -32,7 +32,7 @@ var oauthEndpoint = oauth2.Endpoint{
 	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
 }
 
-func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service.AuthService) *Oauth {
+func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
@@ -43,6 +43,7 @@ func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service
 		},
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
+		tableCfg:   tableCfg,
 		ts:         tokenService,
 	}
 }
@@ -190,18 +191,26 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 //	@Failure		400	{object}	response.Response	"请求参数错误"
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/get_token [post]
-func (o Oauth) GetToken(c *gin.Context) (response.Response, error) {
-	accessToken := o.ts.GetAccessToken()
-	if accessToken == "" {
-		fmt.Println("token is empty")
+func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
+	// todo
+	// 判断携带参数是否为空
+	if req.TableID == "" || req.NormalTableID == "" {
 		return response.Response{
-			Code:    500,
-			Message: "access_token is empty",
+			Code:    400,
+			Message: "请求参数为空",
 			Data:    nil,
-		}, fmt.Errorf("access_token not initialized")
+		}, fmt.Errorf("请求参数为空")
 	}
 
-	token, err := o.jwtHandler.SetJWTToken(accessToken)
+	if !o.tableCfg.IsValidTableID(req.TableID) || !o.tableCfg.IsValidTableID(req.NormalTableID) {
+		return response.Response{
+			Code:    400,
+			Message: "无效的表ID",
+			Data:    nil,
+		}, fmt.Errorf("无效的表ID")
+	}
+
+	token, err := o.jwtHandler.SetJWTToken(req.TableID, req.NormalTableID)
 	if err != nil {
 		return response.Response{
 			Code:    500,
