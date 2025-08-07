@@ -332,6 +332,28 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 			Data:    nil,
 		}, fmt.Errorf("normal problem table %s id  not found", uc.NormalTableID)
 	}
+
+	bodyBulider := larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+		ViewId(table.ViewID).
+		FieldNames(r.FieldNames).
+		Sort([]*larkbitable.Sort{
+			larkbitable.NewSortBuilder().
+				FieldName(r.SortOrders).
+				Desc(r.Desc).
+				Build(),
+		}).AutomaticFields(false)
+	if r.FilterName != "" && r.FilterVal != "" {
+		bodyBulider.Filter(larkbitable.NewFilterInfoBuilder().
+			Conjunction(`and`).
+			Conditions([]*larkbitable.Condition{
+				larkbitable.NewConditionBuilder().
+					FieldName(r.FilterName).
+					Operator(`contains`).
+					Value([]string{r.FilterVal}).
+					Build(),
+			}).
+			Build())
+	}
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(f.cfg.AppToken).
@@ -339,27 +361,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
 		PageSize(20). // 分页大小，先默认20
-		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(table.ViewID).
-			FieldNames(r.FieldNames).
-			Sort([]*larkbitable.Sort{
-				larkbitable.NewSortBuilder().
-					FieldName(r.SortOrders).
-					Desc(r.Desc).
-					Build(),
-			}).
-			Filter(larkbitable.NewFilterInfoBuilder().
-				Conjunction(`and`).
-				Conditions([]*larkbitable.Condition{
-					larkbitable.NewConditionBuilder().
-						FieldName(r.FilterName).
-						Operator(`contains`).
-						Value([]string{r.FilterVal}).
-						Build(),
-				}).
-				Build()).
-			AutomaticFields(false).
-			Build()).
+		Body(bodyBulider.Build()).
 		Build()
 
 	// 发起请求
