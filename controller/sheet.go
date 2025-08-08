@@ -333,7 +333,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		}, fmt.Errorf("normal problem table %s id  not found", uc.NormalTableID)
 	}
 
-	bodyBulider := larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+	bodyBuilder := larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 		ViewId(table.ViewID).
 		FieldNames(r.FieldNames).
 		Sort([]*larkbitable.Sort{
@@ -343,7 +343,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 				Build(),
 		}).AutomaticFields(false)
 	if r.FilterName != "" && r.FilterVal != "" {
-		bodyBulider.Filter(larkbitable.NewFilterInfoBuilder().
+		bodyBuilder.Filter(larkbitable.NewFilterInfoBuilder().
 			Conjunction(`and`).
 			Conditions([]*larkbitable.Condition{
 				larkbitable.NewConditionBuilder().
@@ -361,7 +361,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
 		PageSize(20). // 分页大小，先默认20
-		Body(bodyBulider.Build()).
+		Body(bodyBuilder.Build()).
 		Build()
 
 	// 发起请求
