@@ -410,4 +410,4 @@ https://mastergo.com/file/155789867120318?fileOpenFrom=home&page_id=M&shareId=15
 
 ## 🛠️ TODO
 
-1. 优化 token
+1. 飞书卡片通知
