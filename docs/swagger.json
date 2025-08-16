@@ -251,6 +251,60 @@
                 }
             }
         },
+        "/sheet/getnormal": {
+            "post": {
+                "description": "根据指定条件查询多维表格中的记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取常见问题记录",
+                "operationId": "get-app-table-normal-problem-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "查询记录请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.GetAppTableRecordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/sheet/getphotourl": {
             "post": {
                 "description": "根据文件Token获取截图的临时下载URL，URL有效期为24小时",
@@ -451,8 +505,6 @@
             "type": "object",
             "required": [
                 "field_names",
-                "filter_name",
-                "filter_val",
                 "sort_orders"
             ],
             "properties": {
