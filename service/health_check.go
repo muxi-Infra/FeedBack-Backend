@@ -33,7 +33,12 @@ func HealthCheck() response.HealthCheckResponse {
 	var procCPU float64
 	var procMem *process.MemoryInfoStat
 	if err == nil {
-		procCPU, _ = proc.CPUPercent()
+		procCPUVal, cpuErr := proc.CPUPercent()
+		if cpuErr != nil {
+			procCPU = 0
+		} else {
+			procCPU = procCPUVal
+		}
 		procMem, memErr := proc.MemoryInfo()
 		if memErr != nil {
 			procMem = &process.MemoryInfoStat{}
