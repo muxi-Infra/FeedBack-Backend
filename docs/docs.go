@@ -50,6 +50,33 @@ const docTemplate = `{
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "健康检查，返回当前服务占用的资源等信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "健康检查，返回当前服务占用的资源等信息",
+                "operationId": "health-check",
+                "responses": {
+                    "200": {
+                        "description": "成功返回健康检查结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/init_token": {
             "post": {
                 "description": "初始化 token 接口",
