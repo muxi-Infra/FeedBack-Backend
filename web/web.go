@@ -26,6 +26,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *mid
 	r.Use(corsMiddleware.MiddlewareFunc())
 
 	RegisterSwaggerHandler(r)
+	RegisterHealthCheckHandler(r)
 
 	RegisterSheetHandler(r, sh, authMiddleware.MiddlewareFunc())
 	RegisterOauthRouter(r, oh)
@@ -34,6 +35,5 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *mid
 }
 
 func RegisterSwaggerHandler(r *gin.Engine) {
-	
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
