@@ -43,6 +43,57 @@
                 }
             }
         },
+        "/health": {
+            "get": {
+                "description": "健康检查，返回当前服务占用的资源等信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "健康检查，返回当前服务占用的资源等信息",
+                "operationId": "health-check",
+                "responses": {
+                    "200": {
+                        "description": "成功返回健康检查结果",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.HealthCheckResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/init_token": {
             "post": {
                 "description": "初始化 token 接口",
@@ -232,6 +283,60 @@
                 "responses": {
                     "200": {
                         "description": "成功返回创建记录结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/sheet/getnormal": {
+            "post": {
+                "description": "根据指定条件查询多维表格中的记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取常见问题记录",
+                "operationId": "get-app-table-normal-problem-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "查询记录请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.GetAppTableRecordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -451,8 +556,6 @@
             "type": "object",
             "required": [
                 "field_names",
-                "filter_name",
-                "filter_val",
                 "sort_orders"
             ],
             "properties": {
@@ -523,6 +626,40 @@
                 }
             }
         },
+        "response.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "process": {
+                    "$ref": "#/definitions/response.ProcessStats"
+                },
+                "response_ms": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "system": {
+                    "$ref": "#/definitions/response.SystemStats"
+                }
+            }
+        },
+        "response.ProcessStats": {
+            "type": "object",
+            "properties": {
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "go_heap_alloc_mb": {
+                    "type": "integer"
+                },
+                "goroutines": {
+                    "type": "integer"
+                },
+                "memory_rss_mb": {
+                    "type": "integer"
+                }
+            }
+        },
         "response.Response": {
             "type": "object",
             "properties": {
@@ -532,6 +669,32 @@
                 "data": {},
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "response.SystemStats": {
+            "type": "object",
+            "properties": {
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "disk_percent": {
+                    "type": "number"
+                },
+                "disk_total": {
+                    "type": "integer"
+                },
+                "disk_used": {
+                    "type": "integer"
+                },
+                "memory_percent": {
+                    "type": "number"
+                },
+                "memory_total": {
+                    "type": "integer"
+                },
+                "memory_used": {
+                    "type": "integer"
                 }
             }
         }

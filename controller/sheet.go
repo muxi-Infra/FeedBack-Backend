@@ -300,7 +300,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -407,7 +407,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
@@ -450,11 +450,11 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 //	@ID				get-photo-url
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string						true	"Bearer Token"
-//	@Param			request			body		request.GetPhotoUrlReq		true	"获取截图URL请求参数"
-//	@Success		200				{object}	response.Response			"成功返回临时URL信息"
-//	@Failure		400				{object}	response.Response			"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response			"服务器内部错误"
+//	@Param			Authorization	header		string					true	"Bearer Token"
+//	@Param			request			body		request.GetPhotoUrlReq	true	"获取截图URL请求参数"
+//	@Success		200				{object}	response.Response		"成功返回临时URL信息"
+//	@Failure		400				{object}	response.Response		"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/sheet/getphotourl [post]
 func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error) {
 
