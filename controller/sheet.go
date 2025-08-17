@@ -2,34 +2,42 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"time"
+
 	"feedback/api/request"
 	"feedback/api/response"
 	"feedback/config"
 	"feedback/pkg/ijwt"
 	"feedback/pkg/logger"
 	"feedback/service"
-	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
-	"reflect"
-	"time"
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/time/rate"
 )
 
 type Sheet struct {
-	c   *lark.Client
-	log logger.Logger
-	o   service.AuthService
-	cfg *config.AppTable
+	c    *lark.Client
+	log  logger.Logger
+	o    service.AuthService
+	cfg  *config.AppTable
+	bcfg *config.BatchNoticeConfig
 }
 
-func NewSheet(client *lark.Client, log logger.Logger, cfg *config.AppTable) *Sheet {
+func NewSheet(client *lark.Client, log logger.Logger, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
 	return &Sheet{
-		c:   client,
-		log: log,
-		cfg: cfg,
+		c:    client,
+		log:  log,
+		cfg:  cfg,
+		bcfg: bcfg,
 	}
 }
 
@@ -215,6 +223,45 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
 
+	// 异步发送批量通知 // todo 一个异步任务处理多个通知 这个应该是可以的
+	go func() {
+		// 防止panic
+		defer func() {
+			if err := recover(); err != nil {
+				f.log.Errorf("panic: %v", err)
+			}
+		}()
+
+		// 生成content
+		// 反馈内容
+		f.bcfg.Content.Data.TemplateVariable.FeedbackContent = r.Content
+
+		// 反馈类型
+		f.bcfg.Content.Data.TemplateVariable.FeedbackType = r.ProblemType
+
+		// 反馈来源使用配置表格的名字
+		f.bcfg.Content.Data.TemplateVariable.FeedbackSource = f.cfg.Tables[uc.TableID].Name
+
+		// 构造content
+		contentBytes, err := json.Marshal(f.bcfg.Content)
+		if err != nil {
+			f.log.Errorf("json.Marshal error: %v", err)
+			return
+		}
+
+		fmt.Println(string(contentBytes))
+
+		// 批量发送 群组通知
+		if err := f.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
+			f.log.Errorf("SendBatchGroupNotice error: %v", err)
+		}
+
+		// 批量发送 个人通知
+		if err := f.SendBatchNotice(context.Background(), string(contentBytes)); err != nil {
+			f.log.Errorf("SendBatchNotice error: %v", err)
+		}
+	}()
+
 	// 业务处理
 	return response.Response{
 		Code:    0,
@@ -253,7 +300,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -360,7 +407,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
@@ -445,6 +492,100 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 		Message: "Success",
 		Data:    resp.Data,
 	}, nil
+}
+
+// SendBatchNotice  发送通知 // 批量发送给个人通知
+func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
+	// 发送消息这个接口限速50次/s
+	// 创建一个限制器
+	limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 1) // 每100ms一次，即10次/s
+
+	// 创建errgroup 接受错误
+	g, ctx := errgroup.WithContext(c)
+
+	// 根据open_id发送消息
+	for _, old := range f.bcfg.OpenIDs {
+		name := old.Name
+		openId := old.OpenID
+
+		g.Go(func() error {
+			// 等待限速
+			if err := limiter.Wait(ctx); err != nil {
+				return err
+			}
+
+			// 创建请求对象
+			req := larkim.NewCreateMessageReqBuilder().
+				ReceiveIdType(`open_id`).
+				Body(larkim.NewCreateMessageReqBodyBuilder().
+					ReceiveId(openId).
+					MsgType(`interactive`).
+					Content(content).
+					Build()).
+				Build()
+
+			// 发起请求
+			resp, err := f.c.Im.V1.Message.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+
+			// 处理错误
+			if err != nil {
+				return fmt.Errorf("send to name [%s] open_id [%s] failed: %w", name, openId, err)
+			}
+
+			// 服务端错误处理
+			if !resp.Success() {
+				fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				return fmt.Errorf("send to name [%s] open_id [%s] failed: %v", name, openId, larkcore.Prettify(resp.CodeError))
+			}
+			return nil
+		})
+	}
+	return g.Wait()
+}
+
+// SendBatchGroupNotice 发送群组通知 // 支持批量发送
+func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
+	// 发送消息这个接口限速50次/s
+	// 创建一个限制器
+	limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 1) // 每100ms一次，即10次/s
+
+	// 创建errgroup 接受错误
+	g, ctx := errgroup.WithContext(c)
+
+	// 根据chat_id发送消息
+	for _, old := range f.bcfg.ChatIDs {
+		name := old.Name
+		chatId := old.ChatID
+
+		g.Go(func() error {
+			// 等待限速
+			if err := limiter.Wait(ctx); err != nil {
+				return err
+			}
+			// 创建请求对象
+			req := larkim.NewCreateMessageReqBuilder().
+				ReceiveIdType(`old`).
+				Body(larkim.NewCreateMessageReqBodyBuilder().
+					ReceiveId(chatId).
+					MsgType(`interactive`).
+					Content(content).
+					Build()).
+				Build()
+
+			// 发起请求
+			resp, err := f.c.Im.V1.Message.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+
+			if err != nil {
+				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)
+			}
+			if !resp.Success() {
+				fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %v", name, chatId, larkcore.Prettify(resp.CodeError))
+			}
+			return nil
+		})
+	}
+	return g.Wait()
 }
 
 // 填充filed的工具函数

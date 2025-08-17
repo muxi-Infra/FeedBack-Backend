@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 	"log"
@@ -11,6 +12,7 @@ var ProviderSet = wire.NewSet(
 	NewJWTConfig,
 	NewMiddlewareConfig,
 	NewAppTable,
+	NewBatchNoticeConfig,
 )
 
 type ClientConfig struct {
@@ -66,11 +68,56 @@ func NewAppTable() *AppTable {
 	if err := viper.Sub("app_table").Unmarshal(&appTable); err != nil {
 		log.Fatalf("unmarshal app_table failed: %v", err)
 	}
-	//fmt.Println(appTable)
 	return &appTable
 }
 
 func (t *AppTable) IsValidTableID(tableID string) bool {
 	_, ok := t.Tables[tableID]
 	return ok
+}
+
+// 批量发送消息的配置
+type BatchNoticeConfig struct {
+	OpenIDs []OpenID `mapstructure:"open_ids" yaml:"open_ids" json:"open_ids"`
+	ChatIDs []ChatID `mapstructure:"chat_ids" yaml:"chat_ids" json:"chat_ids"`
+	Content Content  `mapstructure:"content" yaml:"content" json:"content"`
+}
+
+func NewBatchNoticeConfig() *BatchNoticeConfig {
+	var cfg BatchNoticeConfig
+	if err := viper.Unmarshal(&cfg); err != nil {
+		log.Fatalf("unmarshal batch_notice_config failed: %v", err)
+	}
+	fmt.Println(cfg)
+	return &cfg
+}
+
+// 发送消息的内容
+type Content struct {
+	Type string `mapstructure:"type" yaml:"type" json:"type"`
+	Data Data   `mapstructure:"data" yaml:"data" json:"data"`
+}
+
+type Data struct {
+	TemplateID          string           `mapstructure:"template_id" yaml:"template_id" json:"template_id"`
+	TemplateVersionName string           `mapstructure:"template_version_name,omitempty" yaml:"template_version_name" json:"template_version_name,omitempty"`
+	TemplateVariable    TemplateVariable `mapstructure:"template_variable" yaml:"template_variable" json:"template_variable"`
+}
+
+type TemplateVariable struct {
+	FeedbackContent string `mapstructure:"feedback_content" yaml:"feedback_content" json:"feedback_content"`
+	FeedbackSource  string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
+	FeedbackType    string `mapstructure:"feedback_type" yaml:"feedback_type" json:"feedback_type"`
+}
+
+// 发送消息的人员
+type OpenID struct {
+	Name   string `mapstructure:"name" yaml:"name" json:"name"`
+	OpenID string `mapstructure:"open_id" yaml:"open_id" json:"open_id"`
+}
+
+// 发送给群组
+type ChatID struct {
+	Name   string `mapstructure:"name" yaml:"name" json:"name"`
+	ChatID string `mapstructure:"chat_id" yaml:"chat_id" json:"chat_id"`
 }
