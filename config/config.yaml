@@ -29,3 +29,26 @@ app_table:
       name: "课栈反馈"
       table_id: "tbllNIu7JyfycUnz"
       view_id: "vewahjicaI"
+
+# 发送通知的内容
+content:
+  type: "template"                              # 发送卡片时候的默认值
+  data:
+    template_id: "AAqz9pBxOIhxd"                # 卡片模版id
+    #template_version_name: "1.0.0"             # 卡片模版版本，若不填，则为最新版本 这里不填，如果要填，则修改配置文件中的结构体，添加一个字段
+    template_variable:                          # 卡片模版中设置的变量
+      feedback_content: "反馈内容"
+      feedback_source: "反馈来源"
+      feedback_type: "反馈类型"
+
+# 发送通知人员的open_id
+open_ids:
+  - name: "鲁雨博"
+    open_id: "ou_20e7291abf46bed0f778a5542cbefb7e"
+  - name: "姜高峰"
+    open_id: "ou_ad5cc5513502f0230903278fe26b553c"
+
+# 要发送的群组
+chat_ids:
+  - name: "木犀反馈群"
+    chat_id: "oc_b7c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
