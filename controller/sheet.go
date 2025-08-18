@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"feedback/pkg/feishu"
 	"fmt"
 	"reflect"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"feedback/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
 	"github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
@@ -25,19 +25,22 @@ import (
 )
 
 type Sheet struct {
-	c    *lark.Client
-	log  logger.Logger
-	o    service.AuthService
-	cfg  *config.AppTable
-	bcfg *config.BatchNoticeConfig
+	c       feishu.Client
+	log     logger.Logger
+	o       service.AuthService
+	cfg     *config.AppTable
+	bcfg    *config.BatchNoticeConfig
+	Testing bool
 }
 
-func NewSheet(client *lark.Client, log logger.Logger, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
+func NewSheet(client feishu.Client, log logger.Logger, o service.AuthService, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
 	return &Sheet{
-		c:    client,
-		log:  log,
-		cfg:  cfg,
-		bcfg: bcfg,
+		c:       client,
+		log:     log,
+		o:       o,
+		cfg:     cfg,
+		bcfg:    bcfg,
+		Testing: false,
 	}
 }
 
@@ -67,7 +70,7 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.App.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.CreateAPP(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -127,7 +130,7 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.App.Copy(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.CopyAPP(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -201,7 +204,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.AppTableRecord.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.CreateAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -223,44 +226,46 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 		}, fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
 
-	// 异步发送批量通知 // todo 一个异步任务处理多个通知 这个应该是可以的
-	go func() {
-		// 防止panic
-		defer func() {
-			if err := recover(); err != nil {
-				f.log.Errorf("panic: %v", err)
+	// 异步发送批量通知
+	if !f.Testing { // 测试环境不发送批量通知
+		go func() {
+			// 防止panic
+			defer func() {
+				if err := recover(); err != nil {
+					f.log.Errorf("panic: %v", err)
+				}
+			}()
+
+			// 生成content
+			// 反馈内容
+			f.bcfg.Content.Data.TemplateVariable.FeedbackContent = r.Content
+
+			// 反馈类型
+			f.bcfg.Content.Data.TemplateVariable.FeedbackType = r.ProblemType
+
+			// 反馈来源使用配置表格的名字
+			f.bcfg.Content.Data.TemplateVariable.FeedbackSource = f.cfg.Tables[uc.TableID].Name
+
+			// 构造content
+			contentBytes, err := json.Marshal(f.bcfg.Content)
+			if err != nil {
+				f.log.Errorf("json.Marshal error: %v", err)
+				return
+			}
+
+			//fmt.Println(string(contentBytes))
+
+			// 批量发送 群组通知
+			if err := f.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
+				f.log.Errorf("SendBatchGroupNotice error: %v", err)
+			}
+
+			// 批量发送 个人通知
+			if err := f.SendBatchNotice(context.Background(), string(contentBytes)); err != nil {
+				f.log.Errorf("SendBatchNotice error: %v", err)
 			}
 		}()
-
-		// 生成content
-		// 反馈内容
-		f.bcfg.Content.Data.TemplateVariable.FeedbackContent = r.Content
-
-		// 反馈类型
-		f.bcfg.Content.Data.TemplateVariable.FeedbackType = r.ProblemType
-
-		// 反馈来源使用配置表格的名字
-		f.bcfg.Content.Data.TemplateVariable.FeedbackSource = f.cfg.Tables[uc.TableID].Name
-
-		// 构造content
-		contentBytes, err := json.Marshal(f.bcfg.Content)
-		if err != nil {
-			f.log.Errorf("json.Marshal error: %v", err)
-			return
-		}
-
-		fmt.Println(string(contentBytes))
-
-		// 批量发送 群组通知
-		if err := f.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
-			f.log.Errorf("SendBatchGroupNotice error: %v", err)
-		}
-
-		// 批量发送 个人通知
-		if err := f.SendBatchNotice(context.Background(), string(contentBytes)); err != nil {
-			f.log.Errorf("SendBatchNotice error: %v", err)
-		}
-	}()
+	}
 
 	// 业务处理
 	return response.Response{
@@ -300,7 +305,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -325,7 +330,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.GetAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -407,12 +412,12 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Bitable.V1.AppTableRecord.Search(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.GetAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -464,7 +469,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 		Build()
 
 	// 发起请求
-	resp, err := f.c.Drive.V1.Media.BatchGetTmpDownloadUrl(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+	resp, err := f.c.GetPhotoUrl(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -525,7 +530,7 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 				Build()
 
 			// 发起请求
-			resp, err := f.c.Im.V1.Message.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 			// 处理错误
 			if err != nil {
@@ -564,7 +569,7 @@ func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 			}
 			// 创建请求对象
 			req := larkim.NewCreateMessageReqBuilder().
-				ReceiveIdType(`old`).
+				ReceiveIdType(`chat_id`).
 				Body(larkim.NewCreateMessageReqBodyBuilder().
 					ReceiveId(chatId).
 					MsgType(`interactive`).
@@ -573,7 +578,7 @@ func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 				Build()
 
 			// 发起请求
-			resp, err := f.c.Im.V1.Message.Create(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
 
 			if err != nil {
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)

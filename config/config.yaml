@@ -43,12 +43,10 @@ content:
 
 # 发送通知人员的open_id
 open_ids:
-  - name: "鲁雨博"
-    open_id: "ou_20e7291abf46bed0f778a5542cbefb7e"
-  - name: "姜高峰"
+  - name: "xxx"
     open_id: "ou_ad5cc5513502f0230903278fe26b553c"
 
 # 要发送的群组
 chat_ids:
   - name: "木犀反馈群"
-    chat_id: "oc_b7c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"
+    chat_id: "oc_4123bfaa77e2ff3c61253083e9578fb7"

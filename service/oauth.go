@@ -12,7 +12,13 @@ import (
 	"time"
 )
 
-type AuthService struct {
+type AuthService interface {
+	StartAutoRefresh(accessToken string, refreshToken string, t time.Duration)
+	AutoRefreshToken() error
+	GetAccessToken() string
+}
+
+type AuthServiceImpl struct {
 	oauthConfig *oauth2.Config
 
 	mutex        sync.RWMutex
@@ -21,8 +27,8 @@ type AuthService struct {
 	first        bool   // 是否为第一次设定
 }
 
-func NewOauth(c config.ClientConfig) *AuthService {
-	return &AuthService{
+func NewOauth(c config.ClientConfig) AuthService {
+	return &AuthServiceImpl{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
 			ClientSecret: c.AppSecret,
@@ -40,7 +46,7 @@ func NewOauth(c config.ClientConfig) *AuthService {
 }
 
 // StartAutoRefresh 启动定时刷新协程
-func (o *AuthService) StartAutoRefresh(accessToken string, refreshToken string, t time.Duration) {
+func (o *AuthServiceImpl) StartAutoRefresh(accessToken string, refreshToken string, t time.Duration) {
 	o.mutex.Lock()
 	o.accessToken = accessToken
 	o.refreshToken = refreshToken
@@ -65,7 +71,7 @@ func (o *AuthService) StartAutoRefresh(accessToken string, refreshToken string, 
 	}
 }
 
-func (o *AuthService) AutoRefreshToken() error {
+func (o *AuthServiceImpl) AutoRefreshToken() error {
 	token := o.getRefreshToken()
 
 	requestBody := map[string]string{
@@ -112,7 +118,7 @@ func (o *AuthService) AutoRefreshToken() error {
 	return nil
 }
 
-func (o *AuthService) GetAccessToken() string {
+func (o *AuthServiceImpl) GetAccessToken() string {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.accessToken
@@ -120,7 +126,7 @@ func (o *AuthService) GetAccessToken() string {
 
 // GetRefreshToken 获取刷新令牌
 // 该方法不对外展示
-func (o *AuthService) getRefreshToken() string {
+func (o *AuthServiceImpl) getRefreshToken() string {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.refreshToken
