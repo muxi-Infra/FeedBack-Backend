@@ -28,10 +28,10 @@ func InitApp() *App {
 	clientConfig := config.NewClientConfig()
 	client := feishu.NewClient(clientConfig)
 	zapLogger := logger.NewZapLogger()
+	authService := service.NewOauth(clientConfig)
 	appTable := config.NewAppTable()
 	batchNoticeConfig := config.NewBatchNoticeConfig()
-	sheet := controller.NewSheet(client, zapLogger, appTable, batchNoticeConfig)
-	authService := service.NewOauth(clientConfig)
+	sheet := controller.NewSheet(client, zapLogger, authService, appTable, batchNoticeConfig)
 	oauth := controller.NewOauth(clientConfig, jwt, authService, appTable)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, sheet, oauth)
 	app := &App{
