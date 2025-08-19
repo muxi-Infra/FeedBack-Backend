@@ -253,8 +253,6 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 				return
 			}
 
-			//fmt.Println(string(contentBytes))
-
 			// 批量发送 群组通知
 			if err := f.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
 				f.log.Errorf("SendBatchGroupNotice error: %v", err)
@@ -305,7 +303,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -412,7 +410,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageSize(20). // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
@@ -503,7 +501,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
-	limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 1) // 每100ms一次，即10次/s
+	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
 
 	// 创建errgroup 接受错误
 	g, ctx := errgroup.WithContext(c)
@@ -539,7 +537,7 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 
 			// 服务端错误处理
 			if !resp.Success() {
-				fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				f.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 				return fmt.Errorf("send to name [%s] open_id [%s] failed: %v", name, openId, larkcore.Prettify(resp.CodeError))
 			}
 			return nil
@@ -552,7 +550,7 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
-	limiter := rate.NewLimiter(rate.Every(100*time.Millisecond), 1) // 每100ms一次，即10次/s
+	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
 
 	// 创建errgroup 接受错误
 	g, ctx := errgroup.WithContext(c)
@@ -584,7 +582,7 @@ func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)
 			}
 			if !resp.Success() {
-				fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				f.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %v", name, chatId, larkcore.Prettify(resp.CodeError))
 			}
 			return nil
