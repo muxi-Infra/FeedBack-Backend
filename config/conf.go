@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
+
 	"log"
 )
 
@@ -88,7 +88,6 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 	if err := viper.Unmarshal(&cfg); err != nil {
 		log.Fatalf("unmarshal batch_notice_config failed: %v", err)
 	}
-	fmt.Println(cfg)
 	return &cfg
 }
 
