@@ -24,7 +24,7 @@ type Oauth struct {
 	jwtHandler  *ijwt.JWT
 	group       *singleflight.Group
 	tableCfg    *config.AppTable
-	ts          *service.AuthService
+	ts          service.AuthService
 }
 
 var oauthEndpoint = oauth2.Endpoint{
@@ -32,7 +32,7 @@ var oauthEndpoint = oauth2.Endpoint{
 	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
 }
 
-func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService *service.AuthService, tableCfg *config.AppTable) *Oauth {
+func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
