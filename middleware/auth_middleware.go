@@ -4,8 +4,9 @@ import (
 	"errors"
 	"feedback/pkg/ginx"
 	"feedback/pkg/ijwt"
-	"github.com/gin-gonic/gin"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthMiddleware struct {

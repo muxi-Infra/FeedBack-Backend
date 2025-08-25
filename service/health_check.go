@@ -2,13 +2,15 @@ package service
 
 import (
 	"feedback/api/response"
+	"fmt"
+	"os"
+	"runtime"
+	"time"
+
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
-	"os"
-	"runtime"
-	"time"
 )
 
 func HealthCheck() response.HealthCheckResponse {
@@ -49,21 +51,21 @@ func HealthCheck() response.HealthCheckResponse {
 
 	return response.HealthCheckResponse{
 		Status:     "ok",
-		ResponseMs: duration,
+		ResponseMs: fmt.Sprintf("%d ms", duration),
 		System: response.SystemStats{
-			CPUPercent:    cpuPercent[0],
-			MemoryTotalMB: vmStat.Total / 1024 / 1024,
-			MemoryUsedMB:  vmStat.Used / 1024 / 1024,
-			MemoryPercent: vmStat.UsedPercent,
-			DiskTotalGB:   diskStat.Total / 1024 / 1024 / 1024,
-			DiskUsedGB:    diskStat.Used / 1024 / 1024 / 1024,
-			DiskPercent:   diskStat.UsedPercent,
+			CPUPercent:    fmt.Sprintf("%.5f%%", cpuPercent[0]),
+			MemoryTotalMB: fmt.Sprintf("%d MB", vmStat.Total/1024/1024),
+			MemoryUsedMB:  fmt.Sprintf("%d MB", vmStat.Used/1024/1024),
+			MemoryPercent: fmt.Sprintf("%.5f%%", vmStat.UsedPercent),
+			DiskTotalGB:   fmt.Sprintf("%d GB", diskStat.Total/1024/1024/1024),
+			DiskUsedGB:    fmt.Sprintf("%d GB", diskStat.Used/1024/1024/1024),
+			DiskPercent:   fmt.Sprintf("%.5f%%", diskStat.UsedPercent),
 		},
 		Process: response.ProcessStats{
-			CPUPercent:    procCPU,
-			MemoryRSSMB:   procMem.RSS / 1024 / 1024,
-			Goroutines:    runtime.NumGoroutine(),
-			GoHeapAllocMB: m.HeapAlloc / 1024 / 1024,
+			CPUPercent:    fmt.Sprintf("%.5f%%", procCPU),
+			MemoryRSSMB:   fmt.Sprintf("%d MB", procMem.RSS/1024/1024),
+			Goroutines:    fmt.Sprintf("%d", runtime.NumGoroutine()),
+			GoHeapAllocMB: fmt.Sprintf("%d MB", m.HeapAlloc/1024/1024),
 		},
 	}
 }

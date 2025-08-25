@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"feedback/config"
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 type AuthService interface {
