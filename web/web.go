@@ -4,6 +4,7 @@ import (
 	"feedback/controller"
 	_ "feedback/docs" // 生成的swagger文档
 	"feedback/middleware"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	swaggerFiles "github.com/swaggo/files"

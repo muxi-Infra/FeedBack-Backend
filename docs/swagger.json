@@ -630,16 +630,28 @@
             "type": "object",
             "properties": {
                 "process": {
-                    "$ref": "#/definitions/response.ProcessStats"
+                    "description": "Process 当前进程的运行状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/response.ProcessStats"
+                        }
+                    ]
                 },
                 "response_ms": {
-                    "type": "integer"
+                    "description": "ResponseMs 响应耗时，单位毫秒",
+                    "type": "string"
                 },
                 "status": {
+                    "description": "Status 服务状态，例如 \"ok\"",
                     "type": "string"
                 },
                 "system": {
-                    "$ref": "#/definitions/response.SystemStats"
+                    "description": "System 系统资源使用情况",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/response.SystemStats"
+                        }
+                    ]
                 }
             }
         },
@@ -647,16 +659,20 @@
             "type": "object",
             "properties": {
                 "cpu_percent": {
-                    "type": "number"
+                    "description": "CPUPercent 进程 CPU 使用率（%）",
+                    "type": "string"
                 },
                 "go_heap_alloc_mb": {
-                    "type": "integer"
+                    "description": "GoHeapAllocMB Go 堆分配的内存（MB）",
+                    "type": "string"
                 },
                 "goroutines": {
-                    "type": "integer"
+                    "description": "Goroutines 当前运行的 goroutine 数",
+                    "type": "string"
                 },
                 "memory_rss_mb": {
-                    "type": "integer"
+                    "description": "MemoryRSSMB 进程常驻内存（MB）",
+                    "type": "string"
                 }
             }
         },
@@ -676,25 +692,32 @@
             "type": "object",
             "properties": {
                 "cpu_percent": {
-                    "type": "number"
+                    "description": "CPUPercent CPU 使用率（%）",
+                    "type": "string"
                 },
                 "disk_percent": {
-                    "type": "number"
+                    "description": "DiskPercent 磁盘使用率（%）",
+                    "type": "string"
                 },
                 "disk_total": {
-                    "type": "integer"
+                    "description": "DiskTotalGB 磁盘总量（GB）",
+                    "type": "string"
                 },
                 "disk_used": {
-                    "type": "integer"
+                    "description": "DiskUsedGB 已使用磁盘（GB）",
+                    "type": "string"
                 },
                 "memory_percent": {
-                    "type": "number"
+                    "description": "MemoryPercent 内存使用率（%）",
+                    "type": "string"
                 },
                 "memory_total": {
-                    "type": "integer"
+                    "description": "MemoryTotalMB 内存总量（MB）",
+                    "type": "string"
                 },
                 "memory_used": {
-                    "type": "integer"
+                    "description": "MemoryUsedMB 已使用内存（MB）",
+                    "type": "string"
                 }
             }
         }

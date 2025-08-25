@@ -8,12 +8,13 @@ import (
 	"feedback/pkg/ijwt"
 	LoggerMock "feedback/pkg/logger/mock"
 	AuthMock "feedback/service/mock"
-	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
-	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	"reflect"
 	"testing"
 	"time"
+
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
+	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
