@@ -9,14 +9,15 @@ import (
 	"feedback/pkg/ijwt"
 	"feedback/service"
 	"fmt"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
-	"golang.org/x/sync/singleflight"
 	"log"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/oauth2"
+	"golang.org/x/sync/singleflight"
 )
 
 type Oauth struct {

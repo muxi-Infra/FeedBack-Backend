@@ -3,8 +3,9 @@ package ijwt
 import (
 	"errors"
 	"feedback/config"
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type JWT struct {
