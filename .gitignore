@@ -34,3 +34,4 @@ go.work.sum
 *_test.go
 /.idea
 .DS_Store
+config/config.yaml
