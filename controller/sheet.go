@@ -74,7 +74,7 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[CreateApp] 调用失败: %v", err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -84,7 +84,7 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// TODO: log
+		f.log.Errorf("[CreateApp] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -134,7 +134,7 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[CopyApp] 调用失败: %v", err)
 		// fmt.Println(err)
 		return response.Response{
 			Code:    500,
@@ -145,7 +145,7 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// TODO: log
+		f.log.Errorf("[CopyApp] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -208,7 +208,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[CreateAppTableRecord] 调用失败: %v", err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -218,7 +218,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// TODO: log
+		f.log.Errorf("[CreateAppTableRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -303,7 +303,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -332,7 +332,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[GetAppTableRecord] 调用失败: %v", err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -342,7 +342,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// TODO: log
+		f.log.Errorf("[GetAppTableRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -410,7 +410,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
@@ -419,7 +419,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[GetNormalRecord] 调用失败: %v", err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -429,7 +429,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// TODO: log
+		f.log.Errorf("[GetNormalRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -471,7 +471,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 
 	// 处理错误
 	if err != nil {
-		// TODO: log
+		f.log.Errorf("[GetPhotoUrl] 调用失败: %v", err)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -481,7 +481,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 
 	// 服务端错误处理
 	if !resp.Success() {
-		// Todo log
+		f.log.Errorf("[GetPhotoUrl] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -497,7 +497,8 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 	}, nil
 }
 
-// SendBatchNotice  发送通知 // 批量发送给个人通知
+// SendBatchNotice  发送通知
+// 批量发送给个人通知
 func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
@@ -546,7 +547,8 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 	return g.Wait()
 }
 
-// SendBatchGroupNotice 发送群组通知 // 支持批量发送
+// SendBatchGroupNotice 发送群组通知
+// 支持批量发送
 func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器

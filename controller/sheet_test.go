@@ -161,6 +161,10 @@ func TestCreateApp(t *testing.T) {
 					CreateAPP(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).
 					Times(1)
+
+				// 设置日志的期望
+				mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",
@@ -264,11 +268,16 @@ func TestCopyApp(t *testing.T) {
 				TimeZone:       "Asia/Shanghai",
 			},
 			uc: uc,
-			setupMocks: func(auth *AuthMock.MockAuthService, client *FeishuMock.MockClient, log *LoggerMock.MockLogger) {
+			setupMocks: func(auth *AuthMock.MockAuthService, client *FeishuMock.MockClient, mockLogger *LoggerMock.MockLogger) {
 				auth.EXPECT().GetAccessToken().Return("mock-access-token").Times(1)
 
 				client.EXPECT().CopyAPP(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
+
+				// 设置日志的期望
+				mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
+
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",
@@ -372,6 +381,8 @@ func TestCreateAppTableRecord(t *testing.T) {
 				client.EXPECT().CreateAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
 
+				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",
@@ -494,6 +505,8 @@ func TestGetAppTableRecord(t *testing.T) {
 				auth.EXPECT().GetAccessToken().Return("valid_token").Times(1)
 				client.EXPECT().GetAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
+				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",
@@ -603,6 +616,8 @@ func TestGetNormalRecord(t *testing.T) {
 				auth.EXPECT().GetAccessToken().Return("valid_token").Times(1)
 				client.EXPECT().GetAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
+				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",
@@ -700,6 +715,9 @@ func TestGetPhotoUrl(t *testing.T) {
 				// 模拟API调用返回错误
 				client.EXPECT().GetPhotoUrl(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
+
+				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+					Return().Times(1)
 			},
 			expectedCode:  500,
 			expectedMsg:   "Internal Server Error",

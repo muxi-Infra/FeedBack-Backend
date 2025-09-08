@@ -2,9 +2,10 @@ package logger
 
 import (
 	"fmt"
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 )
 
 func NewZapLogger() *ZapLogger {
