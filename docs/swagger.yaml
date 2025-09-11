@@ -107,6 +107,22 @@ definitions:
     - access_token
     - refresh_token
     type: object
+  request.LikeReq:
+    properties:
+      action:
+        type: string
+      is_like:
+        type: integer
+      record_id:
+        type: string
+      user_id:
+        type: string
+    required:
+    - action
+    - is_like
+    - record_id
+    - user_id
+    type: object
   request.ScreenShot:
     properties:
       file_token:
@@ -263,6 +279,32 @@ paths:
       summary: 初始化 token 接口
       tags:
       - Auth
+  /like/addtask:
+    post:
+      consumes:
+      - application/json
+      description: 添加一个点赞或取消点赞的任务
+      parameters:
+      - description: 点赞请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.LikeReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 添加点赞任务成功
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 添加点赞任务失败
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 添加点赞任务
+      tags:
+      - 点赞
   /sheet/copyapp:
     post:
       consumes:

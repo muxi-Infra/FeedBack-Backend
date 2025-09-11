@@ -1,18 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
-//	@title		木犀反馈系统 API
-//	@version	1.0
-//	@host		localhost:8080
-//	@BasePath	/
+// @title		木犀反馈系统 API
+// @version	1.0
+// @host		localhost:8080
+// @BasePath	/
 func main() {
 	initViper()
-	app := InitApp()
+	app, err := InitApp()
+	if err != nil {
+		fmt.Println(err)
+	}
 	//app.t.StartDailyTask()
 	app.r.Run(":8080")
 }

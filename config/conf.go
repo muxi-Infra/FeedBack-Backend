@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/google/wire"
 	"github.com/spf13/viper"
 
@@ -13,6 +14,7 @@ var ProviderSet = wire.NewSet(
 	NewMiddlewareConfig,
 	NewAppTable,
 	NewBatchNoticeConfig,
+	NewRedisConfig,
 )
 
 type ClientConfig struct {
@@ -119,4 +121,19 @@ type OpenID struct {
 type ChatID struct {
 	Name   string `mapstructure:"name" yaml:"name" json:"name"`
 	ChatID string `mapstructure:"chat_id" yaml:"chat_id" json:"chat_id"`
+}
+
+type RedisConfig struct {
+	Addr     string `yaml:"addr" mapstructure:"addr"`
+	Password string `yaml:"password" mapstructure:"password"`
+	DB       int    `yaml:"db" mapstructure:"db"`
+}
+
+func NewRedisConfig() *RedisConfig {
+	var cfg RedisConfig
+	if err := viper.Sub("redis").Unmarshal(&cfg); err != nil {
+		log.Fatalf("unmarshal redis_config failed: %v", err)
+	}
+	fmt.Println(cfg)
+	return &cfg
 }
