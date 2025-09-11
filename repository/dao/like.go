@@ -55,7 +55,7 @@ func (dao *LikeDAO) RetryProcessingTask(task string, delay time.Duration) error 
 	}).Err()
 }
 
-// MoveToDLQ 移动任务到死信队列 // todo 需要人工干预 -> 之后加一个发送消息的
+// MoveToDLQ 移动任务到死信队列
 func (dao *LikeDAO) MoveToDLQ(task string) error {
 	return dao.client.LPush(context.Background(), dlqQueue, task).Err()
 }

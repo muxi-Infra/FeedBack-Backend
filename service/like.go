@@ -82,6 +82,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	if err != nil {
 		return
 	}
+	taskJson, _ := json.Marshal(task)
 	// 获取记录
 	record, err := s.GetRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID)
 	if err != nil {
@@ -89,7 +90,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 		return
 	}
 
-	var likeCount, dislikeCount int
+	var likeCount, dislikeCount float64
 
 	switch task.Data.Action {
 	case "add": // 添加点赞
@@ -98,13 +99,23 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 		switch task.Data.IsLike {
 		case 1:
 			// 添加点赞
-			dislikeCount = record.Fields["未解决"].(int)
+			dislikeCount = record.Fields["未解决"].(float64)
 			if res == 0 {
 				// 用户切换点赞
 				dislikeCount--
+			} else if res == 1 {
+				// 用户已经点赞
+				s.log.Infof("用户%s已经给%s点赞-已解决", task.Data.UserID, task.Data.RecordID)
+				// ack
+				err = s.dao.AckProcessingTask(string(taskJson))
+				if err != nil {
+					s.log.Errorf("ack processing task failed: %v", err)
+					return
+				}
+				return
 			}
-			count := record.Fields["已解决"].(int)
-			count++
+			likeCount = record.Fields["已解决"].(float64)
+			likeCount++
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
 				s.log.Errorf("update record failed: %v", err)
@@ -114,11 +125,21 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 
 		case 0:
 			// 添加未解决
-			likeCount = record.Fields["已解决"].(int)
+			likeCount = record.Fields["已解决"].(float64)
 			if res == 1 {
 				likeCount--
+			} else if res == 0 {
+				// 用户已点赞
+				s.log.Infof("用户%s已经给%s点赞-未解决", task.Data.UserID, task.Data.RecordID)
+				// ack
+				err = s.dao.AckProcessingTask(string(taskJson))
+				if err != nil {
+					s.log.Errorf("ack processing task failed: %v", err)
+					return
+				}
+				return
 			}
-			dislikeCount = record.Fields["未解决"].(int)
+			dislikeCount = record.Fields["未解决"].(float64)
 			dislikeCount++
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -131,8 +152,9 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	case "remove": // 移除点赞
 		switch task.Data.IsLike {
 		case 1:
-			dislikeCount = record.Fields["未解决"].(int)
-			likeCount = record.Fields["已解决"].(int)
+			fmt.Println("移除点赞")
+			dislikeCount = record.Fields["未解决"].(float64)
+			likeCount = record.Fields["已解决"].(float64)
 			likeCount--
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -140,10 +162,11 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				s.moveTask(task)
 				return
 			}
+			fmt.Println("移除点赞成功")
 
 		case 0:
-			likeCount = record.Fields["已解决"].(int)
-			dislikeCount = record.Fields["未解决"].(int)
+			likeCount = record.Fields["已解决"].(float64)
+			dislikeCount = record.Fields["未解决"].(float64)
 			dislikeCount--
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -158,7 +181,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	}
 
 	// 任务成功
-	taskJson, _ := json.Marshal(task)
+	taskJson, _ = json.Marshal(task)
 	err = s.dao.AckProcessingTask(string(taskJson))
 	if err != nil {
 		s.log.Errorf("ack processing task failed: %v", err)
@@ -220,7 +243,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 	return record, nil
 }
 
-func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey string, likeCount int, dislikeKey string, dislikeCount int) error {
+func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey string, likeCount float64, dislikeKey string, dislikeCount float64) error {
 	// 创建请求对象
 	req := larkbitable.NewUpdateAppTableRecordReqBuilder().
 		AppToken(appToken).
