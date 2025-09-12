@@ -1,17 +1,23 @@
 package main
 
 import (
+	"feedback/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
-//	@title		木犀反馈系统 API
-//	@version	1.0
-//	@host		localhost:8080
-//	@BasePath	/
+// @title		木犀反馈系统 API
+// @version	1.0
+// @host		localhost:8080
+// @BasePath	/
 func main() {
-	initViper()
+	err := config.InitApollo()
+	if err != nil {
+		panic(err)
+	}
+	//initViper()
 	app := InitApp()
 	//app.t.StartDailyTask()
 	app.r.Run(":8080")
