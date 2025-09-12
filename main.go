@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"feedback/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,11 +13,12 @@ import (
 // @host		localhost:8080
 // @BasePath	/
 func main() {
-	initViper()
-	app, err := InitApp()
+	err := config.InitApollo()
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
+	//initViper()
+	app := InitApp()
 	//app.t.StartDailyTask()
 	app.r.Run(":8080")
 }
