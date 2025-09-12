@@ -49,7 +49,7 @@ type GetAppTableRecordReq struct {
 	//TableId    string   `json:"table_id" binding:"required"`
 	//ViewId     string   `json:"view_id" binding:"required"`
 
-	StudentID  string   `json:"student_id" binding:"required"`  // 即学号 // 用于查看相应学号的人是否点赞某条记录了没有
+	StudentID  string   `json:"student_id"`                     // 即学号 // 用于查看相应学号的人是否点赞某条记录了没有
 	FieldNames []string `json:"field_names" binding:"required"` // 需要查询的字段名
 	SortOrders string   `json:"sort_orders" binding:"required"` // 根据什么字段排序
 	Desc       bool     `json:"desc"`                           // 是否降序

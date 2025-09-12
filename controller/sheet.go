@@ -305,7 +305,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
 			FieldNames(r.FieldNames).
@@ -412,7 +412,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 		TableId(table.TableID).
 		UserIdType(`open_id`).
 		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20). // 分页大小，先默认20
+		PageSize(20).           // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
