@@ -99,7 +99,9 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 		switch task.Data.IsLike {
 		case 1:
 			// 添加点赞
-			dislikeCount = record.Fields["未解决"].(float64)
+			if val, ok := record.Fields["未解决"].(float64); ok {
+				dislikeCount = val
+			}
 			if res == 0 {
 				// 用户切换点赞
 				dislikeCount--
@@ -114,7 +116,9 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				}
 				return
 			}
-			likeCount = record.Fields["已解决"].(float64)
+			if val, ok := record.Fields["已解决"].(float64); ok {
+				likeCount = val
+			}
 			likeCount++
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -125,7 +129,9 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 
 		case 0:
 			// 添加未解决
-			likeCount = record.Fields["已解决"].(float64)
+			if val, ok := record.Fields["已解决"].(float64); ok {
+				likeCount = val
+			}
 			if res == 1 {
 				likeCount--
 			} else if res == 0 {
@@ -139,7 +145,10 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				}
 				return
 			}
-			dislikeCount = record.Fields["未解决"].(float64)
+
+			if val, ok := record.Fields["未解决"].(float64); ok {
+				dislikeCount = val
+			}
 			dislikeCount++
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -152,9 +161,12 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	case "remove": // 移除点赞
 		switch task.Data.IsLike {
 		case 1:
-			fmt.Println("移除点赞")
-			dislikeCount = record.Fields["未解决"].(float64)
-			likeCount = record.Fields["已解决"].(float64)
+			if val, ok := record.Fields["未解决"].(float64); ok {
+				dislikeCount = val
+			}
+			if val, ok := record.Fields["已解决"].(float64); ok {
+				likeCount = val
+			}
 			likeCount--
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {
@@ -162,11 +174,14 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				s.moveTask(task)
 				return
 			}
-			fmt.Println("移除点赞成功")
 
 		case 0:
-			likeCount = record.Fields["已解决"].(float64)
-			dislikeCount = record.Fields["未解决"].(float64)
+			if val, ok := record.Fields["已解决"].(float64); ok {
+				likeCount = val
+			}
+			if val, ok := record.Fields["未解决"].(float64); ok {
+				dislikeCount = val
+			}
 			dislikeCount--
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
 			if err != nil {

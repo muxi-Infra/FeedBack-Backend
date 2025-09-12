@@ -59,7 +59,8 @@ func (l *Like) AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims
 func (l *Like) HandleLikeTask() {
 	go func() {
 		for {
-			l.l.HandleLikeTask()
+			l.l.HandleLikeTask() // 这里是有阻塞的
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 }

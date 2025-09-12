@@ -641,10 +641,22 @@ func isEmptyValue(v reflect.Value) bool {
 }
 
 func (f *Sheet) BandingLike(data *larkbitable.SearchAppTableRecordRespData, studentID string) *larkbitable.SearchAppTableRecordRespData {
-	for _, record := range data.Items {
-		val, _ := f.s.GetUserLikeRecord(*record.RecordId, studentID)
-		record.Fields["点赞情况"] = val
+	if data == nil {
+		return nil
 	}
-	fmt.Println(data)
+
+	for _, record := range data.Items {
+		if record.RecordId == nil {
+			continue
+		}
+		if record.Fields == nil {
+			record.Fields = make(map[string]any)
+		}
+
+		if f.s != nil {
+			val, _ := f.s.GetUserLikeRecord(*record.RecordId, studentID)
+			record.Fields["点赞情况"] = val
+		}
+	}
 	return data
 }
