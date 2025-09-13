@@ -22,6 +22,8 @@ type Client interface {
 	GetAppTableRecord(ctx context.Context, req *larkbitable.SearchAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.SearchAppTableRecordResp, error)
 	GetPhotoUrl(ctx context.Context, req *larkdrive.BatchGetTmpDownloadUrlMediaReq, options ...larkcore.RequestOptionFunc) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
 	SendNotice(ctx context.Context, req *larkim.CreateMessageReq, options ...larkcore.RequestOptionFunc) (*larkim.CreateMessageResp, error)
+	GetRecordByRecordId(ctx context.Context, req *larkbitable.BatchGetAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.BatchGetAppTableRecordResp, error)
+	UpdateRecord(ctx context.Context, req *larkbitable.UpdateAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.UpdateAppTableRecordResp, error)
 }
 
 type ClientImpl struct {
@@ -63,4 +65,14 @@ func (c *ClientImpl) GetPhotoUrl(ctx context.Context, req *larkdrive.BatchGetTmp
 // SendNotice 发送单条消息
 func (c *ClientImpl) SendNotice(ctx context.Context, req *larkim.CreateMessageReq, options ...larkcore.RequestOptionFunc) (*larkim.CreateMessageResp, error) {
 	return c.c.Im.V1.Message.Create(ctx, req, options...)
+}
+
+// GetRecordByRecordId  批量获取记录 这里只获取一条
+func (c *ClientImpl) GetRecordByRecordId(ctx context.Context, req *larkbitable.BatchGetAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.BatchGetAppTableRecordResp, error) {
+	return c.c.Bitable.V1.AppTableRecord.BatchGet(ctx, req, options...)
+}
+
+// UpdateRecord 更新记录
+func (c *ClientImpl) UpdateRecord(ctx context.Context, req *larkbitable.UpdateAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.UpdateAppTableRecordResp, error) {
+	return c.c.Bitable.V1.AppTableRecord.Update(ctx, req, options...)
 }

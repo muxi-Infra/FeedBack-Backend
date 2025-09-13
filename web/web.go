@@ -17,10 +17,12 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(OauthHandler), new(*controller.Oauth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
+	controller.NewLike,
+	wire.Bind(new(LikeHandler), new(*controller.Like)),
 )
 
 func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *middleware.AuthMiddleware,
-	sh SheetHandler, oh OauthHandler) *gin.Engine {
+	sh SheetHandler, oh OauthHandler, lh LikeHandler) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
 	// 跨域
@@ -31,6 +33,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *mid
 
 	RegisterSheetHandler(r, sh, authMiddleware.MiddlewareFunc())
 	RegisterOauthRouter(r, oh)
+	RegisterLikeHandler(r, lh, authMiddleware.MiddlewareFunc())
 
 	return r
 }

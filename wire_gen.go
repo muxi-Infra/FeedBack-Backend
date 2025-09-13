@@ -13,13 +13,14 @@ import (
 	"feedback/pkg/feishu"
 	"feedback/pkg/ijwt"
 	"feedback/pkg/logger"
+	"feedback/repository/dao"
 	"feedback/service"
 	"feedback/web"
 )
 
 // Injectors from wire.go:
 
-func InitApp() *App {
+func InitApp() (*App, error) {
 	middlewareConfig := config.NewMiddlewareConfig()
 	corsMiddleware := middleware.NewCorsMiddleware(middlewareConfig)
 	jwtConfig := config.NewJWTConfig()
@@ -29,13 +30,22 @@ func InitApp() *App {
 	client := feishu.NewClient(clientConfig)
 	zapLogger := logger.NewZapLogger()
 	authService := service.NewOauth(clientConfig)
+	redisConfig := config.NewRedisConfig()
+	redisClient, err := dao.NewRedisClient(redisConfig)
+	if err != nil {
+		return nil, err
+	}
+	like := dao.NewLike(redisClient)
+	sheetService := service.NewSheetService(like)
 	appTable := config.NewAppTable()
 	batchNoticeConfig := config.NewBatchNoticeConfig()
-	sheet := controller.NewSheet(client, zapLogger, authService, appTable, batchNoticeConfig)
+	sheet := controller.NewSheet(client, zapLogger, authService, sheetService, appTable, batchNoticeConfig)
 	oauth := controller.NewOauth(clientConfig, jwt, authService, appTable)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, sheet, oauth)
+	likeService := service.NewLikeService(like, client, zapLogger, authService)
+	controllerLike := controller.NewLike(likeService, appTable, zapLogger)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, sheet, oauth, controllerLike)
 	app := &App{
 		r: engine,
 	}
-	return app
+	return app, nil
 }

@@ -18,7 +18,10 @@ func main() {
 		panic(err)
 	}
 	//initViper()
-	app := InitApp()
+	app, err := InitApp()
+	if err != nil {
+		panic(err)
+	}
 	//app.t.StartDailyTask()
 	app.r.Run(":8080")
 }

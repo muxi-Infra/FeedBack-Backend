@@ -140,6 +140,46 @@
                 }
             }
         },
+        "/like/addtask": {
+            "post": {
+                "description": "添加一个点赞或取消点赞的任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "点赞"
+                ],
+                "summary": "添加点赞任务",
+                "parameters": [
+                    {
+                        "description": "点赞请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.LikeReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "添加点赞任务成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "添加点赞任务失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/sheet/copyapp": {
             "post": {
                 "description": "基于已有的模板 AppToken 复制创建一个新的多维表格应用",
@@ -614,6 +654,29 @@
                     "type": "string"
                 },
                 "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.LikeReq": {
+            "type": "object",
+            "required": [
+                "action",
+                "is_like",
+                "record_id",
+                "user_id"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "is_like": {
+                    "type": "integer"
+                },
+                "record_id": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
