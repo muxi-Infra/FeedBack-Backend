@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis/v8"
 	"strconv"
 	"time"
@@ -103,12 +104,22 @@ func (dao *LikeDAO) MoveRetry2Pending() error {
 		return nil
 	}
 
-	// 事务
-	pipe := dao.client.TxPipeline()
+	// 使用 watch 保证原子性
+	ctx := context.Background()
 	for _, task := range tasks {
-		pipe.LPush(context.Background(), pendingQueue, task)
-		pipe.ZRem(context.Background(), retryQueue, task)
+		err = dao.client.Watch(ctx, func(tx *redis.Tx) error {
+			_, err = tx.TxPipelined(ctx, func(pipeliner redis.Pipeliner) error {
+				pipeliner.LPush(ctx, pendingQueue, task)
+				pipeliner.ZRem(ctx, retryQueue, task)
+				return nil
+			})
+			return err
+		}, retryQueue)
+		if err != nil {
+			// 跳过该任务并继续
+			fmt.Println("move retry task to pending error: ", err)
+			continue
+		}
 	}
-	_, err = pipe.Exec(context.Background())
 	return err
 }
