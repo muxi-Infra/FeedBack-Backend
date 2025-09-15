@@ -28,16 +28,18 @@ type Sheet struct {
 	c       feishu.Client
 	log     logger.Logger
 	o       service.AuthService
+	s       service.SheetService
 	cfg     *config.AppTable
 	bcfg    *config.BatchNoticeConfig
 	Testing bool
 }
 
-func NewSheet(client feishu.Client, log logger.Logger, o service.AuthService, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
+func NewSheet(client feishu.Client, log logger.Logger, o service.AuthService, s service.SheetService, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
 	return &Sheet{
 		c:       client,
 		log:     log,
 		o:       o,
+		s:       s,
 		cfg:     cfg,
 		bcfg:    bcfg,
 		Testing: false,
@@ -441,7 +443,7 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 	return response.Response{
 		Code:    0,
 		Message: "Success",
-		Data:    resp.Data,
+		Data:    f.BandingLike(resp.Data, r.StudentID),
 	}, nil
 }
 
@@ -636,4 +638,25 @@ func isEmptyValue(v reflect.Value) bool {
 		zero := reflect.Zero(v.Type())
 		return reflect.DeepEqual(v.Interface(), zero.Interface())
 	}
+}
+
+func (f *Sheet) BandingLike(data *larkbitable.SearchAppTableRecordRespData, studentID string) *larkbitable.SearchAppTableRecordRespData {
+	if data == nil {
+		return nil
+	}
+
+	for _, record := range data.Items {
+		if record.RecordId == nil {
+			continue
+		}
+		if record.Fields == nil {
+			record.Fields = make(map[string]any)
+		}
+
+		if f.s != nil {
+			val, _ := f.s.GetUserLikeRecord(*record.RecordId, studentID)
+			record.Fields["点赞情况"] = val
+		}
+	}
+	return data
 }

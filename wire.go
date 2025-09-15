@@ -8,12 +8,13 @@ import (
 	"feedback/pkg/feishu"
 	"feedback/pkg/ijwt"
 	log "feedback/pkg/logger"
+	"feedback/repository/dao"
 	"feedback/service"
 	"feedback/web"
 	"github.com/google/wire"
 )
 
-func InitApp() *App {
+func InitApp() (*App, error) {
 	wire.Build(
 		wire.Struct(new(App), "*"),
 		config.ProviderSet,
@@ -24,6 +25,7 @@ func InitApp() *App {
 		middleware.NewCorsMiddleware,
 		middleware.NewAuthMiddleware,
 		web.ProviderSet,
+		dao.ProviderSet,
 	)
-	return &App{}
+	return &App{}, nil
 }

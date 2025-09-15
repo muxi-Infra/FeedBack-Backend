@@ -17,6 +17,7 @@ var ProviderSet = wire.NewSet(
 	NewMiddlewareConfig,
 	NewAppTable,
 	NewBatchNoticeConfig,
+	NewRedisConfig,
 )
 
 var (
@@ -218,6 +219,23 @@ type OpenID struct {
 type ChatID struct {
 	Name   string `mapstructure:"name" yaml:"name" json:"name"`
 	ChatID string `mapstructure:"chat_id" yaml:"chat_id" json:"chat_id"`
+}
+
+type RedisConfig struct {
+	Addr     string `yaml:"addr" mapstructure:"addr"`
+	Password string `yaml:"password" mapstructure:"password"`
+	DB       int    `yaml:"db" mapstructure:"db"`
+}
+
+func NewRedisConfig() *RedisConfig {
+	addr, _ := cache.Get("redis.addr")
+	password, _ := cache.Get("redis.password")
+	db, _ := cache.Get("redis.db")
+	return &RedisConfig{
+		Addr:     addr.(string),
+		Password: password.(string),
+		DB:       db.(int),
+	}
 }
 
 func (t *AppTable) IsValidTableID(tableID string) bool {
