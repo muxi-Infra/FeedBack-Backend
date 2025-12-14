@@ -31,8 +31,8 @@ WORKDIR /app
 # 从 builder 复制编译好的二进制文件
 COPY --from=builder /app/app .
 
-# 复制配置文件到最终镜像（尽量不要这么做）
- COPY --from=builder /app/config /app/config/
+## 复制配置文件到最终镜像（尽量不要这么做）
+# COPY --from=builder /app/config /app/config/
 
 # 开放端口（根据需要设置）
 EXPOSE 8080

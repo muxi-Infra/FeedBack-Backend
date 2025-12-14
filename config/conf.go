@@ -1,14 +1,19 @@
 package config
 
 import (
+	"bytes"
 	"flag"
-	"fmt"
+	"log"
+	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
-	"github.com/apolloconfig/agollo/v4"
-	"github.com/apolloconfig/agollo/v4/agcache"
-	"github.com/apolloconfig/agollo/v4/env/config"
 	"github.com/google/wire"
+	"github.com/nacos-group/nacos-sdk-go/v2/clients"
+	"github.com/nacos-group/nacos-sdk-go/v2/common/constant"
+	"github.com/nacos-group/nacos-sdk-go/v2/vo"
+	"github.com/spf13/viper"
 )
 
 var ProviderSet = wire.NewSet(
@@ -20,40 +25,110 @@ var ProviderSet = wire.NewSet(
 	NewRedisConfig,
 )
 
-var (
-	cache  agcache.CacheInterface
-	client agollo.Client
-	c      *config.AppConfig
-)
+var vp *viper.Viper
 
-func InitApollo() error {
-	// 解析命令行参数
-	var secret string
-	flag.StringVar(&secret, "apollo-secret", "", "Apollo config server secret")
+func InitNacos() error {
+	//从nacos获取
+	content, err := getConfigFromNacos()
+	if err != nil {
+		log.Println(err)
+		//本地兜底获取
+		localPath := "./config/config.yaml"
+		fileContent, err := os.ReadFile(localPath)
+		if err != nil {
+			// 如果本地文件也读取失败，则彻底失败
+			log.Fatalf("无法读取本地配置文件 %s，且 Nacos 配置获取失败: %v", localPath, err)
+			return err
+		}
+		content = string(fileContent)
+	}
+
+	vp = viper.New()
+	vp.SetConfigType("yaml")
+	err = vp.ReadConfig(bytes.NewBuffer([]byte(content)))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getConfigFromNacos() (string, error) {
+	server, port, namespace, user, pass, group, dataId := parseNacosDSN()
+
+	serverConfigs := []constant.ServerConfig{
+		{
+			IpAddr: server,
+			Port:   port,
+			Scheme: "http",
+		},
+	}
+
+	clientConfig := constant.ClientConfig{
+		NamespaceId:         namespace,
+		Username:            user,
+		Password:            pass,
+		TimeoutMs:           5000,
+		NotLoadCacheAtStart: true,
+		CacheDir:            "./data/configCache",
+	}
+
+	configClient, err := clients.CreateConfigClient(map[string]interface{}{
+		"serverConfigs": serverConfigs,
+		"clientConfig":  clientConfig,
+	})
+	if err != nil {
+		log.Fatal("初始化失败:", err)
+	}
+
+	content, err := configClient.GetConfig(vo.ConfigParam{
+		DataId: dataId,
+		Group:  group,
+	})
+	if err != nil {
+		log.Fatal("拉取配置失败:", err)
+	}
+	return content, nil
+}
+
+// DSN 示例： localhost:8848?namespace=default&username=nacos&password=1234&group=QA&dataId=my-service
+func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId string) {
+	var dsn string
+	flag.StringVar(&dsn, "nacos-dsn", "", "Nacos DSN")
 	flag.Parse()
 
-	if secret == "" {
-		// 尝试从环境变量获取
-		secret = os.Getenv("APOLLO_SECRET")
+	if dsn == "" {
+		dsn = os.Getenv("NACOSDSN")
 	}
 
-	if secret == "" {
-		return fmt.Errorf("apollo secret must be provided via --apollo-secret or APOLLO_SECRET environment variable")
+	if dsn == "" {
+		log.Fatalf("nacos-dsn must be provided via --nacos-dsn or NACOSDSN environment variable")
 	}
-	c = &config.AppConfig{
-		AppID:          "feedback",
-		Cluster:        "default",
-		IP:             "http://apollo.muxixyz.com:8080",
-		NamespaceName:  "config.yaml",
-		IsBackupConfig: true,
-		Secret:         secret,
+
+	parts := strings.SplitN(dsn, "?", 2)
+	host := parts[0]
+	params := url.Values{}
+
+	if len(parts) == 2 {
+		params, _ = url.ParseQuery(parts[1])
 	}
-	var err error
-	client, err = agollo.StartWithConfig(func() (*config.AppConfig, error) {
-		return c, nil
-	})
-	cache = client.GetConfigCache(c.NamespaceName)
-	return err
+
+	hostParts := strings.Split(host, ":")
+	server = hostParts[0]
+	if len(hostParts) > 1 {
+		p, _ := strconv.Atoi(hostParts[1])
+		port = uint64(p)
+	} else {
+		port = 8848
+	}
+
+	ns = params.Get("namespace") // 当namespace是public时，此处填空字符串。
+
+	user = params.Get("username")
+	pass = params.Get("password")
+	group = params.Get("group")
+	dataId = params.Get("dataId")
+	return
 }
 
 type ClientConfig struct {
@@ -62,10 +137,13 @@ type ClientConfig struct {
 }
 
 func NewClientConfig() ClientConfig {
-	return ClientConfig{
-		AppID:     getStringFromCache("client.appid"),
-		AppSecret: getStringFromCache("client.appsecret"),
+	clientConfig := ClientConfig{
+		AppID:     vp.GetString("client.appid"),
+		AppSecret: vp.GetString("client.appsecret"),
 	}
+
+	//fmt.Printf("clientConfig :%v\n", clientConfig)
+	return clientConfig
 }
 
 type JWTConfig struct {
@@ -74,12 +152,13 @@ type JWTConfig struct {
 }
 
 func NewJWTConfig() JWTConfig {
-	secretKey, _ := cache.Get("jwt.secretkey")
-	timeout, _ := cache.Get("jwt.timeout")
-	return JWTConfig{
-		SecretKey: secretKey.(string),
-		Timeout:   timeout.(int),
+	jwtConf := JWTConfig{
+		SecretKey: vp.GetString("jwt.secretkey"),
+		Timeout:   vp.GetInt("jwt.timeout"),
 	}
+
+	//fmt.Printf("jwtConf :%v\n", jwtConf)
+	return jwtConf
 }
 
 type MiddlewareConfig struct {
@@ -87,7 +166,7 @@ type MiddlewareConfig struct {
 }
 
 func NewMiddlewareConfig() *MiddlewareConfig {
-	middlewareConfig, _ := cache.Get("middleware.allowedorigins")
+	middlewareConfig := vp.Get("middleware.allowedorigins")
 	var allowedOrigins []string
 	if arr, ok := middlewareConfig.([]interface{}); ok {
 		for _, v := range arr {
@@ -96,9 +175,12 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 			}
 		}
 	}
-	return &MiddlewareConfig{
+	mc := &MiddlewareConfig{
 		AllowedOrigins: allowedOrigins,
 	}
+
+	//fmt.Printf("middlewareConfig :%v\n", middlewareConfig)
+	return mc
 }
 
 type AppTable struct {
@@ -113,33 +195,25 @@ type Table struct {
 }
 
 func NewAppTable() *AppTable {
-	appToken := getStringFromCache("app_table.app_token")
+	appToken := vp.GetString("app_table.app_token")
 	tables := make(map[string]Table)
-	appTablesId, _ := cache.Get("app_tables_id")
-	if arr, ok := appTablesId.([]interface{}); ok {
-		for _, v := range arr {
-			tableName := fmt.Sprintf("app_table.tables.%s.name", v.(string))
-			tableID := fmt.Sprintf("app_table.tables.%s.table_id", v.(string))
-			viewID := fmt.Sprintf("app_table.tables.%s.view_id", v.(string))
-			tables[v.(string)] = Table{
-				Name:    getStringFromCache(tableName),
-				TableID: getStringFromCache(tableID),
-				ViewID:  getStringFromCache(viewID),
-			}
+	rawTables := vp.GetStringMap("app_table.tables")
+	for i, v := range rawTables {
+		item := v.(map[string]interface{})
+		tables[i] = Table{
+			Name:    item["name"].(string),
+			TableID: item["table_id"].(string),
+			ViewID:  item["view_id"].(string),
 		}
 	}
-	return &AppTable{
+
+	appTable := &AppTable{
 		AppToken: appToken,
 		Tables:   tables,
 	}
-}
 
-func getStringFromCache(key string) string {
-	val, _ := cache.Get(key)
-	if str, ok := val.(string); ok {
-		return str
-	}
-	return ""
+	//fmt.Printf("appTable :%v\n", appTable)
+	return appTable
 }
 
 type BatchNoticeConfig struct {
@@ -151,7 +225,7 @@ type BatchNoticeConfig struct {
 func NewBatchNoticeConfig() *BatchNoticeConfig {
 	openIDs := make([]OpenID, 0)
 	chatIDs := make([]ChatID, 0)
-	openIDsData, _ := cache.Get("open_ids")
+	openIDsData := vp.Get("open_ids")
 	if arr, ok := openIDsData.([]interface{}); ok {
 		for _, v := range arr {
 			if m, ok := v.(map[string]interface{}); ok {
@@ -162,7 +236,7 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 			}
 		}
 	}
-	chatIDsData, _ := cache.Get("chat_ids")
+	chatIDsData := vp.Get("chat_ids")
 	if arr, ok := chatIDsData.([]interface{}); ok {
 		for _, v := range arr {
 			if m, ok := v.(map[string]interface{}); ok {
@@ -174,21 +248,23 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 		}
 	}
 
-	return &BatchNoticeConfig{
+	batchNoticeConfig := &BatchNoticeConfig{
 		OpenIDs: openIDs,
 		ChatIDs: chatIDs,
 		Content: Content{
-			Type: getStringFromCache("content.type"),
+			Type: vp.GetString("content.type"),
 			Data: Data{
-				TemplateID: getStringFromCache("content.data.template_id"),
+				TemplateID: vp.GetString("content.data.template_id"),
 				TemplateVariable: TemplateVariable{
-					FeedbackContent: getStringFromCache("content.data.template_variable.feedback_content"),
-					FeedbackSource:  getStringFromCache("content.data.template_variable.feedback_source"),
-					FeedbackType:    getStringFromCache("content.data.template_variable.feedback_type"),
+					FeedbackContent: vp.GetString("content.data.template_variable.feedback_content"),
+					FeedbackSource:  vp.GetString("content.data.template_variable.feedback_source"),
+					FeedbackType:    vp.GetString("content.data.template_variable.feedback_type"),
 				},
 			},
 		},
 	}
+	//fmt.Printf("batchNoticeConfig :%v\n", batchNoticeConfig)
+	return batchNoticeConfig
 }
 
 // Content 发送消息的内容
@@ -228,14 +304,13 @@ type RedisConfig struct {
 }
 
 func NewRedisConfig() *RedisConfig {
-	addr, _ := cache.Get("redis.addr")
-	password, _ := cache.Get("redis.password")
-	db, _ := cache.Get("redis.db")
-	return &RedisConfig{
-		Addr:     addr.(string),
-		Password: password.(string),
-		DB:       db.(int),
+	redisConfig := &RedisConfig{
+		Addr:     vp.GetString("redis.addr"),
+		Password: vp.GetString("redis.password"),
+		DB:       vp.GetInt("redis.db"),
 	}
+	//fmt.Printf("redisConfig :%v\n", redisConfig)
+	return redisConfig
 }
 
 func (t *AppTable) IsValidTableID(tableID string) bool {
