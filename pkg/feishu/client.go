@@ -14,7 +14,7 @@ import (
 
 var ProviderSet = wire.NewSet(NewClient)
 
-// 不再暴露client,而是使用接口，方便mock
+// Client 不再暴露client,而是使用接口，方便mock
 type Client interface {
 	CreateAPP(ctx context.Context, req *larkbitable.CreateAppReq, options ...larkcore.RequestOptionFunc) (*larkbitable.CreateAppResp, error)
 	CopyAPP(ctx context.Context, req *larkbitable.CopyAppReq, options ...larkcore.RequestOptionFunc) (*larkbitable.CopyAppResp, error)

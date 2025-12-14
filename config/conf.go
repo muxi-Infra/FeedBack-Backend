@@ -3,17 +3,16 @@ package config
 import (
 	"bytes"
 	"flag"
-	"log"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-
 	"github.com/google/wire"
 	"github.com/nacos-group/nacos-sdk-go/v2/clients"
 	"github.com/nacos-group/nacos-sdk-go/v2/common/constant"
 	"github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"github.com/spf13/viper"
+	"log"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
 )
 
 var ProviderSet = wire.NewSet(

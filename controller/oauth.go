@@ -12,6 +12,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/sessions"
@@ -77,7 +78,7 @@ func (o Oauth) LoginController(c *gin.Context) {
 
 	url := o.oauthConfig.AuthCodeURL(
 		state,
-		oauth2.SetAuthURLParam("scope", "offline_access bitable:app base:app:create"),
+		oauth2.SetAuthURLParam("scope", strings.Join(o.oauthConfig.Scopes, " ")),
 		oauth2.S256ChallengeOption(verifier))
 	// 用户点击登录时，重定向到授权页面
 	c.Redirect(http.StatusTemporaryRedirect, url)
