@@ -1,8 +1,6 @@
 services:
   feedback:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: feedback:${VERSION}
     container_name: feedback
     restart: always
     ports:
