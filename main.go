@@ -2,7 +2,6 @@ package main
 
 import (
 	"feedback/config"
-
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -13,7 +12,7 @@ import (
 // @host		localhost:8080
 // @BasePath	/
 func main() {
-	err := config.InitApollo()
+	err := config.InitNacos()
 	if err != nil {
 		panic(err)
 	}
