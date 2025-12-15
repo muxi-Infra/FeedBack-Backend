@@ -2,8 +2,9 @@ package ijwt
 
 import (
 	"errors"
-	"feedback/config"
 	"time"
+
+	"github.com/muxi-Infra/FeedBack-Backend/config"
 
 	"github.com/golang-jwt/jwt/v5"
 )

@@ -2,23 +2,23 @@ package controller
 
 import (
 	"errors"
-	"feedback/api/request"
-	"feedback/config"
-	FeishuMock "feedback/pkg/feishu/mock"
-	"feedback/pkg/ijwt"
-	LoggerMock "feedback/pkg/logger/mock"
-	AuthMock "feedback/service/mock"
 	"reflect"
 	"testing"
 	"time"
 
-	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
-	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	FeishuMock "github.com/muxi-Infra/FeedBack-Backend/pkg/feishu/mock"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	LoggerMock "github.com/muxi-Infra/FeedBack-Backend/pkg/logger/mock"
+	AuthMock "github.com/muxi-Infra/FeedBack-Backend/service/mock"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang/mock/gomock"
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
+	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	"github.com/stretchr/testify/assert"
 )
 

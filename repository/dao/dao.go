@@ -4,4 +4,4 @@ import (
 	"github.com/google/wire"
 )
 
-var ProviderSet = wire.NewSet(NewDB, NewDAO, NewRedisClient, NewLike)
+var ProviderSet = wire.NewSet(NewDB, NewDAO, NewLike)

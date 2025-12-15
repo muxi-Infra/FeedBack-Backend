@@ -4,17 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"math"
 	"time"
 
+	"github.com/muxi-Infra/FeedBack-Backend/model"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+
+	"github.com/google/uuid"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
-
-	"feedback/model"
-	"feedback/pkg/feishu"
-	"feedback/pkg/logger"
-	"feedback/repository/dao"
 )
 
 // 这里是 相应字段
@@ -113,7 +113,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	// 获取记录
 	record, err := s.GetRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID)
 	if err != nil {
-		s.log.Errorf("get record failed: %v", err)
+		s.log.Error("get record failed", logger.String("error", err.Error()))
 		return
 	}
 
@@ -140,12 +140,14 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				dislikeCount--
 			} else if res == ResolverInt {
 				// 用户已经点赞
-				s.log.Infof("用户%s已经给%s点赞-已解决", task.Data.UserID, task.Data.RecordID)
-
+				s.log.Info("用户已经点赞-已解决",
+					logger.String("user_id", task.Data.UserID),
+					logger.String("record_id", task.Data.RecordID),
+				)
 				// ack
 				err = s.dao.AckProcessingTask(string(taskJson))
 				if err != nil {
-					s.log.Errorf("ack processing task failed: %v", err)
+					s.log.Error("ack processing task failed", logger.String("error", err.Error()))
 					return
 				}
 
@@ -163,7 +165,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 			// 更新记录
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
-				s.log.Errorf("update record failed: %v", err)
+				s.log.Error("update record failed", logger.String("error", err.Error()))
 				s.moveTask(task)
 				return
 			}
@@ -181,12 +183,15 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 				likeCount--
 			} else if res == UnresolvedInt {
 				// 用户已点赞
-				s.log.Infof("用户%s已经给%s点赞-未解决", task.Data.UserID, task.Data.RecordID)
+				s.log.Info("用户已经点赞-未解决",
+					logger.String("user_id", task.Data.UserID),
+					logger.String("record_id", task.Data.RecordID),
+				)
 
 				// ack
 				err = s.dao.AckProcessingTask(string(taskJson))
 				if err != nil {
-					s.log.Errorf("ack processing task failed: %v", err)
+					s.log.Error("ack processing task failed", logger.String("error", err.Error()))
 					return
 				}
 
@@ -202,7 +207,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 			// 更新记录
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
-				s.log.Errorf("update record failed: %v", err)
+				s.log.Error("update record failed", logger.String("error", err.Error()))
 				s.moveTask(task)
 				return
 			}
@@ -230,7 +235,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 			// 更新记录
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
-				s.log.Errorf("update record failed: %v", err)
+				s.log.Error("update record failed", logger.String("error", err.Error()))
 				s.moveTask(task)
 				return
 			}
@@ -252,21 +257,21 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 
 			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
-				s.log.Errorf("update record failed: %v", err)
+				s.log.Error("update record failed", logger.String("error", err.Error()))
 				s.moveTask(task)
 				return
 			}
 		}
 
 	default:
-		s.log.Errorf("the task behavior of  user %s is invalid task action: %s", task.Data.UserID, task.Data.Action)
+		s.log.Error("invalid task action", logger.String("action", task.Data.Action))
 	}
 
 	// 任务成功
 	taskJson, _ = json.Marshal(task)
 	err = s.dao.AckProcessingTask(string(taskJson))
 	if err != nil {
-		s.log.Errorf("ack processing task failed: %v", err)
+		s.log.Error("ack processing task failed", logger.String("error", err.Error()))
 		return
 	}
 
@@ -274,13 +279,13 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	if task.Data.Action == AddBehavior {
 		err = s.dao.RecordUserLike(task.Data.RecordID, task.Data.UserID, task.Data.IsLike)
 		if err != nil {
-			s.log.Errorf("add user like failed: %v", err)
+			s.log.Error("add user like failed", logger.String("error", err.Error()))
 			return
 		}
 	} else if task.Data.Action == RemoveBehavior {
 		err = s.dao.DeleteUserLike(task.Data.RecordID, task.Data.UserID)
 		if err != nil {
-			s.log.Errorf("delete user like failed: %v", err)
+			s.log.Error("delete user like failed", logger.String("error", err.Error()))
 			return
 		}
 	}
@@ -304,21 +309,22 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 
 	// 处理错误
 	if err != nil {
-		s.log.Errorf("error response: \n%v\n", err)
+		s.log.Error("get record by record id failed", logger.String("error", err.Error()))
 		return nil, err
 	}
 
 	// 服务端错误处理
 	if !resp.Success() {
-		//fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
-		s.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		s.log.Error("get record failed",
+			logger.String("logId", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return nil, fmt.Errorf("get record failed: %v", larkcore.Prettify(resp.CodeError))
 	}
 
 	// 业务处理
-	//fmt.Println(larkcore.Prettify(resp))
 	if len(resp.Data.Records) == 0 {
-		s.log.Errorf("the record of recordId %s not found", recordID)
+		s.log.Error("record not found", logger.String("record_id", recordID))
 		return nil, fmt.Errorf("the record of recordId %s not found", recordID)
 	}
 	record := resp.Data.Records[0]
@@ -345,19 +351,20 @@ func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey stri
 
 	// 处理错误
 	if err != nil {
-		s.log.Errorf("error response: \n%v", err)
+		s.log.Error("update record failed", logger.String("error", err.Error()))
 		return err
 	}
 
 	// 服务端错误处理
 	if !resp.Success() {
-		//fmt.Printf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
-		s.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		s.log.Error("update record failed",
+			logger.String("logId", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return fmt.Errorf("update record failed: %v", larkcore.Prettify(resp.CodeError))
 	}
 
 	// 业务处理
-	//fmt.Println(larkcore.Prettify(resp))
 	return nil
 }
 
@@ -387,7 +394,7 @@ func (s *LikeServiceImpl) moveTask(task *model.LikeMessage) {
 		taskJson, _ = json.Marshal(task)
 		err := s.dao.RetryProcessingTask(string(taskJson), time.Duration(math.Pow(2, float64(task.Attempts)))*time.Second)
 		if err != nil {
-			s.log.Errorf("move task to retry queue failed: %v", err)
+			s.log.Error("move task to retry queue failed", logger.String("error", err.Error()))
 			return
 		}
 	} else {
@@ -395,7 +402,7 @@ func (s *LikeServiceImpl) moveTask(task *model.LikeMessage) {
 		taskJson, _ = json.Marshal(task)
 		err := s.dao.MoveToDLQ(string(taskJson))
 		if err != nil {
-			s.log.Errorf("move task to DLQ failed: %v", err)
+			s.log.Error("move task to DLQ failed", logger.String("error", err.Error()))
 			return
 		}
 	}

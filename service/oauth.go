@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"feedback/config"
-	"feedback/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 
 	"golang.org/x/oauth2"
 )

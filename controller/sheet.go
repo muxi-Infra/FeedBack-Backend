@@ -3,17 +3,18 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"feedback/pkg/feishu"
 	"fmt"
 	"reflect"
 	"time"
 
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/config"
-	"feedback/pkg/ijwt"
-	"feedback/pkg/logger"
-	"feedback/service"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 
 	"github.com/gin-gonic/gin"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
@@ -76,7 +77,9 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[CreateApp] 调用失败: %v", err)
+		f.log.Error("CreateApp 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -86,7 +89,10 @@ func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserCl
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[CreateApp] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("CreateApp Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -136,8 +142,9 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[CopyApp] 调用失败: %v", err)
-		// fmt.Println(err)
+		f.log.Error("CopyApp 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -147,7 +154,10 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[CopyApp] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("CopyApp Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -210,7 +220,9 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[CreateAppTableRecord] 调用失败: %v", err)
+		f.log.Error("CreateAppTableRecord 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -220,7 +232,10 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[CreateAppTableRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("CreateAppTableRecord Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -234,7 +249,9 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 			// 防止panic
 			defer func() {
 				if err := recover(); err != nil {
-					f.log.Errorf("panic: %v", err)
+					f.log.Error("panic recovered",
+						logger.Reflect("error", err),
+					)
 				}
 			}()
 
@@ -251,18 +268,24 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 			// 构造content
 			contentBytes, err := json.Marshal(f.bcfg.Content)
 			if err != nil {
-				f.log.Errorf("json.Marshal error: %v", err)
+				f.log.Error("json.Marshal failed",
+					logger.String("error", err.Error()),
+				)
 				return
 			}
 
 			// 批量发送 群组通知
 			if err := f.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
-				f.log.Errorf("SendBatchGroupNotice error: %v", err)
+				f.log.Error("SendBatchGroupNotice failed",
+					logger.String("error", err.Error()),
+				)
 			}
 
 			// 批量发送 个人通知
 			if err := f.SendBatchNotice(context.Background(), string(contentBytes)); err != nil {
-				f.log.Errorf("SendBatchNotice error: %v", err)
+				f.log.Error("SendBatchNotice failed",
+					logger.String("error", err.Error()),
+				)
 			}
 		}()
 	}
@@ -334,7 +357,9 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[GetAppTableRecord] 调用失败: %v", err)
+		f.log.Error("GetAppTableRecord 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -344,7 +369,10 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[GetAppTableRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("GetAppTableRecord Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -421,7 +449,9 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[GetNormalRecord] 调用失败: %v", err)
+		f.log.Error("GetNormalRecord 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -431,7 +461,10 @@ func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, 
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[GetNormalRecord] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("GetNormalRecord Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -473,7 +506,9 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 
 	// 处理错误
 	if err != nil {
-		f.log.Errorf("[GetPhotoUrl] 调用失败: %v", err)
+		f.log.Error("GetPhotoUrl 调用失败",
+			logger.String("error", err.Error()),
+		)
 		return response.Response{
 			Code:    500,
 			Message: "Internal Server Error",
@@ -483,7 +518,10 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 
 	// 服务端错误处理
 	if !resp.Success() {
-		f.log.Errorf("[GetPhotoUrl] Lark 接口错误, rid=%s, err=%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+		f.log.Error("GetPhotoUrl Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
 		return response.Response{
 			Code:    400,
 			Message: "Bad Request",
@@ -540,7 +578,12 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 
 			// 服务端错误处理
 			if !resp.Success() {
-				f.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				f.log.Error("SendBatchNotice Lark 接口错误",
+					logger.String("request_id", resp.RequestId()),
+					logger.String("name", name),
+					logger.String("open_id", openId),
+					logger.String("error", larkcore.Prettify(resp.CodeError)),
+				)
 				return fmt.Errorf("send to name [%s] open_id [%s] failed: %v", name, openId, larkcore.Prettify(resp.CodeError))
 			}
 			return nil
@@ -586,7 +629,12 @@ func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)
 			}
 			if !resp.Success() {
-				f.log.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
+				f.log.Error("SendBatchGroupNotice Lark 接口错误",
+					logger.String("request_id", resp.RequestId()),
+					logger.String("name", name),
+					logger.String("chat_id", chatId),
+					logger.String("error", larkcore.Prettify(resp.CodeError)),
+				)
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %v", name, chatId, larkcore.Prettify(resp.CodeError))
 			}
 			return nil

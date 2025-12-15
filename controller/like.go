@@ -1,16 +1,16 @@
 package controller
 
 import (
-	"feedback/config"
-	"feedback/pkg/logger"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/pkg/ijwt"
-	"feedback/service"
+	"github.com/gin-gonic/gin"
 )
 
 type Like struct {
@@ -70,7 +70,9 @@ func (l *Like) MoveRetry2Pending() {
 		for {
 			err := l.l.MoveRetry2Pending()
 			if err != nil {
-				l.log.Errorf("MoveRetry2Pending err: %v", err)
+				l.log.Error("MoveRetry2Pending failed",
+					logger.String("error", err.Error()),
+				)
 			}
 			time.Sleep(time.Millisecond * 100)
 		}

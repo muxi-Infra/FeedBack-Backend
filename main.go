@@ -1,7 +1,8 @@
 package main
 
 import (
-	"feedback/config"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
