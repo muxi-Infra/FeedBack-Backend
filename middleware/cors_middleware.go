@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"feedback/config"
 	"time"
+
+	"github.com/muxi-Infra/FeedBack-Backend/config"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

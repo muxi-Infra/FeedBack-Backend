@@ -1,8 +1,8 @@
 package web
 
 import (
-	"feedback/controller"
-	"feedback/pkg/ginx"
+	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 
 	"github.com/gin-gonic/gin"
 )

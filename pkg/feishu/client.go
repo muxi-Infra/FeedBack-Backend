@@ -2,7 +2,8 @@ package feishu
 
 import (
 	"context"
-	"feedback/config"
+
+	"github.com/muxi-Infra/FeedBack-Backend/config"
 
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"

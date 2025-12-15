@@ -7,15 +7,16 @@
 package main
 
 import (
-	"feedback/config"
-	"feedback/controller"
-	"feedback/middleware"
-	"feedback/pkg/feishu"
-	"feedback/pkg/ijwt"
-	"feedback/pkg/logger"
-	"feedback/repository/dao"
-	"feedback/service"
-	"feedback/web"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	"github.com/muxi-Infra/FeedBack-Backend/ioc"
+	"github.com/muxi-Infra/FeedBack-Backend/middleware"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
+	"github.com/muxi-Infra/FeedBack-Backend/web"
 )
 
 // Injectors from wire.go:
@@ -26,24 +27,30 @@ func InitApp() (*App, error) {
 	jwtConfig := config.NewJWTConfig()
 	jwt := ijwt.NewJWT(jwtConfig)
 	authMiddleware := middleware.NewAuthMiddleware(jwt)
-	clientConfig := config.NewClientConfig()
-	client := feishu.NewClient(clientConfig)
-	zapLogger := logger.NewZapLogger()
-	authService := service.NewOauth(clientConfig)
+	v := config.NewBasicAuthConfig()
+	basicAuthMiddleware := middleware.NewBasicAuthMiddleware(v)
+	logConfig := config.NewLogConfig()
+	zapLogger := ioc.InitLogger(logConfig)
+	loggerLogger := logger.NewZapLogger(zapLogger)
+	loggerMiddleware := middleware.NewLoggerMiddleware(loggerLogger)
+	registry := ioc.InitPrometheus()
+	prometheusMiddleware := middleware.NewPrometheusMiddleware(registry)
+	limiterConfig := config.NewLimiterConfig()
 	redisConfig := config.NewRedisConfig()
-	redisClient, err := dao.NewRedisClient(redisConfig)
-	if err != nil {
-		return nil, err
-	}
-	like := dao.NewLike(redisClient)
+	client := ioc.InitRedis(redisConfig)
+	limitMiddleware := middleware.NewLimitMiddleware(limiterConfig, client)
+	clientConfig := config.NewClientConfig()
+	feishuClient := feishu.NewClient(clientConfig)
+	authService := service.NewOauth(clientConfig)
+	like := dao.NewLike(client)
 	sheetService := service.NewSheetService(like)
 	appTable := config.NewAppTable()
 	batchNoticeConfig := config.NewBatchNoticeConfig()
-	sheet := controller.NewSheet(client, zapLogger, authService, sheetService, appTable, batchNoticeConfig)
+	sheet := controller.NewSheet(feishuClient, loggerLogger, authService, sheetService, appTable, batchNoticeConfig)
 	oauth := controller.NewOauth(clientConfig, jwt, authService, appTable)
-	likeService := service.NewLikeService(like, client, zapLogger, authService)
-	controllerLike := controller.NewLike(likeService, appTable, zapLogger)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, sheet, oauth, controllerLike)
+	likeService := service.NewLikeService(like, feishuClient, loggerLogger, authService)
+	controllerLike := controller.NewLike(likeService, appTable, loggerLogger)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, sheet, oauth, controllerLike)
 	app := &App{
 		r: engine,
 	}

@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	logger "feedback/pkg/logger"
+	logger "github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"

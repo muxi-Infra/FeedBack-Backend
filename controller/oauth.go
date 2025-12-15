@@ -9,11 +9,11 @@ import (
 	"net/http"
 	"strings"
 
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/config"
-	"feedback/pkg/ijwt"
-	"feedback/service"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"

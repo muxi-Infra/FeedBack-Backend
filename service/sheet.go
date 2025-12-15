@@ -1,6 +1,6 @@
 package service
 
-import "feedback/repository/dao"
+import "github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 
 type SheetService interface {
 	GetUserLikeRecord(recordID string, userID string) (int, error)
