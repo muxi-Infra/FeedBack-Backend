@@ -65,6 +65,7 @@ jobs:
     if : github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
+      - test
       - build
 
     steps:
@@ -82,9 +83,14 @@ jobs:
       - name: SSH and deploy
         run: |
           ssh root@${{ secrets.SERVER_ADDR }} "
+            set -e
             cd feedback
-            echo '${{ secrets.ALIYUN_PASSWORD }}' | docker login -u '${{ secrets.ALIYUN_USERNAME }}' --password-stdin ${{ secrets.ALIYUN_REGISTRY }}
-            VERSION=${{ needs.test.outputs.id }} sudo docker compose pull
-            VERSION=${{ needs.test.outputs.id }} sudo docker compose up -d
-            sudo docker image prune -a -f
+            echo '${{ secrets.ALIYUN_PASSWORD }}' | docker login \
+            --username=${{ secrets.ALIYUN_USERNAME }} \
+            --password-stdin \
+            ${{ secrets.ALIYUN_REGISTRY }}
+            echo 'VERSION=${{ needs.test.outputs.id }}' > .env
+            docker compose pull
+            docker compose up -d
+            docker image prune -a -f
           "
