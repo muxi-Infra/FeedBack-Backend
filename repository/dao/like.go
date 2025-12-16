@@ -25,12 +25,13 @@ func NewLike(client *redis.Client) Like {
 	return &LikeDAO{client: client}
 }
 
-// AddPendingLikeTask 向待处理队列中添加点赞任务 需要 record_id user_id(学号) 使用 0 和 1 来表示是否点赞
+// AddPendingLikeTask 向待处理队列中添加点赞任务 需要 record_id user_id(学号) 使用 0 和 1 来表示 未解决 已解决
 func (dao *LikeDAO) AddPendingLikeTask(data string) error {
 	return dao.client.LPush(context.Background(), pendingQueue, data).Err()
 }
 
-// Pending2ProcessingTask 待处理任务 -> 处理中队列 // 这样做是为了避免处理任务时出现异常导致任务丢失
+// Pending2ProcessingTask 待处理任务 -> 处理中队列
+// 这样做是为了避免处理任务时出现异常导致任务丢失
 func (dao *LikeDAO) Pending2ProcessingTask() (string, error) {
 	task, err := dao.client.BRPopLPush(context.Background(),
 		pendingQueue, processingQueue, 0).Result()
@@ -48,7 +49,8 @@ func (dao *LikeDAO) AckProcessingTask(task string) error {
 	return dao.client.LRem(context.Background(), processingQueue, 1, task).Err()
 }
 
-// RetryProcessingTask 任务失败 -> retry 队列中 // 使用 ZSET 实现延迟队列，分数是 当前时间 + 延迟时间
+// RetryProcessingTask 任务失败 -> retry 队列中
+// 使用 ZSET 实现延迟队列，分数是 当前时间 + 延迟时间
 func (dao *LikeDAO) RetryProcessingTask(task string, delay time.Duration) error {
 	return dao.client.ZAdd(context.Background(), retryQueue, &redis.Z{
 		Score:  float64(time.Now().Add(delay).Unix()),
