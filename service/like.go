@@ -17,6 +17,20 @@ import (
 	"feedback/repository/dao"
 )
 
+// 这里是 相应字段
+const (
+	ResolvedString   = "已解决"
+	UnresolvedString = "未解决"
+	ResolverInt      = 1
+	UnresolvedInt    = 0
+)
+
+// 这里是行为
+const (
+	AddBehavior    = "add"
+	RemoveBehavior = "remove"
+)
+
 type LikeService interface {
 	AddLikeTask(appToken, tableId, recordID string, userID string, isLike int, action string) error
 	GetLikeTask() (*model.LikeMessage, error)
@@ -41,6 +55,12 @@ func NewLikeService(dao dao.Like, c feishu.Client, log logger.Logger, o AuthServ
 	}
 }
 
+// AddLikeTask 添加点赞任务到等待队列
+// 其中 AppToken, TableID, RecordID 的作用是为了获取记录
+// UserID, IsLike, Action 是用户以及用户的行为
+// 举例：
+// - UserID = "xxx"  IsLike=0 Action="add" 表示用户xxx给某条记录添加点赞（未解决）
+// - UserID = "xxx"  IsLike=1 Action="remove" 表示用户xxx给某条记录取消点赞（已解决）
 func (s *LikeServiceImpl) AddLikeTask(appToken, tableId, recordID string, userID string, isLike int, action string) error {
 	// 创建任务
 	task := generateLikeMessage(
@@ -76,6 +96,12 @@ func (s *LikeServiceImpl) GetLikeTask() (*model.LikeMessage, error) {
 }
 
 // HandleLikeTask 处理点赞任务
+// 处理逻辑是：
+// 1. 先从飞书中获取记录
+// 2. 根据任务的行为，获取 redis 中存储的点赞状态
+// 3. 根据任务的行为和 redis 存储的点赞状态，判断情况：点赞，取消点赞，切换点赞状态
+// 4. 更新飞书记录，将任务放到完成队列中
+// 5. 更新 redis 中点赞状态
 func (s *LikeServiceImpl) HandleLikeTask() {
 	// 获取任务
 	task, err := s.GetLikeTask()
@@ -83,6 +109,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 		return
 	}
 	taskJson, _ := json.Marshal(task)
+
 	// 获取记录
 	record, err := s.GetRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID)
 	if err != nil {
@@ -93,64 +120,87 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	var likeCount, dislikeCount float64
 
 	switch task.Data.Action {
-	case "add": // 添加点赞
-		// 先获取
+	case AddBehavior:
+		// 添加点赞
+
+		// 先获取 redis 中的点赞状态
 		res, _ := s.dao.GetUserLikeRecord(task.Data.RecordID, task.Data.UserID)
+
 		switch task.Data.IsLike {
-		case 1:
-			// 添加点赞
-			if val, ok := record.Fields["未解决"].(float64); ok {
+		case ResolverInt:
+			// 需要已解决的点赞数目 +1
+
+			// 记录未解决数目
+			if val, ok := record.Fields[UnresolvedString].(float64); ok {
 				dislikeCount = val
 			}
-			if res == 0 {
+
+			if res == UnresolvedInt {
 				// 用户切换点赞
 				dislikeCount--
-			} else if res == 1 {
+			} else if res == ResolverInt {
 				// 用户已经点赞
 				s.log.Infof("用户%s已经给%s点赞-已解决", task.Data.UserID, task.Data.RecordID)
+
 				// ack
 				err = s.dao.AckProcessingTask(string(taskJson))
 				if err != nil {
 					s.log.Errorf("ack processing task failed: %v", err)
 					return
 				}
+
 				return
 			}
-			if val, ok := record.Fields["已解决"].(float64); ok {
+
+			// 获取已解决数目
+			if val, ok := record.Fields[ResolvedString].(float64); ok {
 				likeCount = val
 			}
+
+			// 已解决数目 +1
 			likeCount++
-			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
+
+			// 更新记录
+			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
 				s.log.Errorf("update record failed: %v", err)
 				s.moveTask(task)
 				return
 			}
 
-		case 0:
-			// 添加未解决
-			if val, ok := record.Fields["已解决"].(float64); ok {
+		case UnresolvedInt:
+			// 需要未解决点赞数目 +1
+
+			// 记录已解决数目
+			if val, ok := record.Fields[ResolvedString].(float64); ok {
 				likeCount = val
 			}
-			if res == 1 {
+
+			if res == ResolverInt {
+				// 用户切换点赞——已解决切换至未解决
 				likeCount--
-			} else if res == 0 {
+			} else if res == UnresolvedInt {
 				// 用户已点赞
 				s.log.Infof("用户%s已经给%s点赞-未解决", task.Data.UserID, task.Data.RecordID)
+
 				// ack
 				err = s.dao.AckProcessingTask(string(taskJson))
 				if err != nil {
 					s.log.Errorf("ack processing task failed: %v", err)
 					return
 				}
+
 				return
 			}
 
-			if val, ok := record.Fields["未解决"].(float64); ok {
+			if val, ok := record.Fields[UnresolvedString].(float64); ok {
 				dislikeCount = val
 			}
+
 			dislikeCount++
-			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
+
+			// 更新记录
+			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
 				s.log.Errorf("update record failed: %v", err)
 				s.moveTask(task)
@@ -158,17 +208,27 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 			}
 		}
 
-	case "remove": // 移除点赞
+	case RemoveBehavior:
+		// 移除点赞
+
 		switch task.Data.IsLike {
-		case 1:
-			if val, ok := record.Fields["未解决"].(float64); ok {
+		case ResolverInt:
+			// 需要已解决点赞数目 -1
+
+			// 记录未解决数目
+			if val, ok := record.Fields[UnresolvedString].(float64); ok {
 				dislikeCount = val
 			}
-			if val, ok := record.Fields["已解决"].(float64); ok {
+
+			// 获取已解决数目
+			if val, ok := record.Fields[ResolvedString].(float64); ok {
 				likeCount = val
 			}
+
 			likeCount--
-			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
+
+			// 更新记录
+			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
 				s.log.Errorf("update record failed: %v", err)
 				s.moveTask(task)
@@ -176,14 +236,21 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 			}
 
 		case 0:
-			if val, ok := record.Fields["已解决"].(float64); ok {
+			// 需要未解决点赞数目 -1
+
+			// 记录已解决数目
+			if val, ok := record.Fields[ResolvedString].(float64); ok {
 				likeCount = val
 			}
-			if val, ok := record.Fields["未解决"].(float64); ok {
+
+			// 获取未解决数目
+			if val, ok := record.Fields[UnresolvedString].(float64); ok {
 				dislikeCount = val
 			}
+
 			dislikeCount--
-			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, "已解决", likeCount, "未解决", dislikeCount)
+
+			err = s.UpdateRecord(task.Data.AppToken, task.Data.TableID, task.Data.RecordID, ResolvedString, likeCount, UnresolvedString, dislikeCount)
 			if err != nil {
 				s.log.Errorf("update record failed: %v", err)
 				s.moveTask(task)
@@ -192,7 +259,7 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 		}
 
 	default:
-		s.log.Errorf("invalid task action: %s", task.Data.Action)
+		s.log.Errorf("the task behavior of  user %s is invalid task action: %s", task.Data.UserID, task.Data.Action)
 	}
 
 	// 任务成功
@@ -204,13 +271,13 @@ func (s *LikeServiceImpl) HandleLikeTask() {
 	}
 
 	// 更新用户点赞状态
-	if task.Data.Action == "add" {
+	if task.Data.Action == AddBehavior {
 		err = s.dao.RecordUserLike(task.Data.RecordID, task.Data.UserID, task.Data.IsLike)
 		if err != nil {
-			s.log.Errorf("record user like failed: %v", err)
+			s.log.Errorf("add user like failed: %v", err)
 			return
 		}
-	} else if task.Data.Action == "remove" {
+	} else if task.Data.Action == RemoveBehavior {
 		err = s.dao.DeleteUserLike(task.Data.RecordID, task.Data.UserID)
 		if err != nil {
 			s.log.Errorf("delete user like failed: %v", err)
@@ -237,7 +304,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 
 	// 处理错误
 	if err != nil {
-		s.log.Errorf("error response: \n%v", err)
+		s.log.Errorf("error response: \n%v\n", err)
 		return nil, err
 	}
 
@@ -314,10 +381,11 @@ func generateLikeMessage(data *model.LikeData) *model.LikeMessage {
 func (s *LikeServiceImpl) moveTask(task *model.LikeMessage) {
 	var taskJson []byte
 	if task.Attempts < task.MaxAttempts {
-		// 延迟队列
-		task.Attempts++ // 尝试次数加1
+		// 迁移至延迟队列
+		// 尝试次数加1
+		task.Attempts++
 		taskJson, _ = json.Marshal(task)
-		err := s.dao.RetryProcessingTask(string(taskJson), time.Duration(math.Pow(2, float64(task.Attempts)))*time.Second) // 指数退避
+		err := s.dao.RetryProcessingTask(string(taskJson), time.Duration(math.Pow(2, float64(task.Attempts)))*time.Second)
 		if err != nil {
 			s.log.Errorf("move task to retry queue failed: %v", err)
 			return
