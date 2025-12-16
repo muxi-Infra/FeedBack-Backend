@@ -530,8 +530,8 @@ func (f *Sheet) SendBatchNotice(c context.Context, content string) error {
 					Build()).
 				Build()
 
-			// 发起请求
-			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+			// 发起请求 // todo 刷新自建应用 token
+			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithTenantAccessToken(f.o.GetTenantAccessToken()))
 
 			// 处理错误
 			if err != nil {
@@ -580,7 +580,7 @@ func (f *Sheet) SendBatchGroupNotice(c context.Context, content string) error {
 				Build()
 
 			// 发起请求
-			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithUserAccessToken(f.o.GetAccessToken()))
+			resp, err := f.c.SendNotice(context.Background(), req, larkcore.WithTenantAccessToken(f.o.GetTenantAccessToken()))
 
 			if err != nil {
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)

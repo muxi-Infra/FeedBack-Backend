@@ -62,6 +62,20 @@ func (mr *MockAuthServiceMockRecorder) GetAccessToken() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccessToken", reflect.TypeOf((*MockAuthService)(nil).GetAccessToken))
 }
 
+// GetTenantAccessToken mocks base method.
+func (m *MockAuthService) GetTenantAccessToken() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTenantAccessToken")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetTenantAccessToken indicates an expected call of GetTenantAccessToken.
+func (mr *MockAuthServiceMockRecorder) GetTenantAccessToken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTenantAccessToken", reflect.TypeOf((*MockAuthService)(nil).GetTenantAccessToken))
+}
+
 // StartAutoRefresh mocks base method.
 func (m *MockAuthService) StartAutoRefresh(accessToken, refreshToken string, t time.Duration) {
 	m.ctrl.T.Helper()
@@ -72,4 +86,16 @@ func (m *MockAuthService) StartAutoRefresh(accessToken, refreshToken string, t t
 func (mr *MockAuthServiceMockRecorder) StartAutoRefresh(accessToken, refreshToken, t interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartAutoRefresh", reflect.TypeOf((*MockAuthService)(nil).StartAutoRefresh), accessToken, refreshToken, t)
+}
+
+// StartRefresh mocks base method.
+func (m *MockAuthService) StartRefresh(accessToken, refreshToken string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "StartRefresh", accessToken, refreshToken)
+}
+
+// StartRefresh indicates an expected call of StartRefresh.
+func (mr *MockAuthServiceMockRecorder) StartRefresh(accessToken, refreshToken interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartRefresh", reflect.TypeOf((*MockAuthService)(nil).StartRefresh), accessToken, refreshToken)
 }

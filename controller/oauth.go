@@ -3,17 +3,17 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/config"
-	"feedback/pkg/ijwt"
-	"feedback/service"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"strings"
-	"time"
+
+	"feedback/api/request"
+	"feedback/api/response"
+	"feedback/config"
+	"feedback/pkg/ijwt"
+	"feedback/service"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -194,7 +194,6 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/get_token [post]
 func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
-	// todo
 	// 判断携带参数是否为空
 	if req.TableID == "" || req.NormalTableID == "" {
 		return response.Response{
@@ -245,7 +244,8 @@ func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.
 //	@Router			/init_token [post]
 func (o Oauth) InitToken(c *gin.Context, r request.InitTokenReq) (response.Response, error) {
 	// 启动定时刷新 token 协程
-	go o.ts.StartAutoRefresh(r.AccessToken, r.RefreshToken, time.Duration(25)*time.Minute)
+	//go o.ts.StartAutoRefresh(r.AccessToken, r.RefreshToken, time.Duration(25)*time.Minute)
+	go o.ts.StartRefresh(r.AccessToken, r.RefreshToken)
 
 	return response.Response{
 		Code:    0,

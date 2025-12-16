@@ -3,12 +3,14 @@ package service
 import (
 	"bytes"
 	"encoding/json"
-	"feedback/config"
 	"fmt"
 	"io"
 	"net/http"
 	"sync"
 	"time"
+
+	"feedback/config"
+	"feedback/pkg/feishu"
 
 	"golang.org/x/oauth2"
 )
@@ -16,7 +18,10 @@ import (
 type AuthService interface {
 	StartAutoRefresh(accessToken string, refreshToken string, t time.Duration)
 	AutoRefreshToken() error
+
+	StartRefresh(accessToken string, refreshToken string)
 	GetAccessToken() string
+	GetTenantAccessToken() string
 }
 
 type AuthServiceImpl struct {
@@ -26,6 +31,8 @@ type AuthServiceImpl struct {
 	accessToken  string
 	refreshToken string // 不对外展示
 	first        bool   // 是否为第一次设定
+
+	tenantAccessToken string // 自建应用发送消息需要使用的 token
 }
 
 func NewOauth(c config.ClientConfig) AuthService {
@@ -40,10 +47,37 @@ func NewOauth(c config.ClientConfig) AuthService {
 			},
 			Scopes: []string{"offline_access", "bitable:app", "base:app:create"},
 		},
-		accessToken:  "",
-		refreshToken: "",
-		first:        true,
+		accessToken:       "",
+		refreshToken:      "",
+		first:             true,
+		tenantAccessToken: "",
 	}
+}
+
+func (o *AuthServiceImpl) StartRefresh(accessToken string, refreshToken string) {
+	o.mutex.Lock()
+	o.accessToken = accessToken
+	o.refreshToken = refreshToken
+	o.mutex.Unlock()
+
+	userRefresher := &feishu.UserTokenRefresher{
+		Oauth:        o.oauthConfig,
+		Mutex:        &o.mutex,
+		AccessToken:  &o.accessToken,
+		RefreshToken: &o.refreshToken,
+	}
+
+	tenantRefresher := &feishu.TenantTokenRefresher{
+		Oauth:             o.oauthConfig,
+		Mutex:             &o.mutex,
+		TenantAccessToken: &o.tenantAccessToken,
+	}
+
+	var userAuto feishu.AutoRefresher
+	userAuto.Start(userRefresher)
+
+	var tenantAuto feishu.AutoRefresher
+	tenantAuto.Start(tenantRefresher)
 }
 
 // StartAutoRefresh 启动定时刷新协程
@@ -119,10 +153,55 @@ func (o *AuthServiceImpl) AutoRefreshToken() error {
 	return nil
 }
 
+func (o *AuthServiceImpl) AutoRefreshTenantToken() error {
+	requestBody := map[string]string{
+		"app_id":     o.oauthConfig.ClientID,
+		"app_secret": o.oauthConfig.ClientSecret,
+	}
+
+	jsonBody, _ := json.Marshal(requestBody)
+
+	// 发起请求
+	resp, err := http.Post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+		"application/json; charset=utf-8",
+		bytes.NewBuffer(jsonBody),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// 解析响应
+	var res map[string]interface{}
+	if err = json.Unmarshal(body, &res); err != nil {
+		return err
+	}
+
+	tenantAccessToken, ok := res["tenant_access_token"].(string)
+	if ok {
+		o.mutex.Lock()
+		o.tenantAccessToken = tenantAccessToken
+		o.mutex.Unlock()
+	}
+
+	return nil
+}
+
 func (o *AuthServiceImpl) GetAccessToken() string {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.accessToken
+}
+
+func (o *AuthServiceImpl) GetTenantAccessToken() string {
+	o.mutex.RLock()
+	defer o.mutex.RUnlock()
+	return o.tenantAccessToken
 }
 
 // GetRefreshToken 获取刷新令牌
