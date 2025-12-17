@@ -7,14 +7,15 @@ import (
 	"math"
 	"time"
 
-	"github.com/google/uuid"
-	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
-
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/model"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+
+	"github.com/google/uuid"
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 )
 
 // 这里是 相应字段
@@ -76,7 +77,7 @@ func (s *LikeServiceImpl) AddLikeTask(appToken, tableId, recordID string, userID
 	// 序列化
 	taskJson, err := json.Marshal(task)
 	if err != nil {
-		return err
+		return errs.SerializationError(err)
 	}
 	return s.dao.AddPendingLikeTask(string(taskJson))
 }
@@ -85,12 +86,12 @@ func (s *LikeServiceImpl) AddLikeTask(appToken, tableId, recordID string, userID
 func (s *LikeServiceImpl) GetLikeTask() (*model.LikeMessage, error) {
 	taskJson, err := s.dao.Pending2ProcessingTask()
 	if err != nil {
-		return nil, err
+		return nil, errs.QueueOperationError(err)
 	}
 	var task model.LikeMessage
 	err = json.Unmarshal([]byte(taskJson), &task)
 	if err != nil {
-		return nil, err
+		return nil, errs.DeserializationError(err)
 	}
 	return &task, nil
 }
@@ -308,7 +309,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 	// 处理错误
 	if err != nil {
 		s.log.Error("get record by record id failed", logger.String("error", err.Error()))
-		return nil, err
+		return nil, errs.FeishuRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -317,7 +318,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 			logger.String("logId", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, fmt.Errorf("get record failed: %v", larkcore.Prettify(resp.CodeError))
+		return nil, errs.FeishuResponseError(err)
 	}
 
 	// 业务处理
@@ -350,7 +351,7 @@ func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey stri
 	// 处理错误
 	if err != nil {
 		s.log.Error("update record failed", logger.String("error", err.Error()))
-		return err
+		return errs.FeishuRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -359,7 +360,7 @@ func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey stri
 			logger.String("logId", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return fmt.Errorf("update record failed: %v", larkcore.Prettify(resp.CodeError))
+		return errs.FeishuResponseError(err)
 	}
 
 	// 业务处理

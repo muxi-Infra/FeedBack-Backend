@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 
 	"golang.org/x/oauth2"
@@ -124,19 +125,19 @@ func (o *AuthServiceImpl) AutoRefreshToken() error {
 		bytes.NewBuffer(jsonBody),
 	)
 	if err != nil {
-		return err
+		return errs.FeishuRequestError(err)
 	}
 	defer resp.Body.Close()
 	// 解析响应体
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return errs.ReadResponseError(err)
 	}
 
 	// 解析 JSON
 	var tokenResp map[string]interface{}
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
-		return err
+	if err = json.Unmarshal(body, &tokenResp); err != nil {
+		return errs.DeserializationError(err)
 	}
 
 	accessToken, ok1 := tokenResp["access_token"].(string)
@@ -167,13 +168,13 @@ func (o *AuthServiceImpl) AutoRefreshTenantToken() error {
 		bytes.NewBuffer(jsonBody),
 	)
 	if err != nil {
-		return err
+		return errs.FeishuRequestError(err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return errs.ReadResponseError(err)
 	}
 
 	// 解析响应
