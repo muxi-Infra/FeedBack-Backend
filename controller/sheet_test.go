@@ -163,7 +163,7 @@ func TestCreateApp(t *testing.T) {
 					Times(1)
 
 				// 设置日志的期望
-				mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 			},
 			expectedCode:  500,
@@ -275,7 +275,7 @@ func TestCopyApp(t *testing.T) {
 					Return(nil, errors.New("network error")).Times(1)
 
 				// 设置日志的期望
-				mockLogger.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				mockLogger.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 
 			},
@@ -381,7 +381,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 				client.EXPECT().CreateAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
 
-				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				log.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 			},
 			expectedCode:  500,
@@ -505,7 +505,7 @@ func TestGetAppTableRecord(t *testing.T) {
 				auth.EXPECT().GetAccessToken().Return("valid_token").Times(1)
 				client.EXPECT().GetAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
-				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				log.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 			},
 			expectedCode:  500,
@@ -616,7 +616,7 @@ func TestGetNormalRecord(t *testing.T) {
 				auth.EXPECT().GetAccessToken().Return("valid_token").Times(1)
 				client.EXPECT().GetAppTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
-				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				log.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 			},
 			expectedCode:  500,
@@ -716,7 +716,7 @@ func TestGetPhotoUrl(t *testing.T) {
 				client.EXPECT().GetPhotoUrl(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errors.New("network error")).Times(1)
 
-				log.EXPECT().Errorf(gomock.Any(), gomock.Any()).
+				log.EXPECT().Error(gomock.Any(), gomock.Any()).
 					Return().Times(1)
 			},
 			expectedCode:  500,

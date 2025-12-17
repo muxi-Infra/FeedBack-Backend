@@ -38,7 +38,7 @@ func (dao *LikeDAO) Pending2ProcessingTask() (string, error) {
 		pendingQueue, processingQueue, 0).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return "", errors.New("no task")
+			return "", nil
 		}
 		return "", err
 	}
