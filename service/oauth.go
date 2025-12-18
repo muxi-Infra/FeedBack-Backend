@@ -135,7 +135,7 @@ func (o *AuthServiceImpl) AutoRefreshToken() error {
 
 	// 解析 JSON
 	var tokenResp map[string]interface{}
-	if err := json.Unmarshal(body, &tokenResp); err != nil {
+	if err = json.Unmarshal(body, &tokenResp); err != nil {
 		return err
 	}
 
