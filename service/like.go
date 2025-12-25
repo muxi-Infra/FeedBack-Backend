@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"time"
 
@@ -34,9 +33,7 @@ const (
 
 type LikeService interface {
 	AddLikeTask(appToken, tableId, recordID string, userID string, isLike int, action string) error
-	GetLikeTask() (*model.LikeMessage, error)
 	HandleLikeTask()
-	GetRecord(appToken, tableId, recordID string) (*larkbitable.AppTableRecord, error)
 	MoveRetry2Pending() error
 }
 
@@ -88,6 +85,7 @@ func (s *LikeServiceImpl) GetLikeTask() (*model.LikeMessage, error) {
 	if err != nil {
 		return nil, errs.QueueOperationError(err)
 	}
+
 	var task model.LikeMessage
 	err = json.Unmarshal([]byte(taskJson), &task)
 	if err != nil {
@@ -324,7 +322,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 	// 业务处理
 	if len(resp.Data.Records) == 0 {
 		s.log.Error("record not found", logger.String("record_id", recordID))
-		return nil, fmt.Errorf("the record of recordId %s not found", recordID)
+		return nil, errs.RecordNotFoundError(err)
 	}
 	record := resp.Data.Records[0]
 	return record, nil

@@ -180,7 +180,7 @@ func (o *AuthServiceImpl) AutoRefreshTenantToken() error {
 	// 解析响应
 	var res map[string]interface{}
 	if err = json.Unmarshal(body, &res); err != nil {
-		return err
+		return errs.DeserializationError(err)
 	}
 
 	tenantAccessToken, ok := res["tenant_access_token"].(string)
