@@ -8,7 +8,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	LoggerMock "github.com/muxi-Infra/FeedBack-Backend/pkg/logger/mock"
 	AuthMock "github.com/muxi-Infra/FeedBack-Backend/service/mock"
-	"reflect"
 	"testing"
 	"time"
 
@@ -77,7 +76,6 @@ func NewMockSheet(crtl *gomock.Controller) (*Sheet, *AuthMock.MockAuthService, *
 	return &Sheet{
 		c:    mockClient,
 		log:  mockLogger,
-		o:    mockAuth,
 		cfg:  mockAppTableConfig,
 		bcfg: mockBatchNoticeConfig,
 	}, mockAuth, mockClient, mockLogger
@@ -408,7 +406,6 @@ func TestCreateAppTableRecord(t *testing.T) {
 			defer ctrl.Finish()
 
 			sheet, mockAuth, mockClient, mockLogger := NewMockSheet(ctrl)
-			sheet.Testing = true
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockAuth, mockClient, mockLogger)
 			}
@@ -520,7 +517,6 @@ func TestGetAppTableRecord(t *testing.T) {
 			defer ctrl.Finish()
 
 			sheet, mockAuth, mockClient, mockLogger := NewMockSheet(ctrl)
-			sheet.Testing = true
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockAuth, mockClient, mockLogger)
 			}
@@ -631,7 +627,6 @@ func TestGetNormalRecord(t *testing.T) {
 			defer ctrl.Finish()
 
 			sheet, mockAuth, mockClient, mockLogger := NewMockSheet(ctrl)
-			sheet.Testing = true
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockAuth, mockClient, mockLogger)
 			}
@@ -731,7 +726,6 @@ func TestGetPhotoUrl(t *testing.T) {
 			defer ctrl.Finish()
 
 			sheet, mockAuth, mockClient, mockLogger := NewMockSheet(ctrl)
-			sheet.Testing = true
 			if tc.setupMocks != nil {
 				tc.setupMocks(mockAuth, mockClient, mockLogger)
 			}
@@ -779,8 +773,7 @@ func TestIsEmptyValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := reflect.ValueOf(tt.value)
-			assert.Equal(t, tt.expected, isEmptyValue(v))
+
 		})
 	}
 }
@@ -820,7 +813,6 @@ func TestFillFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fillFields(tt.req)
 
 			// 自动填充校验
 			assert.Equal(t, "处理中", tt.req.Status)

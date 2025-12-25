@@ -44,7 +44,7 @@ var oauthEndpoint = oauth2.Endpoint{
 	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
 }
 
-func NewOauth(c config.ClientConfig) AuthService {
+func NewOauth(c config.ClientConfig) *AuthServiceImpl {
 	return &AuthServiceImpl{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
