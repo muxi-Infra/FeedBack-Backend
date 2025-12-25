@@ -22,6 +22,9 @@ const (
 
 	// 读取响应错误
 	readResponseErrorCode
+
+	// json 解码错误
+	jsonDecodeErrorCode
 )
 
 // 业务错误
@@ -54,6 +57,9 @@ var (
 	}
 	ReadResponseError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, readResponseErrorCode, "读取响应流错误", err)
+	}
+	JsonDecodeError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, jsonDecodeErrorCode, "json 解码错误", err)
 	}
 )
 
