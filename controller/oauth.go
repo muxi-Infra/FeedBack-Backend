@@ -2,12 +2,10 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
-	"strings"
 
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
@@ -22,27 +20,14 @@ import (
 )
 
 type Oauth struct {
-	oauthConfig *oauth2.Config
-	jwtHandler  *ijwt.JWT
-	group       *singleflight.Group
-	tableCfg    *config.AppTable
-	ts          service.AuthService
-}
-
-var oauthEndpoint = oauth2.Endpoint{
-	AuthURL:  "https://accounts.feishu.cn/open-apis/authen/v1/authorize",
-	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
+	jwtHandler *ijwt.JWT
+	group      *singleflight.Group
+	tableCfg   *config.AppTable
+	ts         service.AuthService
 }
 
 func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
-		oauthConfig: &oauth2.Config{
-			ClientID:     c.AppID,
-			ClientSecret: c.AppSecret,
-			RedirectURL:  "http://localhost:8080/callback", // 请先添加该重定向 URL，配置路径：开发者后台 -> 开发配置 -> 安全设置 -> 重定向 URL -> 添加
-			Endpoint:     oauthEndpoint,
-			Scopes:       []string{"offline_access", "bitable:app", "base:app:create"},
-		},
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
 		tableCfg:   tableCfg,
@@ -76,10 +61,8 @@ func (o Oauth) LoginController(c *gin.Context) {
 	session.Set("code_verifier", verifier)
 	session.Save()
 
-	url := o.oauthConfig.AuthCodeURL(
-		state,
-		oauth2.SetAuthURLParam("scope", strings.Join(o.oauthConfig.Scopes, " ")),
-		oauth2.S256ChallengeOption(verifier))
+	url := o.ts.GetLoginURL(state, verifier)
+
 	// 用户点击登录时，重定向到授权页面
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
@@ -129,7 +112,7 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 
 	codeVerifier, _ := session.Get("code_verifier").(string)
 	// 使用获取到的 code 获取 token
-	token, err := o.oauthConfig.Exchange(ctx, code, oauth2.VerifierOption(codeVerifier))
+	token, err := o.ts.Code2Token(ctx, code, codeVerifier)
 	if err != nil {
 		log.Printf("oauthConfig.Exchange() failed with '%s'\n", err)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
@@ -147,31 +130,12 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	//	Data:    token,
 	//}, nil
 
-	client := o.oauthConfig.Client(ctx, token)
-	req, err := http.NewRequest("GET", "https://open.feishu.cn/open-apis/authen/v1/user_info", nil)
+	user, err := o.ts.GetUserInfoByToken(ctx, token)
 	if err != nil {
-		log.Fatal(err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	// 使用 token 发起请求，获取用户信息
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("client.Get() failed with '%s'\n", err)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
 		return response.Response{}, err
 	}
-	defer resp.Body.Close()
-	var user struct {
-		Data struct {
-			Name   string `json:"name"`
-			OpenId string `json:"open_id"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		log.Printf("json.NewDecoder() failed with '%s'\n", err)
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{}, err
-	}
+
 	// 后续可以用获取到的用户信息构建登录态，此处仅为示例，请勿直接使用
 	session.Set("user", user.Data.Name)
 	session.Save()

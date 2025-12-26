@@ -41,15 +41,15 @@ type LikeServiceImpl struct {
 	dao dao.Like
 	c   feishu.Client
 	log logger.Logger
-	o   AuthService
+	atp AuthTokenProvider
 }
 
-func NewLikeService(dao dao.Like, c feishu.Client, log logger.Logger, o AuthService) LikeService {
+func NewLikeService(dao dao.Like, c feishu.Client, log logger.Logger, atp AuthTokenProvider) LikeService {
 	return &LikeServiceImpl{
 		dao: dao,
 		c:   c,
 		log: log,
-		o:   o,
+		atp: atp,
 	}
 }
 
@@ -302,7 +302,7 @@ func (s *LikeServiceImpl) GetRecord(appToken, tableId, recordID string) (*larkbi
 		Build()
 
 	// 发起请求
-	resp, err := s.c.GetRecordByRecordId(context.Background(), req, larkcore.WithUserAccessToken(s.o.GetAccessToken()))
+	resp, err := s.c.GetRecordByRecordId(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -344,7 +344,7 @@ func (s *LikeServiceImpl) UpdateRecord(appToken, tableId, recordID, likeKey stri
 		Build()
 
 	// 发起请求
-	resp, err := s.c.UpdateRecord(context.Background(), req, larkcore.WithUserAccessToken(s.o.GetAccessToken()))
+	resp, err := s.c.UpdateRecord(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {

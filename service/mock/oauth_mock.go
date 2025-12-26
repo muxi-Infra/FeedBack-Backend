@@ -5,10 +5,12 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
-	time "time"
 
 	gomock "github.com/golang/mock/gomock"
+	service "github.com/muxi-Infra/FeedBack-Backend/service"
+	oauth2 "golang.org/x/oauth2"
 )
 
 // MockAuthService is a mock of AuthService interface.
@@ -34,58 +36,48 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 	return m.recorder
 }
 
-// AutoRefreshToken mocks base method.
-func (m *MockAuthService) AutoRefreshToken() error {
+// Code2Token mocks base method.
+func (m *MockAuthService) Code2Token(ctx context.Context, code, codeVerifier string) (*oauth2.Token, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AutoRefreshToken")
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "Code2Token", ctx, code, codeVerifier)
+	ret0, _ := ret[0].(*oauth2.Token)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// AutoRefreshToken indicates an expected call of AutoRefreshToken.
-func (mr *MockAuthServiceMockRecorder) AutoRefreshToken() *gomock.Call {
+// Code2Token indicates an expected call of Code2Token.
+func (mr *MockAuthServiceMockRecorder) Code2Token(ctx, code, codeVerifier interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AutoRefreshToken", reflect.TypeOf((*MockAuthService)(nil).AutoRefreshToken))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Code2Token", reflect.TypeOf((*MockAuthService)(nil).Code2Token), ctx, code, codeVerifier)
 }
 
-// GetAccessToken mocks base method.
-func (m *MockAuthService) GetAccessToken() string {
+// GetLoginURL mocks base method.
+func (m *MockAuthService) GetLoginURL(state, verifier string) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAccessToken")
+	ret := m.ctrl.Call(m, "GetLoginURL", state, verifier)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
-// GetAccessToken indicates an expected call of GetAccessToken.
-func (mr *MockAuthServiceMockRecorder) GetAccessToken() *gomock.Call {
+// GetLoginURL indicates an expected call of GetLoginURL.
+func (mr *MockAuthServiceMockRecorder) GetLoginURL(state, verifier interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccessToken", reflect.TypeOf((*MockAuthService)(nil).GetAccessToken))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLoginURL", reflect.TypeOf((*MockAuthService)(nil).GetLoginURL), state, verifier)
 }
 
-// GetTenantAccessToken mocks base method.
-func (m *MockAuthService) GetTenantAccessToken() string {
+// GetUserInfoByToken mocks base method.
+func (m *MockAuthService) GetUserInfoByToken(ctx context.Context, token *oauth2.Token) (*service.UserInfo, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTenantAccessToken")
-	ret0, _ := ret[0].(string)
-	return ret0
+	ret := m.ctrl.Call(m, "GetUserInfoByToken", ctx, token)
+	ret0, _ := ret[0].(*service.UserInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// GetTenantAccessToken indicates an expected call of GetTenantAccessToken.
-func (mr *MockAuthServiceMockRecorder) GetTenantAccessToken() *gomock.Call {
+// GetUserInfoByToken indicates an expected call of GetUserInfoByToken.
+func (mr *MockAuthServiceMockRecorder) GetUserInfoByToken(ctx, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTenantAccessToken", reflect.TypeOf((*MockAuthService)(nil).GetTenantAccessToken))
-}
-
-// StartAutoRefresh mocks base method.
-func (m *MockAuthService) StartAutoRefresh(accessToken, refreshToken string, t time.Duration) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "StartAutoRefresh", accessToken, refreshToken, t)
-}
-
-// StartAutoRefresh indicates an expected call of StartAutoRefresh.
-func (mr *MockAuthServiceMockRecorder) StartAutoRefresh(accessToken, refreshToken, t interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartAutoRefresh", reflect.TypeOf((*MockAuthService)(nil).StartAutoRefresh), accessToken, refreshToken, t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserInfoByToken", reflect.TypeOf((*MockAuthService)(nil).GetUserInfoByToken), ctx, token)
 }
 
 // StartRefresh mocks base method.
@@ -98,4 +90,55 @@ func (m *MockAuthService) StartRefresh(accessToken, refreshToken string) {
 func (mr *MockAuthServiceMockRecorder) StartRefresh(accessToken, refreshToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartRefresh", reflect.TypeOf((*MockAuthService)(nil).StartRefresh), accessToken, refreshToken)
+}
+
+// MockAuthTokenProvider is a mock of AuthTokenProvider interface.
+type MockAuthTokenProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockAuthTokenProviderMockRecorder
+}
+
+// MockAuthTokenProviderMockRecorder is the mock recorder for MockAuthTokenProvider.
+type MockAuthTokenProviderMockRecorder struct {
+	mock *MockAuthTokenProvider
+}
+
+// NewMockAuthTokenProvider creates a new mock instance.
+func NewMockAuthTokenProvider(ctrl *gomock.Controller) *MockAuthTokenProvider {
+	mock := &MockAuthTokenProvider{ctrl: ctrl}
+	mock.recorder = &MockAuthTokenProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAuthTokenProvider) EXPECT() *MockAuthTokenProviderMockRecorder {
+	return m.recorder
+}
+
+// GetAccessToken mocks base method.
+func (m *MockAuthTokenProvider) GetAccessToken() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAccessToken")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetAccessToken indicates an expected call of GetAccessToken.
+func (mr *MockAuthTokenProviderMockRecorder) GetAccessToken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccessToken", reflect.TypeOf((*MockAuthTokenProvider)(nil).GetAccessToken))
+}
+
+// GetTenantAccessToken mocks base method.
+func (m *MockAuthTokenProvider) GetTenantAccessToken() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTenantAccessToken")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetTenantAccessToken indicates an expected call of GetTenantAccessToken.
+func (mr *MockAuthTokenProviderMockRecorder) GetTenantAccessToken() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTenantAccessToken", reflect.TypeOf((*MockAuthTokenProvider)(nil).GetTenantAccessToken))
 }
