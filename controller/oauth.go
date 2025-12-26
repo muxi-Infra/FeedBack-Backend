@@ -244,7 +244,6 @@ func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.
 //	@Router			/init_token [post]
 func (o Oauth) InitToken(c *gin.Context, r request.InitTokenReq) (response.Response, error) {
 	// 启动定时刷新 token 协程
-	//go o.ts.StartAutoRefresh(r.AccessToken, r.RefreshToken, time.Duration(25)*time.Minute)
 	go o.ts.StartRefresh(r.AccessToken, r.RefreshToken)
 
 	return response.Response{
