@@ -1,10 +1,10 @@
 package web
 
 import (
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/pkg/ginx"
-	"feedback/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 
 	"github.com/gin-gonic/gin"
 )

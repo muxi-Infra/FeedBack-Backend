@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/oauth2"
 	"io"
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 // 这里使用策略模式优化一下 token 刷新的代码

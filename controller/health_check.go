@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"feedback/api/response"
-	"feedback/service"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 
 	"github.com/gin-gonic/gin"
 )

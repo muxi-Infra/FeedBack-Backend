@@ -1,9 +1,9 @@
 package web
 
 import (
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/pkg/ginx"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"

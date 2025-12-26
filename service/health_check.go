@@ -1,11 +1,12 @@
 package service
 
 import (
-	"feedback/api/response"
 	"fmt"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
