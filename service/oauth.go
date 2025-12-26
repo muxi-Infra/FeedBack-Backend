@@ -11,6 +11,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 
 	"golang.org/x/oauth2"
 )
@@ -32,6 +33,8 @@ type AuthTokenProvider interface {
 type AuthServiceImpl struct {
 	oauthConfig *oauth2.Config
 
+	log logger.Logger
+
 	mutex        sync.RWMutex
 	accessToken  string
 	refreshToken string // 不对外展示
@@ -44,7 +47,7 @@ var oauthEndpoint = oauth2.Endpoint{
 	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
 }
 
-func NewOauth(c config.ClientConfig) *AuthServiceImpl {
+func NewOauth(c config.ClientConfig, log logger.Logger) *AuthServiceImpl {
 	return &AuthServiceImpl{
 		oauthConfig: &oauth2.Config{
 			ClientID:     c.AppID,
@@ -53,6 +56,7 @@ func NewOauth(c config.ClientConfig) *AuthServiceImpl {
 			Endpoint:     oauthEndpoint,
 			Scopes:       []string{"offline_access", "bitable:app", "base:app:create"},
 		},
+		log:               log,
 		accessToken:       "",
 		refreshToken:      "",
 		tenantAccessToken: "",
@@ -115,16 +119,16 @@ func (o *AuthServiceImpl) GetUserInfoByToken(ctx context.Context, token *oauth2.
 	// 使用 token 发起请求，获取用户信息
 	resp, err := client.Do(req)
 	if err != nil {
-		// todo log
-		log.Printf("client.Get() failed with '%s'\n", err)
+		o.log.Error("client.Get() failed",
+			logger.String("error", err.Error()))
 		return nil, errs.FeishuRequestError(err)
 	}
 	defer resp.Body.Close()
 
 	var user UserInfo
 	if err = json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		// todo log
-		log.Printf("json.NewDecoder() failed with '%s'\n", err)
+		o.log.Error("json.NewDecoder() failed",
+			logger.String("error", err.Error()))
 		return nil, errs.JsonDecodeError(err)
 	}
 	return &user, nil

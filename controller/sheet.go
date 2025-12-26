@@ -7,7 +7,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
@@ -17,22 +16,16 @@ import (
 )
 
 type Sheet struct {
-	c    feishu.Client
-	log  logger.Logger
-	o    service.AuthService
-	s    service.SheetService
-	cfg  *config.AppTable
-	bcfg *config.BatchNoticeConfig
+	log logger.Logger
+	s   service.SheetService
+	cfg *config.AppTable
 }
 
-func NewSheet(client feishu.Client, log logger.Logger, o service.AuthService, s service.SheetService, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) *Sheet {
+func NewSheet(log logger.Logger, s service.SheetService, cfg *config.AppTable) *Sheet {
 	return &Sheet{
-		c:    client,
-		log:  log,
-		o:    o,
-		s:    s,
-		cfg:  cfg,
-		bcfg: bcfg,
+		log: log,
+		s:   s,
+		cfg: cfg,
 	}
 }
 
@@ -198,7 +191,7 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 //	@Router			/sheet/createrecord [post]
 func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	tabel, ok := f.cfg.Tables[uc.TableID]
+	table, ok := f.cfg.Tables[uc.TableID]
 	if !ok {
 		return response.Response{
 			Code:    400,
@@ -216,7 +209,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 	//// 创建请求对象
 	//req := larkbitable.NewCreateAppTableRecordReqBuilder().
 	//	AppToken(f.cfg.AppToken).
-	//	TableId(tabel.TableID).
+	//	TableId(table.TableID).
 	//	IgnoreConsistencyCheck(r.IgnoreConsistencyCheck).
 	//	AppTableRecord(larkbitable.NewAppTableRecordBuilder().
 	//		Fields(r.Fields).
@@ -298,7 +291,7 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 	//	}()
 	//}
 
-	resp, err := f.s.CreateRecord(context.Background(), r, uc, &tabel)
+	resp, err := f.s.CreateRecord(context.Background(), r, uc, &table)
 	if err != nil {
 		// todo 依据错误类型返回对应的错误
 		return response.Response{
