@@ -16,12 +16,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//initViper()
 	app, err := InitApp()
 	if err != nil {
 		panic(err)
 	}
-	//app.t.StartDailyTask()
 	app.r.Run(":8080")
 }
 
