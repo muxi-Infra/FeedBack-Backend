@@ -1,16 +1,16 @@
 package controller
 
 import (
-	"feedback/config"
-	"feedback/pkg/logger"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/pkg/ijwt"
-	"feedback/service"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 )
 
 type Like struct {
@@ -45,10 +45,7 @@ func (l *Like) AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims
 	table := l.tableCfg.Tables[uc.NormalTableID]
 	err := l.l.AddLikeTask(l.tableCfg.AppToken, table.TableID, r.RecordID, r.UserID, r.IsLike, r.Action)
 	if err != nil {
-		return response.Response{
-			Code:    400,
-			Message: "添加点赞任务失败",
-		}, err
+		return response.Response{}, err
 	}
 	return response.Response{
 		Code:    200,
@@ -70,7 +67,9 @@ func (l *Like) MoveRetry2Pending() {
 		for {
 			err := l.l.MoveRetry2Pending()
 			if err != nil {
-				l.log.Errorf("MoveRetry2Pending err: %v", err)
+				l.log.Error("MoveRetry2Pending failed",
+					logger.String("error", err.Error()),
+				)
 			}
 			time.Sleep(time.Millisecond * 100)
 		}

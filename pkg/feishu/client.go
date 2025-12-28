@@ -2,7 +2,6 @@ package feishu
 
 import (
 	"context"
-	"feedback/config"
 
 	"github.com/google/wire"
 	lark "github.com/larksuite/oapi-sdk-go/v3"
@@ -30,11 +29,10 @@ type ClientImpl struct {
 	c *lark.Client
 }
 
-func NewClient(conf config.ClientConfig) Client {
+func NewClient(c *lark.Client) Client {
 	return &ClientImpl{
-		c: lark.NewClient(conf.AppID, conf.AppSecret),
+		c: c,
 	}
-
 }
 
 // CreateAPP 创建多维表格

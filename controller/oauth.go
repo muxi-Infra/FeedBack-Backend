@@ -2,18 +2,17 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
-	"strings"
 
-	"feedback/api/request"
-	"feedback/api/response"
-	"feedback/config"
-	"feedback/pkg/ijwt"
-	"feedback/service"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -22,27 +21,14 @@ import (
 )
 
 type Oauth struct {
-	oauthConfig *oauth2.Config
-	jwtHandler  *ijwt.JWT
-	group       *singleflight.Group
-	tableCfg    *config.AppTable
-	ts          service.AuthService
+	jwtHandler *ijwt.JWT
+	group      *singleflight.Group
+	tableCfg   *config.AppTable
+	ts         service.AuthService
 }
 
-var oauthEndpoint = oauth2.Endpoint{
-	AuthURL:  "https://accounts.feishu.cn/open-apis/authen/v1/authorize",
-	TokenURL: "https://open.feishu.cn/open-apis/authen/v2/oauth/token",
-}
-
-func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
+func NewOauth(jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
-		oauthConfig: &oauth2.Config{
-			ClientID:     c.AppID,
-			ClientSecret: c.AppSecret,
-			RedirectURL:  "http://localhost:8080/callback", // 请先添加该重定向 URL，配置路径：开发者后台 -> 开发配置 -> 安全设置 -> 重定向 URL -> 添加
-			Endpoint:     oauthEndpoint,
-			Scopes:       []string{"offline_access", "bitable:app", "base:app:create"},
-		},
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
 		tableCfg:   tableCfg,
@@ -76,10 +62,8 @@ func (o Oauth) LoginController(c *gin.Context) {
 	session.Set("code_verifier", verifier)
 	session.Save()
 
-	url := o.oauthConfig.AuthCodeURL(
-		state,
-		oauth2.SetAuthURLParam("scope", strings.Join(o.oauthConfig.Scopes, " ")),
-		oauth2.S256ChallengeOption(verifier))
+	url := o.ts.GetLoginURL(state, verifier)
+
 	// 用户点击登录时，重定向到授权页面
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
@@ -97,11 +81,8 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	if state != expectedState {
 		log.Printf("invalid oauth state, expected '%s', got '%s'\n", expectedState, state)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400, //TODO
-			Message: "Invalid OAuth state",
-			Data:    nil,
-		}, fmt.Errorf("invalid oauth state, expected '%s', got '%s'", expectedState, state)
+		return response.Response{},
+			errs.FeishuOauthInvalidError(fmt.Errorf("invalid oauth state, expected '%s', got '%s'", expectedState, state))
 	}
 
 	code := c.Query("code")
@@ -120,24 +101,18 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	if code == "" {
 		log.Printf("error: %s", c.Query("error"))
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400, //TODO
-			Message: "Authorization denied",
-			Data:    nil,
-		}, fmt.Errorf("authorization denied, error: %s", c.Query("error"))
+		return response.Response{},
+			errs.FeishuAuthorizationDeniedError(fmt.Errorf("authorization denied, error: %s", c.Query("error")))
 	}
 
 	codeVerifier, _ := session.Get("code_verifier").(string)
 	// 使用获取到的 code 获取 token
-	token, err := o.oauthConfig.Exchange(ctx, code, oauth2.VerifierOption(codeVerifier))
+	token, err := o.ts.Code2Token(ctx, code, codeVerifier)
 	if err != nil {
 		log.Printf("oauthConfig.Exchange() failed with '%s'\n", err)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400,
-			Message: "Failed to exchange code for token",
-			Data:    nil,
-		}, fmt.Errorf("oauthConfig.Exchange() failed with '%s'\n", err)
+		return response.Response{},
+			errs.FeishuOauthConfigChangeError(fmt.Errorf("oauthConfig.Exchange() failed with '%s'\n", err))
 	}
 
 	// 直接返回 token 信息（JSON 格式）
@@ -147,31 +122,12 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	//	Data:    token,
 	//}, nil
 
-	client := o.oauthConfig.Client(ctx, token)
-	req, err := http.NewRequest("GET", "https://open.feishu.cn/open-apis/authen/v1/user_info", nil)
+	user, err := o.ts.GetUserInfoByToken(ctx, token)
 	if err != nil {
-		log.Fatal(err)
-	}
-	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
-	// 使用 token 发起请求，获取用户信息
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("client.Get() failed with '%s'\n", err)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
 		return response.Response{}, err
 	}
-	defer resp.Body.Close()
-	var user struct {
-		Data struct {
-			Name   string `json:"name"`
-			OpenId string `json:"open_id"`
-		} `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		log.Printf("json.NewDecoder() failed with '%s'\n", err)
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{}, err
-	}
+
 	// 后续可以用获取到的用户信息构建登录态，此处仅为示例，请勿直接使用
 	session.Set("user", user.Data.Name)
 	session.Save()
@@ -194,30 +150,14 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/get_token [post]
 func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
-	// 判断携带参数是否为空
-	if req.TableID == "" || req.NormalTableID == "" {
-		return response.Response{
-			Code:    400,
-			Message: "请求参数为空",
-			Data:    nil,
-		}, fmt.Errorf("请求参数为空")
-	}
-
 	if !o.tableCfg.IsValidTableID(req.TableID) || !o.tableCfg.IsValidTableID(req.NormalTableID) {
-		return response.Response{
-			Code:    400,
-			Message: "无效的表ID",
-			Data:    nil,
-		}, fmt.Errorf("无效的表ID")
+		return response.Response{},
+			errs.TableIDInvalidError(fmt.Errorf("无效的表ID"))
 	}
 
 	token, err := o.jwtHandler.SetJWTToken(req.TableID, req.NormalTableID)
 	if err != nil {
-		return response.Response{
-			Code:    500,
-			Message: "生成 token 失败",
-			Data:    nil,
-		}, err
+		return response.Response{}, errs.TokenGeneratedError(err)
 	}
 
 	return response.Response{
@@ -244,7 +184,6 @@ func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.
 //	@Router			/init_token [post]
 func (o Oauth) InitToken(c *gin.Context, r request.InitTokenReq) (response.Response, error) {
 	// 启动定时刷新 token 协程
-	//go o.ts.StartAutoRefresh(r.AccessToken, r.RefreshToken, time.Duration(25)*time.Minute)
 	go o.ts.StartRefresh(r.AccessToken, r.RefreshToken)
 
 	return response.Response{

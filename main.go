@@ -1,8 +1,8 @@
 package main
 
 import (
-	"feedback/config"
 	"github.com/gin-gonic/gin"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -16,12 +16,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//initViper()
 	app, err := InitApp()
 	if err != nil {
 		panic(err)
 	}
-	//app.t.StartDailyTask()
 	app.r.Run(":8080")
 }
 

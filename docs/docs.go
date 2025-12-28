@@ -632,6 +632,10 @@ const docTemplate = `{
                 "sort_orders": {
                     "description": "根据什么字段排序",
                     "type": "string"
+                },
+                "student_id": {
+                    "description": "即学号 // 用于查看相应学号的人是否点赞某条记录了没有",
+                    "type": "string"
                 }
             }
         },
@@ -669,7 +673,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "action",
-                "is_like",
                 "record_id",
                 "user_id"
             ],

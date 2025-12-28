@@ -2,7 +2,9 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -23,6 +25,9 @@ var ProviderSet = wire.NewSet(
 	NewAppTable,
 	NewBatchNoticeConfig,
 	NewRedisConfig,
+	NewLimiterConfig,
+	NewBasicAuthConfig,
+	NewLogConfig,
 )
 
 var vp *viper.Viper
@@ -54,7 +59,10 @@ func InitNacos() error {
 }
 
 func getConfigFromNacos() (string, error) {
-	server, port, namespace, user, pass, group, dataId := parseNacosDSN()
+	server, port, namespace, user, pass, group, dataId, err := parseNacosDSN()
+	if err != nil {
+		return "", err
+	}
 
 	serverConfigs := []constant.ServerConfig{
 		{
@@ -92,7 +100,7 @@ func getConfigFromNacos() (string, error) {
 }
 
 // DSN 示例： localhost:8848?namespace=default&username=nacos&password=1234&group=QA&dataId=my-service
-func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId string) {
+func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId string, err error) {
 	var dsn string
 	flag.StringVar(&dsn, "nacos-dsn", "", "Nacos DSN")
 	flag.Parse()
@@ -102,7 +110,8 @@ func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId 
 	}
 
 	if dsn == "" {
-		log.Fatalf("nacos-dsn must be provided via --nacos-dsn or NACOSDSN environment variable")
+		err = errors.New("nacos-dsn must be provided via --nacos-dsn or NACOSDSN environment variable")
+		return
 	}
 
 	parts := strings.SplitN(dsn, "?", 2)
@@ -316,4 +325,63 @@ func NewRedisConfig() *RedisConfig {
 func (t *AppTable) IsValidTableID(tableID string) bool {
 	_, ok := t.Tables[tableID]
 	return ok
+}
+
+type LogConfig struct {
+	File       string `yaml:"file"`
+	MaxSize    int    `yaml:"maxSize"`
+	MaxBackups int    `yaml:"maxBackups"`
+	MaxAge     int    `yaml:"maxAge"`
+	Compress   bool   `yaml:"compress"`
+}
+
+func NewLogConfig() *LogConfig {
+	cfg := &LogConfig{}
+	err := vp.UnmarshalKey("log", &cfg)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析日志配置: %v", err))
+	}
+
+	return cfg
+}
+
+type LimiterConfig struct {
+	Capacity     int `yaml:"capacity"`     // 令牌桶容量
+	FillInterval int `yaml:"fillInterval"` // 每秒补充令牌的次数
+	Quantum      int `yaml:"quantum"`      // 每次放置的令牌数
+}
+
+func NewLimiterConfig() *LimiterConfig {
+	cfg := &LimiterConfig{}
+	err := vp.UnmarshalKey("limiter", &cfg)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析限流器配置: %v", err))
+	}
+	if cfg.Capacity <= 0 || cfg.FillInterval <= 0 || cfg.Quantum <= 0 {
+		panic("限流器配置无效: capacity, fillInterval, 和 quantum 必须大于 0")
+	}
+
+	return cfg
+}
+
+type BasicAuthConfig struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
+func NewBasicAuthConfig() []BasicAuthConfig {
+	var users []BasicAuthConfig
+	err := vp.UnmarshalKey("basicAuth", &users)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析 BasicAuth 配置: %v", err))
+	}
+	if len(users) == 0 {
+		panic("BasicAuth 配置无效: 至少需要一个用户")
+	}
+	for _, u := range users {
+		if u.Username == "" || u.Password == "" {
+			panic("BasicAuth 配置无效: username 和 password 不能为空")
+		}
+	}
+	return users
 }

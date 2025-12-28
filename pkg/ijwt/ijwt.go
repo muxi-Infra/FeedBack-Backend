@@ -2,10 +2,11 @@ package ijwt
 
 import (
 	"errors"
-	"feedback/config"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
 )
 
 type JWT struct {
@@ -42,7 +43,7 @@ func (j *JWT) SetJWTToken(t, nt string) (string, error) {
 	// 使用指定的secret签名并获得完整的编码后的字符串token
 	tokenStr, err := token.SignedString(j.jwtKey)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("token 生成失败：%w", err)
 	}
 	return tokenStr, nil
 }

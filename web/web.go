@@ -1,12 +1,14 @@
 package web
 
 import (
-	"feedback/controller"
-	_ "feedback/docs" // 生成的swagger文档
-	"feedback/middleware"
+	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	_ "github.com/muxi-Infra/FeedBack-Backend/docs" // 生成的 swagger 文档
+	"github.com/muxi-Infra/FeedBack-Backend/middleware"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -21,16 +23,31 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(LikeHandler), new(*controller.Like)),
 )
 
-func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *middleware.AuthMiddleware,
+func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
+	authMiddleware *middleware.AuthMiddleware,
+	basicAuthMiddleware *middleware.BasicAuthMiddleware,
+	logMiddleware *middleware.LoggerMiddleware,
+	prometheusMiddleware *middleware.PrometheusMiddleware,
+	limitMiddleware *middleware.LimitMiddleware,
 	sh SheetHandler, oh OauthHandler, lh LikeHandler) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
-	// 跨域
-	r.Use(corsMiddleware.MiddlewareFunc())
 
-	RegisterSwaggerHandler(r)
+	// 全局中间件
+	r.Use(corsMiddleware.MiddlewareFunc())       // 跨域中间件
+	r.Use(logMiddleware.MiddlewareFunc())        // 日志中间件
+	r.Use(prometheusMiddleware.MiddlewareFunc()) // Prometheus 监控中间件
+	r.Use(limitMiddleware.Middleware())          // 限流中间件
+
+	// Swagger 文档使用 basic auth 保护
+	RegisterSwaggerHandler(r, basicAuthMiddleware)
+	// Prometheus metrics 使用 basic auth 保护
+	RegisterPrometheusHandler(r, prometheusMiddleware, basicAuthMiddleware)
+
+	// 健康检查
 	RegisterHealthCheckHandler(r)
 
+	// 业务路由
 	RegisterSheetHandler(r, sh, authMiddleware.MiddlewareFunc())
 	RegisterOauthRouter(r, oh)
 	RegisterLikeHandler(r, lh, authMiddleware.MiddlewareFunc())
@@ -38,6 +55,21 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware, authMiddleware *mid
 	return r
 }
 
-func RegisterSwaggerHandler(r *gin.Engine) {
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+// RegisterSwaggerHandler 注册 Swagger 文档路由，使用 Basic Auth 保护
+func RegisterSwaggerHandler(r *gin.Engine, basicAuthMiddleware *middleware.BasicAuthMiddleware) {
+	r.GET("/swagger/*any", basicAuthMiddleware.MiddlewareFunc(), ginSwagger.WrapHandler(swaggerFiles.Handler))
+}
+
+// RegisterPrometheusHandler 注册 Prometheus 监控路由，使用 Basic Auth 保护
+func RegisterPrometheusHandler(r *gin.Engine, prometheusMiddleware *middleware.PrometheusMiddleware, basicAuthMiddleware *middleware.BasicAuthMiddleware) {
+	reg := prometheusMiddleware.GetRegistry()
+	r.GET("/metrics", basicAuthMiddleware.MiddlewareFunc(), gin.WrapH(promhttp.HandlerFor(
+		reg,
+		promhttp.HandlerOpts{},
+	)))
+}
+
+// RegisterHealthCheckHandler 注册健康检查路由
+func RegisterHealthCheckHandler(r *gin.Engine) {
+	r.GET("/health", ginx.Wrap(controller.HealthCheck))
 }
