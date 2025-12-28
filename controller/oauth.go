@@ -38,12 +38,12 @@ func NewOauth(jwtHandler *ijwt.JWT, tableCfg *config.AppTable) *Oauth {
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/get_token [post]
 func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
-	if !o.tableCfg.IsValidTableID(req.TableID) || !o.tableCfg.IsValidTableID(req.NormalTableID) {
+	if !o.tableCfg.IsValidTableCode(req.TableCode) {
 		return response.Response{},
-			errs.TableIDInvalidError(fmt.Errorf("无效的表ID"))
+			errs.TableIDInvalidError(fmt.Errorf("无效的表Code"))
 	}
 
-	token, err := o.jwtHandler.SetJWTToken(req.TableID, req.NormalTableID)
+	token, err := o.jwtHandler.SetJWTToken(req.TableCode)
 	if err != nil {
 		return response.Response{}, errs.TokenGeneratedError(err)
 	}
