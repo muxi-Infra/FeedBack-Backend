@@ -157,12 +157,14 @@ func NewClientConfig() ClientConfig {
 
 type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
-	Timeout   int    `yaml:"timeout"`   //过期时间
+	EncKey    string `yaml:"encKey"`
+	Timeout   int    `yaml:"timeout"` //过期时间
 }
 
 func NewJWTConfig() JWTConfig {
 	jwtConf := JWTConfig{
 		SecretKey: vp.GetString("jwt.secretkey"),
+		EncKey:    vp.GetString("jwt.enckey"),
 		Timeout:   vp.GetInt("jwt.timeout"),
 	}
 
@@ -194,7 +196,7 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 
 type AppTable struct {
 	AppToken string           `yaml:"app_token" mapstructure:"app_token"`
-	Tables   map[string]Table `yaml:"tables" mapstructure:"tables"` // 使用map方便获取
+	Tables   map[string]Table `yaml:"tables" mapstructure:"tables"` // 使用 map 方便获取
 }
 
 type Table struct {

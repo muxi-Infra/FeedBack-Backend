@@ -20,6 +20,7 @@ func NewJWT(conf config.JWTConfig) *JWT {
 		signingMethod: jwt.SigningMethodHS256, //签名的加密方式
 		rcExpiration:  time.Duration(conf.Timeout) * time.Second,
 		jwtKey:        []byte(conf.SecretKey),
+		encKey:        []byte(conf.EncKey),
 	}
 }
 

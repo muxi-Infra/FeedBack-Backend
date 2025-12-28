@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
@@ -40,13 +41,15 @@ func NewOauth(jwtHandler *ijwt.JWT, tableCfg *config.AppTable) *Oauth {
 func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
 	if !o.tableCfg.IsValidTableIdentity(req.TableIdentity) {
 		return response.Response{},
-			errs.TableIDInvalidError(fmt.Errorf("无效的表Identity"))
+			errs.TableIDNotFoundError(fmt.Errorf("table identity not found"))
 	}
 
 	token, err := o.jwtHandler.SetJWTToken(req.TableIdentity)
 	if err != nil {
 		return response.Response{}, errs.TokenGeneratedError(err)
 	}
+
+	c.Header("Authorization", token)
 
 	return response.Response{
 		Code:    0,
