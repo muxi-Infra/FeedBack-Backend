@@ -13,6 +13,7 @@ type JWT struct {
 	signingMethod jwt.SigningMethod // JWT 签名方法
 	rcExpiration  time.Duration     // 刷新令牌的过期时间，防止缓存过大
 	jwtKey        []byte            // 用于签署 JWT 的密钥
+	encKey        []byte            // 用于加密敏感信息的密钥
 }
 
 func NewJWT(conf config.JWTConfig) *JWT {
