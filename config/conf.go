@@ -322,8 +322,8 @@ func NewRedisConfig() *RedisConfig {
 	return redisConfig
 }
 
-func (t *AppTable) IsValidTableID(tableID string) bool {
-	_, ok := t.Tables[tableID]
+func (t *AppTable) IsValidTableCode(tableCode string) bool {
+	_, ok := t.Tables[tableCode]
 	return ok
 }
 
