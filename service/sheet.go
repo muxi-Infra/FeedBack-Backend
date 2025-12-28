@@ -293,7 +293,7 @@ func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[
 			s.bcfg.Content.Data.TemplateVariable.FeedbackType = problemType
 
 			// 反馈来源使用配置表格的名字
-			s.bcfg.Content.Data.TemplateVariable.FeedbackSource = s.cfg.Tables[uc.TableCode].Name
+			s.bcfg.Content.Data.TemplateVariable.FeedbackSource = s.cfg.Tables[uc.TableIdentity].Name
 
 			// 构造content
 			contentBytes, err := json.Marshal(s.bcfg.Content)

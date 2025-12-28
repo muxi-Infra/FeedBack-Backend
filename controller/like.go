@@ -42,7 +42,7 @@ func NewLike(l service.LikeService, tableCfg *config.AppTable, log logger.Logger
 // @Failure 400 {object} response.Response "添加点赞任务失败"
 // @Router /like/addtask [post]
 func (l *Like) AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims) (response.Response, error) {
-	table := l.tableCfg.Tables[uc.TableCode]
+	table := l.tableCfg.Tables[uc.TableIdentity]
 	err := l.l.AddLikeTask(l.tableCfg.AppToken, table.TableID, r.RecordID, r.UserID, r.IsLike, r.Action)
 	if err != nil {
 		return response.Response{}, err

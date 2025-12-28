@@ -26,16 +26,12 @@ func NewMockSheet(crtl *gomock.Controller) (*Sheet, *ServiceMock.MockSheetServic
 
 	// 创建一个 mock 的 AppTable 对象
 	table := make(map[string]config.Table)
-	table["mock-normal-table-id"] = config.Table{
-		Name:    "mock-normal-table-name",
-		TableID: "mock-normal-table-id",
-		ViewID:  "mock-normal-view-id",
+	table["mock-table-identity"] = config.Table{
+		Name:    "mock-table-identity",
+		TableID: "mock-table-identity",
+		ViewID:  "mock-table-identity",
 	}
-	table["mock-table-id"] = config.Table{
-		Name:    "mock-table-name",
-		TableID: "mock-table-id",
-		ViewID:  "mock-view-id",
-	}
+
 	mockAppTableConfig := &config.AppTable{
 		AppToken: "mock-app-token",
 		Tables:   table,
@@ -53,8 +49,7 @@ var uc = ijwt.UserClaims{
 	RegisteredClaims: jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), // 这里mock 1小时过期
 	},
-	TableID:       "mock-table-id",
-	NormalTableID: "mock-normal-table-id",
+	TableIdentity: "mock-table-identity",
 }
 
 func TestCreateApp(t *testing.T) {
