@@ -13,6 +13,7 @@ type JWT struct {
 	signingMethod jwt.SigningMethod // JWT 签名方法
 	rcExpiration  time.Duration     // 刷新令牌的过期时间，防止缓存过大
 	jwtKey        []byte            // 用于签署 JWT 的密钥
+	encKey        []byte            // 用于加密敏感信息的密钥
 }
 
 func NewJWT(conf config.JWTConfig) *JWT {
@@ -20,23 +21,21 @@ func NewJWT(conf config.JWTConfig) *JWT {
 		signingMethod: jwt.SigningMethodHS256, //签名的加密方式
 		rcExpiration:  time.Duration(conf.Timeout) * time.Second,
 		jwtKey:        []byte(conf.SecretKey),
+		encKey:        []byte(conf.EncKey),
 	}
 }
 
 type UserClaims struct {
-	jwt.RegisteredClaims // 内嵌标准的声明
-	//Token                string `json:"token"` // 飞书令牌
-	TableID       string `json:"table_id"`
-	NormalTableID string `json:"normal_table_id"` // 常见问题表ID
+	jwt.RegisteredClaims        // 内嵌标准的声明
+	TableIdentity        string `json:"table_identity"`
 }
 
-func (j *JWT) SetJWTToken(t, nt string) (string, error) {
+func (j *JWT) SetJWTToken(t string) (string, error) {
 	uc := UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.rcExpiration)),
 		},
-		TableID:       t,
-		NormalTableID: nt,
+		TableIdentity: t,
 	}
 
 	token := jwt.NewWithClaims(j.signingMethod, uc)

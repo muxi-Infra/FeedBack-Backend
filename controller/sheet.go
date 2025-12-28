@@ -99,10 +99,10 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 //	@Router			/sheet/createrecord [post]
 func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	table, ok := f.cfg.Tables[uc.TableID]
+	table, ok := f.cfg.Tables[uc.TableIdentity]
 	if !ok {
 		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("table id %s not found", uc.TableID))
+			errs.TableIDNotFoundError(fmt.Errorf("table identity %s not found", uc.TableIdentity))
 	}
 
 	// 组装请求参数
@@ -138,10 +138,10 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 //	@Router			/sheet/getrecord [post]
 func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	table, ok := f.cfg.Tables[uc.TableID]
+	table, ok := f.cfg.Tables[uc.TableIdentity]
 	if !ok {
 		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("table id %s not found", uc.TableID))
+			errs.TableIDNotFoundError(fmt.Errorf("table identity %s not found", uc.TableIdentity))
 	}
 
 	resp, err := f.s.GetRecord(r.PageToken, r.SortOrders, r.FilterName, r.FilterVal,
@@ -173,10 +173,10 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 //	@Router			/sheet/getnormal [post]
 func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 获取表ID
-	table, ok := f.cfg.Tables[uc.NormalTableID]
+	table, ok := f.cfg.Tables[uc.TableIdentity]
 	if !ok {
 		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("normal problem table %s id  not found", uc.NormalTableID))
+			errs.TableIDNotFoundError(fmt.Errorf("normal problem table %s identity not found", uc.TableIdentity))
 	}
 
 	resp, err := f.s.GetNormalRecord(r.PageToken, r.SortOrders, r.FilterName, r.FilterVal,
