@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -111,7 +110,9 @@ func (o *AuthServiceImpl) GetUserInfoByToken(ctx context.Context, token *oauth2.
 	client := o.oauthConfig.Client(ctx, token)
 	req, err := http.NewRequest("GET", "https://open.feishu.cn/open-apis/authen/v1/user_info", nil)
 	if err != nil {
-		log.Fatal(err)
+		o.log.Error("http.NewRequest() failed",
+			logger.String("error", err.Error()))
+		return nil, errs.NewRequestError(err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
@@ -121,7 +122,7 @@ func (o *AuthServiceImpl) GetUserInfoByToken(ctx context.Context, token *oauth2.
 	if err != nil {
 		o.log.Error("client.Get() failed",
 			logger.String("error", err.Error()))
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.RequestFailedError(err)
 	}
 	defer resp.Body.Close()
 
@@ -129,7 +130,7 @@ func (o *AuthServiceImpl) GetUserInfoByToken(ctx context.Context, token *oauth2.
 	if err = json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		o.log.Error("json.NewDecoder() failed",
 			logger.String("error", err.Error()))
-		return nil, errs.JsonDecodeError(err)
+		return nil, errs.DeserializationError(err)
 	}
 	return &user, nil
 }

@@ -76,7 +76,11 @@ func (s *LikeServiceImpl) AddLikeTask(appToken, tableId, recordID string, userID
 	if err != nil {
 		return errs.SerializationError(err)
 	}
-	return s.dao.AddPendingLikeTask(string(taskJson))
+	err = s.dao.AddPendingLikeTask(string(taskJson))
+	if err != nil {
+		return errs.AddPendingLikeTaskError(err)
+	}
+	return nil
 }
 
 // GetLikeTask 获取任务

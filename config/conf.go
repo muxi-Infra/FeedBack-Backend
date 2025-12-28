@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -58,7 +59,10 @@ func InitNacos() error {
 }
 
 func getConfigFromNacos() (string, error) {
-	server, port, namespace, user, pass, group, dataId := parseNacosDSN()
+	server, port, namespace, user, pass, group, dataId, err := parseNacosDSN()
+	if err != nil {
+		return "", err
+	}
 
 	serverConfigs := []constant.ServerConfig{
 		{
@@ -96,7 +100,7 @@ func getConfigFromNacos() (string, error) {
 }
 
 // DSN 示例： localhost:8848?namespace=default&username=nacos&password=1234&group=QA&dataId=my-service
-func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId string) {
+func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId string, err error) {
 	var dsn string
 	flag.StringVar(&dsn, "nacos-dsn", "", "Nacos DSN")
 	flag.Parse()
@@ -106,7 +110,8 @@ func parseNacosDSN() (server string, port uint64, ns, user, pass, group, dataId 
 	}
 
 	if dsn == "" {
-		log.Fatalf("nacos-dsn must be provided via --nacos-dsn or NACOSDSN environment variable")
+		err = errors.New("nacos-dsn must be provided via --nacos-dsn or NACOSDSN environment variable")
+		return
 	}
 
 	parts := strings.SplitN(dsn, "?", 2)

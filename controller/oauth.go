@@ -10,6 +10,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 
@@ -26,7 +27,7 @@ type Oauth struct {
 	ts         service.AuthService
 }
 
-func NewOauth(c config.ClientConfig, jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
+func NewOauth(jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
@@ -80,11 +81,8 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	if state != expectedState {
 		log.Printf("invalid oauth state, expected '%s', got '%s'\n", expectedState, state)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400, //TODO
-			Message: "Invalid OAuth state",
-			Data:    nil,
-		}, fmt.Errorf("invalid oauth state, expected '%s', got '%s'", expectedState, state)
+		return response.Response{},
+			errs.FeishuOauthInvalidError(fmt.Errorf("invalid oauth state, expected '%s', got '%s'", expectedState, state))
 	}
 
 	code := c.Query("code")
@@ -103,11 +101,8 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	if code == "" {
 		log.Printf("error: %s", c.Query("error"))
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400, //TODO
-			Message: "Authorization denied",
-			Data:    nil,
-		}, fmt.Errorf("authorization denied, error: %s", c.Query("error"))
+		return response.Response{},
+			errs.FeishuAuthorizationDeniedError(fmt.Errorf("authorization denied, error: %s", c.Query("error")))
 	}
 
 	codeVerifier, _ := session.Get("code_verifier").(string)
@@ -116,11 +111,8 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 	if err != nil {
 		log.Printf("oauthConfig.Exchange() failed with '%s'\n", err)
 		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{
-			Code:    400,
-			Message: "Failed to exchange code for token",
-			Data:    nil,
-		}, fmt.Errorf("oauthConfig.Exchange() failed with '%s'\n", err)
+		return response.Response{},
+			errs.FeishuOauthConfigChangeError(fmt.Errorf("oauthConfig.Exchange() failed with '%s'\n", err))
 	}
 
 	// 直接返回 token 信息（JSON 格式）
@@ -158,30 +150,14 @@ func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/get_token [post]
 func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
-	// 判断携带参数是否为空
-	if req.TableID == "" || req.NormalTableID == "" {
-		return response.Response{
-			Code:    400,
-			Message: "请求参数为空",
-			Data:    nil,
-		}, fmt.Errorf("请求参数为空")
-	}
-
 	if !o.tableCfg.IsValidTableID(req.TableID) || !o.tableCfg.IsValidTableID(req.NormalTableID) {
-		return response.Response{
-			Code:    400,
-			Message: "无效的表ID",
-			Data:    nil,
-		}, fmt.Errorf("无效的表ID")
+		return response.Response{},
+			errs.TableIDInvalidError(fmt.Errorf("无效的表ID"))
 	}
 
 	token, err := o.jwtHandler.SetJWTToken(req.TableID, req.NormalTableID)
 	if err != nil {
-		return response.Response{
-			Code:    500,
-			Message: "生成 token 失败",
-			Data:    nil,
-		}, err
+		return response.Response{}, errs.TokenGeneratedError(err)
 	}
 
 	return response.Response{

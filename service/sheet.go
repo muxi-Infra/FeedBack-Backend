@@ -7,29 +7,31 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/muxi-Infra/FeedBack-Backend/api/request"
-	"github.com/muxi-Infra/FeedBack-Backend/config"
-	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
-
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
 type SheetService interface {
-	CreateAPP(ctx context.Context, r request.CreateAppReq) (*larkbitable.CreateAppResp, error)
-	CopyAPP(ctx context.Context, r request.CopyAppReq) (*larkbitable.CopyAppResp, error)
-	GetRecord(ctx context.Context, r request.GetAppTableRecordReq, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
-	GetNormalRecord(ctx context.Context, r request.GetAppTableRecordReq, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
-	CreateRecord(ctx context.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error)
-	GetPhotoUrl(ctx context.Context, r request.GetPhotoUrlReq) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
+	CreateAPP(name, token string) (*larkbitable.CreateAppResp, error)
+	CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error)
+	GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
+		desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
+	GetNormalRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
+		desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
+	CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{},
+		content, problemType string, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error)
+	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
 	GetUserLikeRecord(recordID string, userID string) (int, error)
 }
 
@@ -59,16 +61,17 @@ func (s *SheetServiceImpl) GetUserLikeRecord(recordID string, userID string) (in
 	return s.likeDao.GetUserLikeRecord(recordID, userID)
 }
 
-func (s *SheetServiceImpl) CreateAPP(ctx context.Context, r request.CreateAppReq) (*larkbitable.CreateAppResp, error) {
+func (s *SheetServiceImpl) CreateAPP(name, folderToken string) (*larkbitable.CreateAppResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppReqBuilder().
 		ReqApp(larkbitable.NewReqAppBuilder().
-			Name(r.Name).
-			FolderToken(r.FolderToken).
+			Name(name).
+			FolderToken(folderToken).
 			Build()).
 		Build()
 
 	// 发起请求
+	ctx := context.Background()
 	resp, err := s.c.CreateAPP(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
@@ -85,26 +88,26 @@ func (s *SheetServiceImpl) CreateAPP(ctx context.Context, r request.CreateAppReq
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.FeishuResponseError(err)
+		return resp, errs.FeishuResponseError(resp.CodeError)
 	}
 
 	return resp, nil
 }
 
-func (s *SheetServiceImpl) CopyAPP(ctx context.Context, r request.CopyAppReq) (*larkbitable.CopyAppResp, error) {
+func (s *SheetServiceImpl) CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewCopyAppReqBuilder().
-		AppToken(r.AppToken).
+		AppToken(appToken).
 		Body(larkbitable.NewCopyAppReqBodyBuilder().
-			Name(r.Name).
-			FolderToken(r.FolderToken).
-			WithoutContent(r.WithoutContent).
-			TimeZone(r.TimeZone).
+			Name(name).
+			FolderToken(folderToken).
+			WithoutContent(withoutContent).
+			TimeZone(timeZone).
 			Build()).
 		Build()
 
-	// 发起请求
-	resp, err := s.c.CopyAPP(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	ctx := context.Background()
+	resp, err := s.c.CopyAPP(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -120,36 +123,37 @@ func (s *SheetServiceImpl) CopyAPP(ctx context.Context, r request.CopyAppReq) (*
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.FeishuResponseError(err)
+		return resp, errs.FeishuResponseError(resp.CodeError)
 	}
 
 	return resp, nil
 }
 
-func (s *SheetServiceImpl) GetRecord(ctx context.Context, r request.GetAppTableRecordReq, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
+func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVal string,
+	fieldNames []string, desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(s.cfg.AppToken).
 		TableId(table.TableID).
 		UserIdType(`open_id`).
-		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageToken(pageToken). // 分页参数,第一次不需要
+		PageSize(20).         // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(table.ViewID).
-			FieldNames(r.FieldNames).
+			FieldNames(fieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
-					FieldName(r.SortOrders).
-					Desc(r.Desc).
+					FieldName(sortOrders).
+					Desc(desc).
 					Build(),
 			}).
 			Filter(larkbitable.NewFilterInfoBuilder().
 				Conjunction(`and`).
 				Conditions([]*larkbitable.Condition{
 					larkbitable.NewConditionBuilder().
-						FieldName(r.FilterName).
+						FieldName(filterName).
 						Operator(`contains`).
-						Value([]string{r.FilterVal}).
+						Value([]string{filterVal}).
 						Build(),
 				}).
 				Build()).
@@ -158,7 +162,8 @@ func (s *SheetServiceImpl) GetRecord(ctx context.Context, r request.GetAppTableR
 		Build()
 
 	// 发起请求
-	resp, err := s.c.GetAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	ctx := context.Background()
+	resp, err := s.c.GetAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -180,24 +185,25 @@ func (s *SheetServiceImpl) GetRecord(ctx context.Context, r request.GetAppTableR
 	return resp, nil
 }
 
-func (s *SheetServiceImpl) GetNormalRecord(ctx context.Context, r request.GetAppTableRecordReq, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
+func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, filterVal string,
+	fieldNames []string, desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
 	bodyBuilder := larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 		ViewId(table.ViewID).
-		FieldNames(r.FieldNames).
+		FieldNames(fieldNames).
 		Sort([]*larkbitable.Sort{
 			larkbitable.NewSortBuilder().
-				FieldName(r.SortOrders).
-				Desc(r.Desc).
+				FieldName(sortOrders).
+				Desc(desc).
 				Build(),
 		}).AutomaticFields(false)
-	if r.FilterName != "" && r.FilterVal != "" {
+	if filterName != "" && filterVal != "" {
 		bodyBuilder.Filter(larkbitable.NewFilterInfoBuilder().
 			Conjunction(`and`).
 			Conditions([]*larkbitable.Condition{
 				larkbitable.NewConditionBuilder().
-					FieldName(r.FilterName).
+					FieldName(filterName).
 					Operator(`contains`).
-					Value([]string{r.FilterVal}).
+					Value([]string{filterVal}).
 					Build(),
 			}).
 			Build())
@@ -207,13 +213,14 @@ func (s *SheetServiceImpl) GetNormalRecord(ctx context.Context, r request.GetApp
 		AppToken(s.cfg.AppToken).
 		TableId(table.TableID).
 		UserIdType(`open_id`).
-		PageToken(r.PageToken). // 分页参数,第一次不需要
-		PageSize(20).           // 分页大小，先默认20
+		PageToken(pageToken). // 分页参数,第一次不需要
+		PageSize(20).         // 分页大小，先默认20
 		Body(bodyBuilder.Build()).
 		Build()
 
 	// 发起请求
-	resp, err := s.c.GetAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	ctx := context.Background()
+	resp, err := s.c.GetAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -235,25 +242,21 @@ func (s *SheetServiceImpl) GetNormalRecord(ctx context.Context, r request.GetApp
 	return resp, nil
 }
 
-func (s *SheetServiceImpl) CreateRecord(ctx context.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error) {
-	// 填充fields
-	if r.Fields == nil {
-		r.Fields = make(map[string]interface{})
-	}
-	fillFields(&r)
-
+func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{},
+	content, problemType string, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(s.cfg.AppToken).
 		TableId(table.TableID).
-		IgnoreConsistencyCheck(r.IgnoreConsistencyCheck).
+		IgnoreConsistencyCheck(ignoreConsistencyCheck).
 		AppTableRecord(larkbitable.NewAppTableRecordBuilder().
-			Fields(r.Fields).
+			Fields(fields).
 			Build()).
 		Build()
 
 	// 发起请求
-	resp, err := s.c.CreateAppTableRecord(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	ctx := context.Background()
+	resp, err := s.c.CreateAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -286,10 +289,10 @@ func (s *SheetServiceImpl) CreateRecord(ctx context.Context, r request.CreateApp
 
 			// 生成content
 			// 反馈内容
-			s.bcfg.Content.Data.TemplateVariable.FeedbackContent = r.Content
+			s.bcfg.Content.Data.TemplateVariable.FeedbackContent = content
 
 			// 反馈类型
-			s.bcfg.Content.Data.TemplateVariable.FeedbackType = r.ProblemType
+			s.bcfg.Content.Data.TemplateVariable.FeedbackType = problemType
 
 			// 反馈来源使用配置表格的名字
 			s.bcfg.Content.Data.TemplateVariable.FeedbackSource = s.cfg.Tables[uc.TableID].Name
@@ -304,14 +307,14 @@ func (s *SheetServiceImpl) CreateRecord(ctx context.Context, r request.CreateApp
 			}
 
 			// 批量发送 群组通知
-			if err := s.SendBatchGroupNotice(context.Background(), string(contentBytes)); err != nil {
+			if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
 				s.log.Error("SendBatchGroupNotice failed",
 					logger.String("error", err.Error()),
 				)
 			}
 
 			// 批量发送 个人通知
-			if err := s.SendBatchNotice(context.Background(), string(contentBytes)); err != nil {
+			if err := s.SendBatchNotice(string(contentBytes)); err != nil {
 				s.log.Error("SendBatchNotice failed",
 					logger.String("error", err.Error()),
 				)
@@ -324,13 +327,13 @@ func (s *SheetServiceImpl) CreateRecord(ctx context.Context, r request.CreateApp
 
 // SendBatchNotice  发送通知
 // 批量发送给个人通知
-func (s *SheetServiceImpl) SendBatchNotice(c context.Context, content string) error {
+func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
 	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
 
 	// 创建errgroup 接受错误
-	g, ctx := errgroup.WithContext(c)
+	g, ctx := errgroup.WithContext(context.Background())
 
 	// 根据open_id发送消息
 	for _, old := range s.bcfg.OpenIDs {
@@ -379,13 +382,13 @@ func (s *SheetServiceImpl) SendBatchNotice(c context.Context, content string) er
 
 // SendBatchGroupNotice 发送群组通知
 // 支持批量发送
-func (s *SheetServiceImpl) SendBatchGroupNotice(c context.Context, content string) error {
+func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
 	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
 
 	// 创建errgroup 接受错误
-	g, ctx := errgroup.WithContext(c)
+	g, ctx := errgroup.WithContext(context.Background())
 
 	// 根据chat_id发送消息
 	for _, old := range s.bcfg.ChatIDs {
@@ -428,14 +431,15 @@ func (s *SheetServiceImpl) SendBatchGroupNotice(c context.Context, content strin
 	return g.Wait()
 }
 
-func (s *SheetServiceImpl) GetPhotoUrl(ctx context.Context, r request.GetPhotoUrlReq) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
+func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
 	// 创建请求对象
 	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
-		FileTokens(r.FileTokens).
+		FileTokens(fileTokens).
 		Build()
 
 	// 发起请求
-	resp, err := s.c.GetPhotoUrl(context.Background(), req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	ctx := context.Background()
+	resp, err := s.c.GetPhotoUrl(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
 
 	// 处理错误
 	if err != nil {
@@ -457,10 +461,9 @@ func (s *SheetServiceImpl) GetPhotoUrl(ctx context.Context, r request.GetPhotoUr
 	return resp, nil
 }
 
-// 填充filed的工具函数
+// FillFields 填充filed的工具函数
 // 使用反射生成中文字段
-func fillFields(req *request.CreateAppTableRecordReq) {
-
+func FillFields(req *request.CreateAppTableRecordReq) {
 	// 自动填充的
 	var loc, _ = time.LoadLocation("Asia/Shanghai")
 	req.SubmitTIme = time.Now().In(loc).UnixMilli() // 日期是需要时间戳的 // 毫秒级别的

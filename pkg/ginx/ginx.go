@@ -31,7 +31,7 @@ func WrapClaimsAndReq[Req any](fn func(*gin.Context, Req, ijwt.UserClaims) (resp
 			return
 		}
 
-		claims, err := GetClaims(ctx)
+		claims, err := GetClaims(ctx) // 这一步只是简单的解析 token
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, response.Response{
 				Code:    http.StatusUnauthorized,
@@ -123,7 +123,7 @@ func WrapClaims(fn func(*gin.Context, ijwt.UserClaims) (response.Response, error
 			return
 		}
 
-		claims, err := GetClaims(ctx)
+		claims, err := GetClaims(ctx) // 这一步只是简单的解析 token
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, response.Response{
 				Code:    http.StatusUnauthorized,

@@ -45,10 +45,7 @@ func (l *Like) AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims
 	table := l.tableCfg.Tables[uc.NormalTableID]
 	err := l.l.AddLikeTask(l.tableCfg.AppToken, table.TableID, r.RecordID, r.UserID, r.IsLike, r.Action)
 	if err != nil {
-		return response.Response{
-			Code:    400,
-			Message: "添加点赞任务失败",
-		}, err
+		return response.Response{}, err
 	}
 	return response.Response{
 		Code:    200,

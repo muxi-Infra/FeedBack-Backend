@@ -33,9 +33,16 @@ go.work.sum
 
 *_test.go
 /.idea
-.DS_Store
+/.vscode
 config/config.yaml
 config/feedback-config.yaml.json
 feedback-config.yaml.json
 
 /tmp
+
+# OS General
+Thumbs.db
+.DS_Store
+
+# log file
+logs/*.log

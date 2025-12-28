@@ -3,9 +3,10 @@ package middleware
 import (
 	"errors"
 
+	"strings"
+
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 )
