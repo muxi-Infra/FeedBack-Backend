@@ -37,6 +37,7 @@ go.work.sum
 config/config.yaml
 config/feedback-config.yaml.json
 feedback-config.yaml.json
+/data/configCache
 
 /tmp
 
