@@ -35,7 +35,7 @@
 - 错误码必须为 6 位（例如：100001）。
 - 只能在已有错误码后追加新错误码，禁止在中间插入，否则会因为使用 `iota` 导致历史错误码含义混乱。
 
-详细错误码请参考 [错误码文档](https://github.com/muxi-Infra/FeedBack-Backend/errs/README.md)。
+详细错误码请参考 [错误码文档](https://github.com/muxi-Infra/FeedBack-Backend/blob/main/errs/README.md)。
 
 ---
 
@@ -44,4 +44,5 @@
 1. 优化错误处理与日志记录逻辑。
 2. 生成 log 追踪 id。
 3. 优化架构，避免层级之间的循环依赖与耦合。
-4. 完善单元测试与集成测试。
+4. 表格配置优化（飞书和配置文件之间的协调）
+5. token 重新包装里面的内容
