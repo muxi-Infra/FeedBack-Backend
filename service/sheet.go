@@ -39,18 +39,16 @@ type SheetServiceImpl struct {
 	likeDao dao.Like
 	c       feishu.Client
 	log     logger.Logger
-	atp     AuthTokenProvider
 	cfg     *config.AppTable
 	bcfg    *config.BatchNoticeConfig
 	Testing bool
 }
 
-func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, atp AuthTokenProvider, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) SheetService {
+func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) SheetService {
 	return &SheetServiceImpl{
 		likeDao: likeDao,
 		c:       c,
 		log:     log,
-		atp:     atp,
 		cfg:     cfg,
 		bcfg:    bcfg,
 		Testing: false,
@@ -72,7 +70,7 @@ func (s *SheetServiceImpl) CreateAPP(name, folderToken string) (*larkbitable.Cre
 
 	// 发起请求
 	ctx := context.Background()
-	resp, err := s.c.CreateAPP(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.CreateAPP(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -107,7 +105,7 @@ func (s *SheetServiceImpl) CopyAPP(appToken, name, folderToken, timeZone string,
 		Build()
 
 	ctx := context.Background()
-	resp, err := s.c.CopyAPP(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.CopyAPP(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -163,7 +161,7 @@ func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVa
 
 	// 发起请求
 	ctx := context.Background()
-	resp, err := s.c.GetAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.GetAppTableRecord(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -220,7 +218,7 @@ func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, fi
 
 	// 发起请求
 	ctx := context.Background()
-	resp, err := s.c.GetAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.GetAppTableRecord(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -256,7 +254,7 @@ func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[
 
 	// 发起请求
 	ctx := context.Background()
-	resp, err := s.c.CreateAppTableRecord(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.CreateAppTableRecord(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -357,7 +355,7 @@ func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 				Build()
 
 			// 发起请求
-			resp, err := s.c.SendNotice(context.Background(), req, larkcore.WithTenantAccessToken(s.atp.GetTenantAccessToken()))
+			resp, err := s.c.SendNotice(context.Background(), req)
 
 			// 处理错误
 			if err != nil {
@@ -411,7 +409,7 @@ func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 				Build()
 
 			// 发起请求
-			resp, err := s.c.SendNotice(context.Background(), req, larkcore.WithTenantAccessToken(s.atp.GetTenantAccessToken()))
+			resp, err := s.c.SendNotice(context.Background(), req)
 
 			if err != nil {
 				return fmt.Errorf("send to name [%s] chat_id [%s] failed: %w", name, chatId, err)
@@ -439,7 +437,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 
 	// 发起请求
 	ctx := context.Background()
-	resp, err := s.c.GetPhotoUrl(ctx, req, larkcore.WithUserAccessToken(s.atp.GetAccessToken()))
+	resp, err := s.c.GetPhotoUrl(ctx, req)
 
 	// 处理错误
 	if err != nil {
@@ -468,6 +466,7 @@ func FillFields(req *request.CreateAppTableRecordReq) {
 	var loc, _ = time.LoadLocation("Asia/Shanghai")
 	req.SubmitTIme = time.Now().In(loc).UnixMilli() // 日期是需要时间戳的 // 毫秒级别的
 	req.Status = "处理中"
+	req.Fields = make(map[string]interface{})
 
 	val := reflect.ValueOf(req).Elem()
 	valType := val.Type()

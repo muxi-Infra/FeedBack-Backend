@@ -1,22 +1,14 @@
 package controller
 
 import (
-	"context"
 	"fmt"
-	"log"
-	"math/rand"
-	"net/http"
-
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
-	"github.com/muxi-Infra/FeedBack-Backend/service"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/oauth2"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -24,118 +16,14 @@ type Oauth struct {
 	jwtHandler *ijwt.JWT
 	group      *singleflight.Group
 	tableCfg   *config.AppTable
-	ts         service.AuthService
 }
 
-func NewOauth(jwtHandler *ijwt.JWT, tokenService service.AuthService, tableCfg *config.AppTable) *Oauth {
+func NewOauth(jwtHandler *ijwt.JWT, tableCfg *config.AppTable) *Oauth {
 	return &Oauth{
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
 		tableCfg:   tableCfg,
-		ts:         tokenService,
 	}
-}
-
-// IndexController godoc
-func (o Oauth) IndexController(c *gin.Context) {
-	c.Header("Content-Type", "text/html; charset=utf-8")
-	var username string
-	session := sessions.Default(c)
-	if session.Get("user") != nil {
-		username = session.Get("user").(string)
-	}
-	html := fmt.Sprintf(`<html><head><style>body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;display:flex;justify-content:center;align-items:center;height:100vh}.container{text-align:center;background:#fff;padding:30px;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1)}a{padding:10px 20px;font-size:16px;color:#fff;background:#007bff;border-radius:5px;text-decoration:none;transition:0.3s}a:hover{background:#0056b3}}</style></head><body><div class="container"><h2>欢迎%s！</h2><a href="/login">使用飞书登录</a></div></body></html>`, username)
-	c.String(http.StatusOK, html)
-}
-
-// LoginController godoc
-func (o Oauth) LoginController(c *gin.Context) {
-	session := sessions.Default(c)
-
-	// 生成随机 state 字符串，你也可以用其他有意义的信息来构建 state
-	state := fmt.Sprintf("%d", rand.Int())
-	// 将 state 存入 session 中
-	session.Set("state", state)
-	// 生成 PKCE 需要的 code verifier
-	verifier := oauth2.GenerateVerifier()
-	// 将 code verifier 存入 session 中
-	session.Set("code_verifier", verifier)
-	session.Save()
-
-	url := o.ts.GetLoginURL(state, verifier)
-
-	// 用户点击登录时，重定向到授权页面
-	c.Redirect(http.StatusTemporaryRedirect, url)
-}
-
-// OauthCallbackController godoc
-func (o Oauth) OauthCallbackController(c *gin.Context) (response.Response, error) {
-	session := sessions.Default(c)
-	ctx := context.Background()
-
-	// 从 session 中获取 state
-	expectedState := session.Get("state")
-	state := c.Query("state")
-
-	// 如果 state 不匹配，说明是 CSRF 攻击，拒绝处理
-	if state != expectedState {
-		log.Printf("invalid oauth state, expected '%s', got '%s'\n", expectedState, state)
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{},
-			errs.FeishuOauthInvalidError(fmt.Errorf("invalid oauth state, expected '%s', got '%s'", expectedState, state))
-	}
-
-	code := c.Query("code")
-
-	// 特殊测试，获取 code 调试 oldtoken
-	//test := true
-	//if test {
-	//	return response.Response{
-	//		Code:    0,
-	//		Message: "get old code success",
-	//		Data:    code,
-	//	}, nil
-	//}
-
-	// 如果 code 为空，说明用户拒绝了授权
-	if code == "" {
-		log.Printf("error: %s", c.Query("error"))
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{},
-			errs.FeishuAuthorizationDeniedError(fmt.Errorf("authorization denied, error: %s", c.Query("error")))
-	}
-
-	codeVerifier, _ := session.Get("code_verifier").(string)
-	// 使用获取到的 code 获取 token
-	token, err := o.ts.Code2Token(ctx, code, codeVerifier)
-	if err != nil {
-		log.Printf("oauthConfig.Exchange() failed with '%s'\n", err)
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{},
-			errs.FeishuOauthConfigChangeError(fmt.Errorf("oauthConfig.Exchange() failed with '%s'\n", err))
-	}
-
-	// 直接返回 token 信息（JSON 格式）
-	//return response.Response{
-	//	Code:    0,
-	//	Message: "Success",
-	//	Data:    token,
-	//}, nil
-
-	user, err := o.ts.GetUserInfoByToken(ctx, token)
-	if err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-		return response.Response{}, err
-	}
-
-	// 后续可以用获取到的用户信息构建登录态，此处仅为示例，请勿直接使用
-	session.Set("user", user.Data.Name)
-	session.Save()
-	return response.Response{
-		Code:    0,
-		Message: "Success",
-		Data:    token,
-	}, nil
 }
 
 // GetToken godoc
@@ -166,29 +54,5 @@ func (o Oauth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.
 		Data: map[string]string{
 			"access_token": token,
 		},
-	}, nil
-}
-
-// InitToken 初始化 token
-// InitToken godoc
-//
-//	@Summary		初始化 token 接口
-//	@Description	初始化 token 接口
-//	@Tags			Auth
-//	@Accept			json
-//	@Produce		json
-//	@Param			request	body		request.InitTokenReq	true	"初始化请求参数"
-//	@Success		200		{object}	response.Response		"成功返回初始化结果"
-//	@Failure		400		{object}	response.Response		"请求参数错误"
-//	@Failure		500		{object}	response.Response		"服务器内部错误"
-//	@Router			/init_token [post]
-func (o Oauth) InitToken(c *gin.Context, r request.InitTokenReq) (response.Response, error) {
-	// 启动定时刷新 token 协程
-	go o.ts.StartRefresh(r.AccessToken, r.RefreshToken)
-
-	return response.Response{
-		Code:    0,
-		Message: "Success",
-		Data:    nil,
 	}, nil
 }
