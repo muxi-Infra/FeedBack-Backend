@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
-	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	LoggerMock "github.com/muxi-Infra/FeedBack-Backend/pkg/logger/mock"
 	ServiceMock "github.com/muxi-Infra/FeedBack-Backend/service/mock"
@@ -24,23 +23,10 @@ func NewMockSheet(crtl *gomock.Controller) (*Sheet, *ServiceMock.MockSheetServic
 	mockSheetService := ServiceMock.NewMockSheetService(crtl)
 	mockLogger := LoggerMock.NewMockLogger(crtl)
 
-	// 创建一个 mock 的 AppTable 对象
-	table := make(map[string]config.Table)
-	table["mock-table-identity"] = config.Table{
-		Name:    "mock-table-identity",
-		TableID: "mock-table-identity",
-		ViewID:  "mock-table-identity",
-	}
-
-	mockAppTableConfig := &config.AppTable{
-		AppToken: "mock-app-token",
-		Tables:   table,
-	}
-
 	return &Sheet{
 		log: mockLogger,
-		cfg: mockAppTableConfig,
-		s:   mockSheetService,
+
+		s: mockSheetService,
 	}, mockSheetService, mockLogger
 }
 
@@ -256,7 +242,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					CreateRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					CreateRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(&larkbitable.CreateAppTableRecordResp{
 						Data: &larkbitable.CreateAppTableRecordRespData{
 							Record: &larkbitable.AppTableRecord{
@@ -347,7 +333,7 @@ func TestGetAppTableRecord(t *testing.T) {
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(&larkbitable.SearchAppTableRecordResp{
 						Data: &larkbitable.SearchAppTableRecordRespData{
 							Total: intPtr(0),
@@ -438,7 +424,7 @@ func TestGetNormalRecord(t *testing.T) {
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					GetNormalRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					GetNormalRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(&larkbitable.SearchAppTableRecordResp{
 						Data: &larkbitable.SearchAppTableRecordRespData{
 							Total: intPtr(0),

@@ -5,6 +5,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 )
 
-func InitClient(conf config.ClientConfig) *lark.Client {
+func InitClient(conf *config.ClientConfig) *lark.Client {
 	return lark.NewClient(conf.AppID, conf.AppSecret)
 }

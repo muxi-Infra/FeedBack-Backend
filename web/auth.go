@@ -12,6 +12,7 @@ import (
 
 type OauthHandler interface {
 	GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error)
+	RefreshTableConfig(c *gin.Context) (response.Response, error)
 }
 
 func RegisterOauthRouter(r *gin.Engine, oh OauthHandler) {
@@ -20,4 +21,5 @@ func RegisterOauthRouter(r *gin.Engine, oh OauthHandler) {
 	r.Use(sessions.Sessions("mysession", store))
 
 	r.POST("/get_token", ginx.WrapReq(oh.GetToken))
+	r.GET("/refresh_table_config", ginx.Wrap(oh.RefreshTableConfig))
 }

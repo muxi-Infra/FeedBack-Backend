@@ -15,7 +15,7 @@ import (
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	response.Response{data=response.HealthCheckResponse}	"成功返回健康检查结果"
-//	@Failure		500	{object}	response.Response{data=string}	"服务器内部错误"
+//	@Failure		500	{object}	response.Response{data=string}							"服务器内部错误"
 //	@Router			/health [get]
 func HealthCheck(c *gin.Context) (response.Response, error) {
 	resp := service.HealthCheck()

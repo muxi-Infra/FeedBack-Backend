@@ -43,14 +43,15 @@ func InitApp() (*App, error) {
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
 	feishuClient := feishu.NewClient(larkClient)
-	appTable := config.NewAppTable()
 	batchNoticeConfig := config.NewBatchNoticeConfig()
-	sheetService := service.NewSheetService(like, feishuClient, loggerLogger, appTable, batchNoticeConfig)
-	sheet := controller.NewSheet(loggerLogger, sheetService, appTable)
-	oauth := controller.NewOauth(jwt, appTable)
+	sheetService := service.NewSheetService(like, feishuClient, loggerLogger, batchNoticeConfig)
+	sheet := controller.NewSheet(loggerLogger, sheetService)
+	baseTable := config.NewBaseTable()
+	tableService := service.NewTableService(baseTable, feishuClient, loggerLogger)
+	auth := controller.NewOauth(jwt, tableService)
 	likeService := service.NewLikeService(like, feishuClient, loggerLogger)
-	controllerLike := controller.NewLike(likeService, appTable, loggerLogger)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, sheet, oauth, controllerLike)
+	controllerLike := controller.NewLike(likeService, loggerLogger)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, sheet, auth, controllerLike)
 	app := &App{
 		r: engine,
 	}

@@ -16,7 +16,7 @@ import (
 var ProviderSet = wire.NewSet(
 	NewGinEngine,
 	controller.NewOauth,
-	wire.Bind(new(OauthHandler), new(*controller.Oauth)),
+	wire.Bind(new(OauthHandler), new(*controller.Auth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
 	controller.NewLike,
