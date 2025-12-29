@@ -43,6 +43,7 @@ func (am *AuthMiddleware) MiddlewareFunc() gin.HandlerFunc {
 				Message: "认证头部缺失",
 				Data:    nil,
 			})
+			return
 		}
 		// Bearer Token 处理
 		segs := strings.Split(authCode, " ")
