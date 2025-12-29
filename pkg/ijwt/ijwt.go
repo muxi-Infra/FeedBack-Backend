@@ -34,8 +34,8 @@ func NewJWT(conf config.JWTConfig) *JWT {
 type UserClaims struct {
 	jwt.RegisteredClaims        // 内嵌标准的声明
 	TableIdentity        string `json:"table_identity"` // 人为规定的用于区分不同的飞书表格的唯一标识
-	TableName            string `json:"table_name"`     // 人为规定的用于展示的表格名称
-	TableToken           string `json:"table_token"`    // 用于和 tableId , viewId 确定飞书表格
+	TableName            string `json:"table_name"` // 人为规定的用于展示的表格名称
+	TableToken           string `json:"table_token"` // 用于和 tableId , viewId 确定飞书表格
 	TableId              string `json:"table_id"`
 	ViewId               string `json:"view_id"`
 }
@@ -49,7 +49,7 @@ func (j *JWT) SetJWTToken(tableIdentify, tableName, tableToken, tableId, viewId 
 	if err != nil {
 		return "", fmt.Errorf("tableId 加密失败：%w", err)
 	}
-	enViewId, err := j.encryptString(tableId)
+	enViewId, err := j.encryptString(viewId)
 	if err != nil {
 		return "", fmt.Errorf("viewId 加密失败：%w", err)
 	}
