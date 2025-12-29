@@ -22,7 +22,7 @@ var ProviderSet = wire.NewSet(
 	NewClientConfig,
 	NewJWTConfig,
 	NewMiddlewareConfig,
-	NewAppTable,
+	NewBaseTable,
 	NewBatchNoticeConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
@@ -145,10 +145,14 @@ type ClientConfig struct {
 	AppSecret string `yaml:"appSecret"`
 }
 
-func NewClientConfig() ClientConfig {
-	clientConfig := ClientConfig{
-		AppID:     vp.GetString("client.appid"),
-		AppSecret: vp.GetString("client.appsecret"),
+func NewClientConfig() *ClientConfig {
+	clientConfig := &ClientConfig{}
+	err := vp.UnmarshalKey("client", &clientConfig)
+	if err != nil {
+		panic(err)
+	}
+	if clientConfig.AppID == "" || clientConfig.AppSecret == "" {
+		panic("client 配置无效: appID 和 appSecret 不能为空")
 	}
 
 	//fmt.Printf("clientConfig :%v\n", clientConfig)
@@ -162,10 +166,16 @@ type JWTConfig struct {
 }
 
 func NewJWTConfig() JWTConfig {
-	jwtConf := JWTConfig{
-		SecretKey: vp.GetString("jwt.secretkey"),
-		EncKey:    vp.GetString("jwt.enckey"),
-		Timeout:   vp.GetInt("jwt.timeout"),
+	jwtConf := JWTConfig{}
+	err := vp.UnmarshalKey("jwt", &jwtConf)
+	if err != nil {
+		panic(err)
+	}
+	if jwtConf.SecretKey == "" || jwtConf.EncKey == "" {
+		panic("jwt 配置无效: secretKey, encKey 不能为空")
+	}
+	if jwtConf.Timeout <= 0 {
+		panic("jwt 配置无效: timeout 必须大于 0")
 	}
 
 	//fmt.Printf("jwtConf :%v\n", jwtConf)
@@ -194,37 +204,25 @@ func NewMiddlewareConfig() *MiddlewareConfig {
 	return mc
 }
 
-type AppTable struct {
-	AppToken string           `yaml:"app_token" mapstructure:"app_token"`
-	Tables   map[string]Table `yaml:"tables" mapstructure:"tables"` // 使用 map 方便获取
+type BaseTable struct {
+	TableToken string `yaml:"tableToken"`
+	TableID    string `yaml:"tableId"`
+	ViewID     string `yaml:"viewId"`
 }
 
-type Table struct {
-	Name    string `yaml:"name" mapstructure:"name"`
-	TableID string `yaml:"table_id" mapstructure:"table_id"`
-	ViewID  string `yaml:"view_id" mapstructure:"view_id"`
-}
-
-func NewAppTable() *AppTable {
-	appToken := vp.GetString("app_table.app_token")
-	tables := make(map[string]Table)
-	rawTables := vp.GetStringMap("app_table.tables")
-	for i, v := range rawTables {
-		item := v.(map[string]interface{})
-		tables[i] = Table{
-			Name:    item["name"].(string),
-			TableID: item["table_id"].(string),
-			ViewID:  item["view_id"].(string),
-		}
+func NewBaseTable() *BaseTable {
+	baseTableCfg := &BaseTable{}
+	err := vp.UnmarshalKey("baseTable", &baseTableCfg)
+	if err != nil {
+		panic(err)
+	}
+	if baseTableCfg.TableToken == "" || baseTableCfg.TableID == "" || baseTableCfg.ViewID == "" {
+		fmt.Println(baseTableCfg)
+		panic("base_table 配置无效: tableToken, tableID, 和 viewID 不能为空")
 	}
 
-	appTable := &AppTable{
-		AppToken: appToken,
-		Tables:   tables,
-	}
-
-	//fmt.Printf("appTable :%v\n", appTable)
-	return appTable
+	//fmt.Printf("baseTable :%v\n", baseTable)
+	return baseTableCfg
 }
 
 type BatchNoticeConfig struct {
@@ -274,6 +272,11 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 			},
 		},
 	}
+
+	if batchNoticeConfig.Content.Type == "" || batchNoticeConfig.Content.Data.TemplateID == "" {
+		panic("batch_notice 配置无效: content.type 和 content.data.template_id 不能为空")
+	}
+
 	//fmt.Printf("batchNoticeConfig :%v\n", batchNoticeConfig)
 	return batchNoticeConfig
 }
@@ -320,13 +323,12 @@ func NewRedisConfig() *RedisConfig {
 		Password: vp.GetString("redis.password"),
 		DB:       vp.GetInt("redis.db"),
 	}
+	if redisConfig.Addr == "" {
+		panic("redis 配置无效: addr 不能为空")
+	}
+
 	//fmt.Printf("redisConfig :%v\n", redisConfig)
 	return redisConfig
-}
-
-func (t *AppTable) IsValidTableIdentity(tableIdentity string) bool {
-	_, ok := t.Tables[tableIdentity]
-	return ok
 }
 
 type LogConfig struct {
@@ -342,6 +344,9 @@ func NewLogConfig() *LogConfig {
 	err := vp.UnmarshalKey("log", &cfg)
 	if err != nil {
 		panic(fmt.Sprintf("无法解析日志配置: %v", err))
+	}
+	if cfg.File == "" {
+		panic("日志配置无效: file 不能为空")
 	}
 
 	return cfg

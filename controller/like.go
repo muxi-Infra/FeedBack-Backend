@@ -7,23 +7,20 @@ import (
 
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
-	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 )
 
 type Like struct {
-	l        service.LikeService
-	tableCfg *config.AppTable
-	log      logger.Logger
+	l   service.LikeService
+	log logger.Logger
 }
 
-func NewLike(l service.LikeService, tableCfg *config.AppTable, log logger.Logger) *Like {
+func NewLike(l service.LikeService, log logger.Logger) *Like {
 	var like = &Like{
-		l:        l,
-		tableCfg: tableCfg,
-		log:      log,
+		l:   l,
+		log: log,
 	}
 	go like.HandleLikeTask()
 	go like.MoveRetry2Pending()
@@ -32,18 +29,18 @@ func NewLike(l service.LikeService, tableCfg *config.AppTable, log logger.Logger
 }
 
 // AddLikeTask 添加点赞任务
-// @Summary 添加点赞任务
-// @Description 添加一个点赞或取消点赞的任务
-// @Tags 点赞
-// @Accept json
-// @Produce json
-// @Param request body request.LikeReq true "点赞请求参数"
-// @Success 200 {object} response.Response "添加点赞任务成功"
-// @Failure 400 {object} response.Response "添加点赞任务失败"
-// @Router /like/addtask [post]
+//
+//	@Summary		添加点赞任务
+//	@Description	添加一个点赞或取消点赞的任务
+//	@Tags			点赞
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		request.LikeReq		true	"点赞请求参数"
+//	@Success		200		{object}	response.Response	"添加点赞任务成功"
+//	@Failure		400		{object}	response.Response	"添加点赞任务失败"
+//	@Router			/like/addtask [post]
 func (l *Like) AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims) (response.Response, error) {
-	table := l.tableCfg.Tables[uc.TableIdentity]
-	err := l.l.AddLikeTask(l.tableCfg.AppToken, table.TableID, r.RecordID, r.UserID, r.IsLike, r.Action)
+	err := l.l.AddLikeTask(uc.TableToken, uc.TableId, r.RecordID, r.UserID, r.IsLike, r.Action)
 	if err != nil {
 		return response.Response{}, err
 	}

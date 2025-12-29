@@ -1,15 +1,12 @@
 package controller
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
-	"github.com/muxi-Infra/FeedBack-Backend/config"
-	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
@@ -18,14 +15,12 @@ import (
 type Sheet struct {
 	log logger.Logger
 	s   service.SheetService
-	cfg *config.AppTable
 }
 
-func NewSheet(log logger.Logger, s service.SheetService, cfg *config.AppTable) *Sheet {
+func NewSheet(log logger.Logger, s service.SheetService) *Sheet {
 	return &Sheet{
 		log: log,
 		s:   s,
-		cfg: cfg,
 	}
 }
 
@@ -98,23 +93,16 @@ func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/createrecord [post]
 func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	// 获取表ID
-	table, ok := f.cfg.Tables[uc.TableIdentity]
-	if !ok {
-		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("table identity %s not found", uc.TableIdentity))
-	}
-
 	// 组装请求参数
 	service.FillFields(&r)
 
 	// 发起请求
 	resp, err := f.s.CreateRecord(r.IgnoreConsistencyCheck, r.Fields, r.Content,
-		r.ProblemType, uc, &table)
+		r.ProblemType, uc.TableToken, uc.TableId, uc.TableName)
 	if err != nil {
 		return response.Response{}, err
 	}
-	// 业务处理
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",
@@ -137,19 +125,12 @@ func (f *Sheet) CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRec
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/getrecord [post]
 func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	// 获取表ID
-	table, ok := f.cfg.Tables[uc.TableIdentity]
-	if !ok {
-		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("table identity %s not found", uc.TableIdentity))
-	}
-
 	resp, err := f.s.GetRecord(r.PageToken, r.SortOrders, r.FilterName, r.FilterVal,
-		r.FieldNames, r.Desc, &table)
+		r.FieldNames, r.Desc, uc.TableToken, uc.TableId, uc.ViewId)
 	if err != nil {
 		return response.Response{}, err
 	}
-	// 业务处理
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",
@@ -172,15 +153,8 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/sheet/getnormal [post]
 func (f *Sheet) GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	// 获取表ID
-	table, ok := f.cfg.Tables[uc.TableIdentity]
-	if !ok {
-		return response.Response{},
-			errs.TableIDNotFoundError(fmt.Errorf("normal problem table %s identity not found", uc.TableIdentity))
-	}
-
 	resp, err := f.s.GetNormalRecord(r.PageToken, r.SortOrders, r.FilterName, r.FilterVal,
-		r.FieldNames, r.Desc, &table)
+		r.FieldNames, r.Desc, uc.TableToken, uc.TableId, uc.ViewId)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -250,7 +224,7 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 	if err != nil {
 		return response.Response{}, err
 	}
-	// 业务处理
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",

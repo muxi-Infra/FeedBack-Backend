@@ -15,7 +15,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"golang.org/x/sync/errgroup"
@@ -26,11 +25,11 @@ type SheetService interface {
 	CreateAPP(name, token string) (*larkbitable.CreateAppResp, error)
 	CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error)
 	GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
-		desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
+		desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error)
 	GetNormalRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
-		desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error)
+		desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error)
 	CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{},
-		content, problemType string, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error)
+		content, problemType string, appToken, tableId, viewId string) (*larkbitable.CreateAppTableRecordResp, error)
 	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
 	GetUserLikeRecord(recordID string, userID string) (int, error)
 }
@@ -39,17 +38,15 @@ type SheetServiceImpl struct {
 	likeDao dao.Like
 	c       feishu.Client
 	log     logger.Logger
-	cfg     *config.AppTable
 	bcfg    *config.BatchNoticeConfig
 	Testing bool
 }
 
-func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, cfg *config.AppTable, bcfg *config.BatchNoticeConfig) SheetService {
+func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, bcfg *config.BatchNoticeConfig) SheetService {
 	return &SheetServiceImpl{
 		likeDao: likeDao,
 		c:       c,
 		log:     log,
-		cfg:     cfg,
 		bcfg:    bcfg,
 		Testing: false,
 	}
@@ -128,16 +125,16 @@ func (s *SheetServiceImpl) CopyAPP(appToken, name, folderToken, timeZone string,
 }
 
 func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVal string,
-	fieldNames []string, desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
+	fieldNames []string, desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(s.cfg.AppToken).
-		TableId(table.TableID).
+		AppToken(appToken).
+		TableId(tableId).
 		UserIdType(`open_id`).
 		PageToken(pageToken). // 分页参数,第一次不需要
 		PageSize(20).         // 分页大小，先默认20
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(table.ViewID).
+			ViewId(viewId).
 			FieldNames(fieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
@@ -184,9 +181,9 @@ func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVa
 }
 
 func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, filterVal string,
-	fieldNames []string, desc bool, table *config.Table) (*larkbitable.SearchAppTableRecordResp, error) {
+	fieldNames []string, desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error) {
 	bodyBuilder := larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-		ViewId(table.ViewID).
+		ViewId(viewId).
 		FieldNames(fieldNames).
 		Sort([]*larkbitable.Sort{
 			larkbitable.NewSortBuilder().
@@ -208,8 +205,8 @@ func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, fi
 	}
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(s.cfg.AppToken).
-		TableId(table.TableID).
+		AppToken(appToken).
+		TableId(tableId).
 		UserIdType(`open_id`).
 		PageToken(pageToken). // 分页参数,第一次不需要
 		PageSize(20).         // 分页大小，先默认20
@@ -241,11 +238,11 @@ func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, fi
 }
 
 func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{},
-	content, problemType string, uc ijwt.UserClaims, table *config.Table) (*larkbitable.CreateAppTableRecordResp, error) {
+	content, problemType string, appToken, tableId, tableName string) (*larkbitable.CreateAppTableRecordResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
-		AppToken(s.cfg.AppToken).
-		TableId(table.TableID).
+		AppToken(appToken).
+		TableId(tableId).
 		IgnoreConsistencyCheck(ignoreConsistencyCheck).
 		AppTableRecord(larkbitable.NewAppTableRecordBuilder().
 			Fields(fields).
@@ -293,8 +290,7 @@ func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[
 			s.bcfg.Content.Data.TemplateVariable.FeedbackType = problemType
 
 			// 反馈来源使用配置表格的名字
-			s.bcfg.Content.Data.TemplateVariable.FeedbackSource = s.cfg.Tables[uc.TableIdentity].Name
-
+			s.bcfg.Content.Data.TemplateVariable.FeedbackSource = tableName
 			// 构造content
 			contentBytes, err := json.Marshal(s.bcfg.Content)
 			if err != nil {
