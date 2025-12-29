@@ -26,11 +26,12 @@
 ### 业务（20xxxx）
 - `RecordNotFoundCode = 200000` - 记录不存在 - HTTP 404
 - `AddPendingLikeTaskCode = 200001` - 添加待处理点赞任务失败 - HTTP 500
+- `TableIdentifyNotFoundCode = 200002` - 表格 ID 未找到 - HTTP 404
+- `TokenGeneratedErrorCode = 200003` - Token 生成失败 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500
 - `FeishuResponseErrorCode = 300001` - 飞书服务返回错误 - HTTP 500
-- `ReadResponseErrorCode = 300002` - 读取响应流错误 - HTTP 500
 
 > 说明：上表为当前源码中定义的完整错误码（截止到当前提交）。若源码发生变更，请以源码为准并同步更新本文件。
 
