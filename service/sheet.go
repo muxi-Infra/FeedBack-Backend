@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
@@ -24,7 +25,7 @@ import (
 
 type SheetService interface {
 	GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
-		desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error)
+		desc bool, appToken, tableId, viewId string) (*SearchRecordsResp, error)
 	GetNormalRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
 		desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error)
 	CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{},
@@ -56,7 +57,7 @@ func (s *SheetServiceImpl) GetUserLikeRecord(recordID string, userID string) (in
 }
 
 func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVal string,
-	fieldNames []string, desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error) {
+	fieldNames []string, desc bool, appToken, tableId, viewId string) (*SearchRecordsResp, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(appToken).
@@ -96,7 +97,7 @@ func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVa
 		s.log.Error("GetAppTableRecord 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return resp, errs.FeishuRequestError(err)
+		return nil, errs.FeishuRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -105,10 +106,13 @@ func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVa
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.FeishuResponseError(err)
+		return nil, errs.FeishuResponseError(err)
 	}
 
-	return resp, nil
+	// 简化相应
+	res := BuildSearchRecordsResp(resp.Data)
+
+	return res, nil
 }
 
 func (s *SheetServiceImpl) GetNormalRecord(pageToken, sortOrders, filterName, filterVal string,
@@ -238,12 +242,12 @@ func (s *SheetServiceImpl) CreateRecord(ignoreConsistencyCheck bool, fields map[
 				)
 			}
 
-			// 批量发送 个人通知
-			if err := s.SendBatchNotice(string(contentBytes)); err != nil {
-				s.log.Error("SendBatchNotice failed",
-					logger.String("error", err.Error()),
-				)
-			}
+			//// 批量发送 个人通知
+			//if err := s.SendBatchNotice(string(contentBytes)); err != nil {
+			//	s.log.Error("SendBatchNotice failed",
+			//		logger.String("error", err.Error()),
+			//	)
+			//}
 		}()
 	}
 
@@ -391,7 +395,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 func FillFields(req *request.CreateAppTableRecordReq) {
 	// 自动填充的
 	var loc, _ = time.LoadLocation("Asia/Shanghai")
-	req.SubmitTIme = time.Now().In(loc).UnixMilli() // 日期是需要时间戳的 // 毫秒级别的
+	req.SubmitTime = time.Now().In(loc).UnixMilli() // 日期是需要时间戳的 // 毫秒级别的
 	req.Status = "处理中"
 	req.Fields = make(map[string]interface{})
 
@@ -429,4 +433,186 @@ func isEmptyValue(v reflect.Value) bool {
 		zero := reflect.Zero(v.Type())
 		return reflect.DeepEqual(v.Interface(), zero.Interface())
 	}
+}
+
+// SearchRecordsResp 简化返回  目前不确定点赞是什么情况，
+type SearchRecordsResp struct {
+	Items     []RecordItem `json:"items,omitempty"`
+	HasMore   bool         `json:"has_more,omitempty"`
+	PageToken string       `json:"page_token,omitempty"`
+	Total     int          `json:"total,omitempty"`
+}
+
+type RecordItem struct {
+	RecordID      string       `json:"record_id,omitempty"`
+	StudentID     string       `json:"student_id"`
+	Contact       string       `json:"contact"`
+	Content       string       `json:"content"`
+	Screenshots   []Screenshot `json:"screenshots"`
+	ProblemType   string       `json:"problem_type"`
+	ProblemSource string       `json:"problem_source"`
+	SubmitTime    float64      `json:"submit_time"`
+	Status        string       `json:"status"`
+}
+
+// Screenshot 截图
+type Screenshot struct {
+	FileToken string  `json:"file_token"`
+	Name      string  `json:"name"`
+	Size      float64 `json:"size"`
+}
+
+func BuildSearchRecordsResp(origin *larkbitable.SearchAppTableRecordRespData) *SearchRecordsResp {
+	if origin == nil {
+		return nil
+	}
+
+	resp := &SearchRecordsResp{
+		Total:     derefInt(origin.Total),
+		HasMore:   derefBool(origin.HasMore),
+		PageToken: derefString(origin.PageToken),
+		Items:     make([]RecordItem, 0, len(origin.Items)),
+	}
+
+	for _, record := range origin.Items {
+		item := RecordItem{
+			RecordID:      derefString(record.RecordId),
+			StudentID:     getStringField(record, "用户ID"),
+			Contact:       getStringField(record, "联系方式（QQ/邮箱）"),
+			Content:       getStringField(record, "反馈内容"),
+			Screenshots:   getScreenshotField(record, "截图"),
+			ProblemType:   getStringField(record, "问题类型"),
+			ProblemSource: getStringField(record, "问题来源"),
+			SubmitTime:    getFloatField(record, "提交时间"),
+			Status:        getStringField(record, "问题状态"),
+		}
+		resp.Items = append(resp.Items, item)
+	}
+
+	return resp
+}
+
+func getStringField(record *larkbitable.AppTableRecord, key string) string {
+	if record == nil || record.Fields == nil {
+		return ""
+	}
+
+	val, ok := record.Fields[key]
+	if !ok || val == nil {
+		return ""
+	}
+
+	switch v := val.(type) {
+	case string:
+		return v
+
+	case []interface{}:
+		if len(v) == 0 {
+			return ""
+		}
+		if m, ok := v[0].(map[string]interface{}); ok {
+			return getStringFromMap(m, "text")
+		}
+		return ""
+
+	case map[string]interface{}:
+		return getStringFromMap(v, "text")
+
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+func getFloatField(record *larkbitable.AppTableRecord, key string) float64 {
+	if record == nil || record.Fields == nil {
+		return 0
+	}
+
+	val, ok := record.Fields[key]
+	if !ok || val == nil {
+		return 0
+	}
+
+	switch v := val.(type) {
+	case float64:
+		return v
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		if err == nil {
+			return f
+		}
+	}
+	return 0
+}
+func getScreenshotField(record *larkbitable.AppTableRecord, key string) []Screenshot {
+	if record == nil || record.Fields == nil {
+		return nil
+	}
+
+	val, ok := record.Fields[key]
+	if !ok || val == nil {
+		return nil
+	}
+
+	arr, ok := val.([]interface{})
+	if !ok || len(arr) == 0 {
+		return nil
+	}
+
+	res := make([]Screenshot, 0, len(arr))
+	for _, elem := range arr {
+		m, ok := elem.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		res = append(res, Screenshot{
+			FileToken: getStringFromMap(m, "file_token"),
+			Name:      getStringFromMap(m, "name"),
+			Size:      getFloatFromMap(m, "size"),
+		})
+	}
+
+	return res
+}
+
+// tools
+// 避免空指针引用
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func derefInt(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
+}
+
+func derefBool(p *bool) bool {
+	if p == nil {
+		return false
+	}
+	return *p
+}
+
+// tool 从 map 中获取
+func getStringFromMap(m map[string]interface{}, key string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func getFloatFromMap(m map[string]interface{}, key string) float64 {
+	if v, ok := m[key]; ok {
+		if f, ok := v.(float64); ok {
+			return f
+		}
+	}
+	return 0
 }

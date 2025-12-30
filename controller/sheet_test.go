@@ -7,6 +7,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	LoggerMock "github.com/muxi-Infra/FeedBack-Backend/pkg/logger/mock"
+	"github.com/muxi-Infra/FeedBack-Backend/service"
 	ServiceMock "github.com/muxi-Infra/FeedBack-Backend/service/mock"
 
 	"github.com/gin-gonic/gin"
@@ -181,10 +182,8 @@ func TestGetAppTableRecord(t *testing.T) {
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
 					GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&larkbitable.SearchAppTableRecordResp{
-						Data: &larkbitable.SearchAppTableRecordRespData{
-							Total: intPtr(0),
-						},
+					Return(&service.SearchRecordsResp{
+						Total: 0,
 					}, nil)
 			},
 			expectedCode:  0,

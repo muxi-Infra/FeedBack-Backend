@@ -21,7 +21,7 @@ type CreateAppTableRecordReq struct {
 	ProblemSource string       `json:"problem_source,omitempty" feishu:"问题来源"`
 
 	// 自动补充
-	SubmitTIme int64  `json:"-" feishu:"提交时间"` // 提交时间
+	SubmitTime int64  `json:"-" feishu:"提交时间"` // 提交时间
 	Status     string `json:"-" feishu:"问题状态"` // "处理中“
 }
 

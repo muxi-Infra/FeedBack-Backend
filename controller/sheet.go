@@ -80,7 +80,7 @@ func (f *Sheet) GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq
 	return response.Response{
 		Code:    0,
 		Message: "Success",
-		Data:    resp.Data,
+		Data:    resp,
 	}, nil
 }
 
