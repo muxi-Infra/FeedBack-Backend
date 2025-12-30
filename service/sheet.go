@@ -7,23 +7,22 @@ import (
 	"reflect"
 	"time"
 
-	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
-	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
+	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
 type SheetService interface {
-	CreateAPP(name, token string) (*larkbitable.CreateAppResp, error)
-	CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error)
 	GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
 		desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error)
 	GetNormalRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string,
@@ -54,74 +53,6 @@ func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, bcfg 
 
 func (s *SheetServiceImpl) GetUserLikeRecord(recordID string, userID string) (int, error) {
 	return s.likeDao.GetUserLikeRecord(recordID, userID)
-}
-
-func (s *SheetServiceImpl) CreateAPP(name, folderToken string) (*larkbitable.CreateAppResp, error) {
-	// 创建请求对象
-	req := larkbitable.NewCreateAppReqBuilder().
-		ReqApp(larkbitable.NewReqAppBuilder().
-			Name(name).
-			FolderToken(folderToken).
-			Build()).
-		Build()
-
-	// 发起请求
-	ctx := context.Background()
-	resp, err := s.c.CreateAPP(ctx, req)
-
-	// 处理错误
-	if err != nil {
-		s.log.Error("CreateApp 调用失败",
-			logger.String("error", err.Error()),
-		)
-		return resp, errs.FeishuRequestError(err)
-	}
-
-	// 服务端错误处理
-	if !resp.Success() {
-		s.log.Error("CreateApp Lark 接口错误",
-			logger.String("request_id", resp.RequestId()),
-			logger.String("error", larkcore.Prettify(resp.CodeError)),
-		)
-		return resp, errs.FeishuResponseError(resp.CodeError)
-	}
-
-	return resp, nil
-}
-
-func (s *SheetServiceImpl) CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error) {
-	// 创建请求对象
-	req := larkbitable.NewCopyAppReqBuilder().
-		AppToken(appToken).
-		Body(larkbitable.NewCopyAppReqBodyBuilder().
-			Name(name).
-			FolderToken(folderToken).
-			WithoutContent(withoutContent).
-			TimeZone(timeZone).
-			Build()).
-		Build()
-
-	ctx := context.Background()
-	resp, err := s.c.CopyAPP(ctx, req)
-
-	// 处理错误
-	if err != nil {
-		s.log.Error("CopyApp 调用失败",
-			logger.String("error", err.Error()),
-		)
-		return resp, errs.FeishuRequestError(err)
-	}
-
-	// 服务端错误处理
-	if !resp.Success() {
-		s.log.Error("CopyApp Lark 接口错误",
-			logger.String("request_id", resp.RequestId()),
-			logger.String("error", larkcore.Prettify(resp.CodeError)),
-		)
-		return resp, errs.FeishuResponseError(resp.CodeError)
-	}
-
-	return resp, nil
 }
 
 func (s *SheetServiceImpl) GetRecord(pageToken, sortOrders, filterName, filterVal string,
@@ -477,7 +408,7 @@ func FillFields(req *request.CreateAppTableRecordReq) {
 
 		value := val.Field(i).Interface()
 
-		// 可选字段不填不加进去
+		// 可选字段不填 不加进去
 		if isEmptyValue(val.Field(i)) {
 			continue
 		}

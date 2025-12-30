@@ -1,18 +1,5 @@
 package request
 
-type CreateAppReq struct {
-	Name        string `json:"name" binding:"required"` // 多维表格app名称
-	FolderToken string `json:"folder_token,omitempty"`  // 可以为空，但是要有 多维表格app归属目录
-}
-
-type CopyAppReq struct {
-	AppToken       string `json:"app_token" binding:"required"` // 需要复制的表格的token
-	Name           string `json:"name" binding:"required"`
-	FolderToken    string `json:"folder_token,omitempty"`       // 可以为空，但是要有
-	WithoutContent bool   `json:"without_content"`              // 是否复制内容
-	TimeZone       string `json:"time_zone" binding:"required"` //时区,例如: Asia/Shanghai
-}
-
 type CreateAppTableRecordReq struct {
 	// 修改为配置，而不是请求体中字段了
 	//AppToken string `json:"app_token" binding:"required"`

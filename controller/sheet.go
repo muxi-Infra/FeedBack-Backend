@@ -24,60 +24,6 @@ func NewSheet(log logger.Logger, s service.SheetService) *Sheet {
 	}
 }
 
-// CreateApp 创建多维表格
-//
-//	@Summary		创建多维表格
-//	@Description	基于给定的名称和文件夹 Token 创建一个新的多维表格应用
-//	@Tags			Sheet
-//	@ID				create-app
-//	@Accept			json
-//	@Produce		json
-//	@Param			Authorization	header		string					true	"Bearer Token"
-//	@Param			request			body		request.CreateAppReq	true	"创建表格请求参数"
-//	@Success		200				{object}	response.Response		"成功返回创建结果"
-//	@Failure		400				{object}	response.Response		"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response		"服务器内部错误"
-//	@Router			/sheet/createapp [post]
-func (f *Sheet) CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserClaims) (response.Response, error) {
-	resp, err := f.s.CreateAPP(r.Name, r.FolderToken)
-	if err != nil {
-		return response.Response{}, err
-	}
-
-	return response.Response{
-		Code:    0,
-		Message: "Success",
-		Data:    resp.Data,
-	}, nil
-}
-
-// CopyApp 从模版复制创建多维表格
-//
-//	@Summary		从模版复制创建多维表格
-//	@Description	基于已有的模板 AppToken 复制创建一个新的多维表格应用
-//	@Tags			Sheet
-//	@ID				copy-app
-//	@Accept			json
-//	@Produce		json
-//	@Param			Authorization	header		string				true	"Bearer Token"
-//	@Param			request			body		request.CopyAppReq	true	"复制表格请求参数"
-//	@Success		200				{object}	response.Response	"成功返回复制结果"
-//	@Failure		400				{object}	response.Response	"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response	"服务器内部错误"
-//	@Router			/sheet/copyapp [post]
-func (f *Sheet) CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims) (response.Response, error) {
-	resp, err := f.s.CopyAPP(r.AppToken, r.Name, r.FolderToken, r.TimeZone, r.WithoutContent)
-	if err != nil {
-		return response.Response{}, err
-	}
-
-	return response.Response{
-		Code:    0,
-		Message: "Success",
-		Data:    resp.Data,
-	}, nil
-}
-
 // CreateAppTableRecord 创建多维表格记录
 //
 //	@Summary		创建多维表格记录
