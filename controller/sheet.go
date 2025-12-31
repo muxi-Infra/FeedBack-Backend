@@ -42,10 +42,10 @@ func (f *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 		Record: r.Record,
 	}
 	tableConfig := DTO.TableConfig{
-		TableName:  uc.TableName,
-		TableToken: uc.TableToken,
-		TableID:    uc.TableId,
-		ViewID:     uc.ViewId,
+		TableName:  &uc.TableName,
+		TableToken: &uc.TableToken,
+		TableID:    &uc.TableId,
+		ViewID:     &uc.ViewId,
 	}
 
 	// 发起请求
@@ -78,14 +78,14 @@ func (f *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 func (f *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	// 组装参数
 	keyField := DTO.TableField{
-		FieldName: r.KeyFieldName,
+		FieldName: &r.KeyFieldName,
 		Value:     r.KeyFieldValue,
 	}
 	tableConfig := DTO.TableConfig{
-		TableName:  uc.TableName,
-		TableToken: uc.TableToken,
-		TableID:    uc.TableId,
-		ViewID:     uc.ViewId,
+		TableName:  &uc.TableName,
+		TableToken: &uc.TableToken,
+		TableID:    &uc.TableId,
+		ViewID:     &uc.ViewId,
 	}
 
 	resp, err := f.s.GetTableRecordReqByKey(keyField, r.RecordNames, r.PageToken, tableConfig)
@@ -117,10 +117,10 @@ func (f *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 func (f *Sheet) GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
 	// 组装参数
 	tableConfig := DTO.TableConfig{
-		TableName:  uc.TableName,
-		TableToken: uc.TableToken,
-		TableID:    uc.TableId,
-		ViewID:     uc.ViewId,
+		TableName:  &uc.TableName,
+		TableToken: &uc.TableToken,
+		TableID:    &uc.TableId,
+		ViewID:     &uc.ViewId,
 	}
 
 	resp, err := f.s.GetNormalProblemTableRecord(r.RecordNames, tableConfig)

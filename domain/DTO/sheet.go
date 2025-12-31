@@ -8,17 +8,18 @@ type TableRecords struct {
 }
 
 type TableRecord struct {
-	Record map[string]any
+	RecordID *string
+	Record   map[string]any
 }
 
 type TableField struct {
-	FieldName string
+	FieldName *string
 	Value     any
 }
 
 type TableConfig struct {
-	TableName  string
-	TableToken string
-	TableID    string
-	ViewID     string
+	TableName  *string
+	TableToken *string
+	TableID    *string
+	ViewID     *string
 }

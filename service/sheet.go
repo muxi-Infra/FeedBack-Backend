@@ -48,8 +48,8 @@ func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, bcfg 
 func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
-		AppToken(tableConfig.TableToken).
-		TableId(tableConfig.TableID).
+		AppToken(*tableConfig.TableToken).
+		TableId(*tableConfig.TableID).
 		IgnoreConsistencyCheck(true). // 忽略一致性检查，提高性能，但可能会导致某些节点的数据不同步，出现暂时不一致
 		AppTableRecord(larkbitable.NewAppTableRecordBuilder().
 			Fields(record.Record).
@@ -100,7 +100,7 @@ func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.
 			s.bcfg.Content.Data.TemplateVariable.FeedbackType = ft.(string)
 		}
 		// 反馈来源
-		s.bcfg.Content.Data.TemplateVariable.FeedbackSource = t.TableName
+		s.bcfg.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
 
 		contentBytes, err := json.Marshal(s.bcfg.Content)
 		if err != nil {
@@ -131,12 +131,12 @@ func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.
 func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(tableConfig.TableToken).
-		TableId(tableConfig.TableID).
+		AppToken(*tableConfig.TableToken).
+		TableId(*tableConfig.TableID).
 		PageToken(pageToken). // 分页参数,第一次不需要
 		PageSize(10).         // 分页大小
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(tableConfig.ViewID).
+			ViewId(*tableConfig.ViewID).
 			FieldNames(fieldNames).
 			Sort([]*larkbitable.Sort{
 				larkbitable.NewSortBuilder().
@@ -148,7 +148,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 				Conjunction(`and`).
 				Conditions([]*larkbitable.Condition{
 					larkbitable.NewConditionBuilder().
-						FieldName(keyField.FieldName).
+						FieldName(*keyField.FieldName).
 						Operator(`contains`).
 						Value([]string{keyField.Value.(string)}).
 						Build(),
@@ -200,12 +200,12 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 func (s *SheetServiceImpl) GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(tableConfig.TableToken).
-		TableId(tableConfig.TableID).
+		AppToken(*tableConfig.TableToken).
+		TableId(*tableConfig.TableID).
 		PageToken("").
 		PageSize(100). // 分页大小，拿全部，有更大的需求再改大
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(tableConfig.ViewID).
+			ViewId(*tableConfig.ViewID).
 			FieldNames(fieldNames).
 			Build()).
 		Build()
@@ -234,7 +234,8 @@ func (s *SheetServiceImpl) GetNormalProblemTableRecord(fieldNames []string, tabl
 	var records []DTO.TableRecord
 	for _, r := range resp.Data.Items {
 		records = append(records, DTO.TableRecord{
-			Record: simplifyFields(r.Fields),
+			RecordID: r.RecordId,
+			Record:   simplifyFields(r.Fields),
 		})
 	}
 
