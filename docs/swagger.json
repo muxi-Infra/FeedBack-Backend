@@ -8,7 +8,36 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/get_token": {
+        "/api/v1/auth/table-config/refresh": {
+            "get": {
+                "description": "刷新表格 token 配置接口",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "刷新表格 token 配置接口",
+                "responses": {
+                    "200": {
+                        "description": "成功返回目前支持索引的表格的公开配置",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/token": {
             "post": {
                 "description": "获取 token 接口",
                 "consumes": [
@@ -54,7 +83,7 @@
                 }
             }
         },
-        "/health": {
+        "/api/v1/health": {
             "get": {
                 "description": "健康检查，返回当前服务占用的资源等信息",
                 "consumes": [
@@ -105,6 +134,247 @@
                 }
             }
         },
+        "/api/v1/sheet/photos/url": {
+            "get": {
+                "description": "根据文件Token获取截图的临时下载URL，URL有效期为24小时",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取截图临时URL",
+                "operationId": "get-photo-url",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "附件 token",
+                        "name": "file_tokens",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回临时URL信息",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sheet/records": {
+            "get": {
+                "description": "根据指定条件查询多维表格中的记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取多维表格记录",
+                "operationId": "get-table-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "用于查询记录的关键值，一般使用学号的字段名",
+                        "name": "key_field",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "用于查询记录的关键值，一般使用学号的字段值",
+                        "name": "key_value",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "分页参数,第一次不需要",
+                        "name": "page_token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "需要查询的字段名",
+                        "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "向指定的多维表格应用中添加记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "创建多维表格记录",
+                "operationId": "create-table-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "新增记录请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.CreatTableRecordReg"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回创建记录结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sheet/records/normal": {
+            "get": {
+                "description": "根据指定条件查询多维表格中的记录数据",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "获取常见问题记录",
+                "operationId": "get-app-table-normal-problem-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "需要查询的字段名",
+                        "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/like/addtask": {
             "post": {
                 "description": "添加一个点赞或取消点赞的任务",
@@ -144,445 +414,19 @@
                     }
                 }
             }
-        },
-        "/refresh_table_config": {
-            "get": {
-                "description": "刷新表格 token 配置接口",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "刷新表格 token 配置接口",
-                "responses": {
-                    "200": {
-                        "description": "成功返回目前支持索引的表格的公开配置",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/copyapp": {
-            "post": {
-                "description": "基于已有的模板 AppToken 复制创建一个新的多维表格应用",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "从模版复制创建多维表格",
-                "operationId": "copy-app",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "复制表格请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.CopyAppReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回复制结果",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/createapp": {
-            "post": {
-                "description": "基于给定的名称和文件夹 Token 创建一个新的多维表格应用",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "创建多维表格",
-                "operationId": "create-app",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "创建表格请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.CreateAppReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回创建结果",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/createrecord": {
-            "post": {
-                "description": "向指定的多维表格应用中添加记录数据",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "创建多维表格记录",
-                "operationId": "create-app-table-record",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "新增记录请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.CreateAppTableRecordReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回创建记录结果",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/getnormal": {
-            "post": {
-                "description": "根据指定条件查询多维表格中的记录数据",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "获取常见问题记录",
-                "operationId": "get-app-table-normal-problem-record",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "查询记录请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.GetAppTableRecordReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回查询结果",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/getphotourl": {
-            "post": {
-                "description": "根据文件Token获取截图的临时下载URL，URL有效期为24小时",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "获取截图临时URL",
-                "operationId": "get-photo-url",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "获取截图URL请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.GetPhotoUrlReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回临时URL信息",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/sheet/getrecord": {
-            "post": {
-                "description": "根据指定条件查询多维表格中的记录数据",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Sheet"
-                ],
-                "summary": "获取多维表格记录",
-                "operationId": "get-app-table-record",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "查询记录请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/request.GetAppTableRecordReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回查询结果",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误或飞书接口调用失败",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "request.CopyAppReq": {
+        "request.CreatTableRecordReg": {
             "type": "object",
             "required": [
-                "app_token",
-                "name",
-                "time_zone"
+                "records"
             ],
             "properties": {
-                "app_token": {
-                    "description": "需要复制的表格的token",
-                    "type": "string"
-                },
-                "folder_token": {
-                    "description": "可以为空，但是要有",
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "time_zone": {
-                    "description": "时区,例如: Asia/Shanghai",
-                    "type": "string"
-                },
-                "without_content": {
-                    "description": "是否复制内容",
-                    "type": "boolean"
-                }
-            }
-        },
-        "request.CreateAppReq": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "folder_token": {
-                    "description": "可以为空，但是要有 多维表格app归属目录",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "多维表格app名称",
-                    "type": "string"
-                }
-            }
-        },
-        "request.CreateAppTableRecordReq": {
-            "type": "object",
-            "required": [
-                "contact",
-                "content",
-                "student_id"
-            ],
-            "properties": {
-                "contact": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "fields": {
-                    "description": "记录的字段 不再校验，required,由后端自动填充",
+                "records": {
+                    "description": "记录列表",
                     "type": "object",
-                    "additionalProperties": true
-                },
-                "ignore_consistency_check": {
-                    "type": "boolean"
-                },
-                "problem_source": {
-                    "type": "string"
-                },
-                "problem_type": {
-                    "type": "string"
-                },
-                "screen_shot": {
-                    "description": "可选字段",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/request.ScreenShot"
-                    }
-                },
-                "student_id": {
-                    "description": "必填字段",
-                    "type": "string"
+                    "additionalProperties": {}
                 }
             }
         },
@@ -595,61 +439,6 @@
                 "table_identity": {
                     "description": "反馈表格 Identity，反馈表的唯一标识",
                     "type": "string"
-                }
-            }
-        },
-        "request.GetAppTableRecordReq": {
-            "type": "object",
-            "required": [
-                "field_names",
-                "sort_orders"
-            ],
-            "properties": {
-                "desc": {
-                    "description": "是否降序",
-                    "type": "boolean"
-                },
-                "field_names": {
-                    "description": "需要查询的字段名",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "filter_name": {
-                    "description": "过滤条件的字段名，根据实际的接口需要，这里只需要设计成一个",
-                    "type": "string"
-                },
-                "filter_val": {
-                    "description": "过滤条件的值",
-                    "type": "string"
-                },
-                "pagetoken": {
-                    "description": "分页参数,第一次不需要",
-                    "type": "string"
-                },
-                "sort_orders": {
-                    "description": "根据什么字段排序",
-                    "type": "string"
-                },
-                "student_id": {
-                    "description": "即学号 // 用于查看相应学号的人是否点赞某条记录了没有",
-                    "type": "string"
-                }
-            }
-        },
-        "request.GetPhotoUrlReq": {
-            "type": "object",
-            "required": [
-                "file_tokens"
-            ],
-            "properties": {
-                "file_tokens": {
-                    "description": "附件token",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -671,14 +460,6 @@
                     "type": "string"
                 },
                 "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "request.ScreenShot": {
-            "type": "object",
-            "properties": {
-                "file_token": {
                     "type": "string"
                 }
             }

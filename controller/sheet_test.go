@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang/mock/gomock"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,163 +38,10 @@ var uc = ijwt.UserClaims{
 	TableIdentity: "mock-table-identity",
 }
 
-func TestCreateApp(t *testing.T) {
-	type testCase struct {
-		name          string
-		req           request.CreateAppReq
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
-		expectedCode  int
-		expectedError bool
-	}
-
-	testCases := []testCase{
-		{
-			name: "create app success",
-			req: request.CreateAppReq{
-				Name:        "Test_App",
-				FolderToken: "test_folder_token",
-			},
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
-					CreateAPP(gomock.Any(), gomock.Any()).
-					Return(&larkbitable.CreateAppResp{
-						Data: &larkbitable.CreateAppRespData{
-							App: &larkbitable.App{
-								AppToken: stringPtr("test_app_token"),
-								Name:     stringPtr("Test_App"),
-							},
-						},
-					}, nil)
-			},
-			expectedCode:  0,
-			expectedError: false,
-		},
-		//{
-		//	name: "service error",
-		//	req: request.CreateAppReq{
-		//		Name:        "Test_App",
-		//		FolderToken: "test_folder_token",
-		//	},
-		//	setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-		//		mockSvc.EXPECT().
-		//			CreateAPP(gomock.Any(), gomock.Any()).
-		//			Return(nil, errors.New("service error"))
-		//	},
-		//	expectedCode:  500,
-		//	expectedError: true,
-		//},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			sheet, mockSvc, _ := NewMockSheet(ctrl)
-
-			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
-			}
-
-			result, err := sheet.CreateApp(&gin.Context{}, tc.req, uc)
-
-			if tc.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-
-			assert.Equal(t, tc.expectedCode, result.Code)
-
-			if tc.expectedCode == 0 {
-				assert.NotNil(t, result.Data)
-			}
-		})
-	}
-}
-
-func TestCopyApp(t *testing.T) {
-	type testCase struct {
-		name          string
-		req           request.CopyAppReq
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
-		expectedCode  int
-		expectedError bool
-	}
-
-	testCases := []testCase{
-		{
-			name: "copy app success",
-			req: request.CopyAppReq{
-				AppToken:       "mock-app-token",
-				Name:           "Copied_App",
-				FolderToken:    "mock-folder-token",
-				WithoutContent: false,
-				TimeZone:       "UTC",
-			},
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
-					CopyAPP(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&larkbitable.CopyAppResp{
-						Data: &larkbitable.CopyAppRespData{
-							App: &larkbitable.App{
-								AppToken: stringPtr("copied_app_token"),
-								Name:     stringPtr("Copied_App"),
-							},
-						},
-					}, nil)
-			},
-			expectedCode:  0,
-			expectedError: false,
-		},
-		//{
-		//	name: "service error",
-		//	req: request.CopyAppReq{
-		//		AppToken:       "mock-app-token",
-		//		Name:           "Copied_App",
-		//		FolderToken:    "mock-folder-token",
-		//		WithoutContent: true,
-		//		TimeZone:       "UTC",
-		//	},
-		//	setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-		//		mockSvc.EXPECT().
-		//			CopyAPP(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		//			Return(nil, errors.New("service error"))
-		//	},
-		//	expectedCode:  500,
-		//	expectedError: true,
-		//},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			sheet, mockSvc, _ := NewMockSheet(ctrl)
-
-			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
-			}
-
-			result, err := sheet.CopyApp(&gin.Context{}, tc.req, uc)
-
-			if tc.expectedError {
-				assert.Error(t, err)
-				assert.Equal(t, tc.expectedCode, result.Code)
-				assert.Nil(t, result.Data)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.expectedCode, result.Code)
-				assert.NotNil(t, result.Data)
-			}
-		})
-	}
-}
 func TestCreateAppTableRecord(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.CreateAppTableRecordReq
+		req           request.CreatTableRecordReg
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
 		expectedCode  int
@@ -204,7 +51,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 	testCases := []testCase{
 		//{
 		//	name: "table not found",
-		//	req: request.CreateAppTableRecordReq{
+		//	req: request.CreatTableRecordReg{
 		//		Fields: map[string]interface{}{
 		//			"name": "test",
 		//		},
@@ -218,7 +65,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		//},
 		//{
 		//	name: "service error",
-		//	req: request.CreateAppTableRecordReq{
+		//	req: request.CreatTableRecordReg{
 		//		Fields: map[string]interface{}{
 		//			"name": "test",
 		//		},
@@ -234,22 +81,16 @@ func TestCreateAppTableRecord(t *testing.T) {
 		//},
 		{
 			name: "create record success",
-			req: request.CreateAppTableRecordReq{
-				Fields: map[string]interface{}{
-					"name": "test",
+			req: request.CreatTableRecordReg{
+				Record: map[string]interface{}{
+					"name": "mock-test",
 				},
 			},
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					CreateRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&larkbitable.CreateAppTableRecordResp{
-						Data: &larkbitable.CreateAppTableRecordRespData{
-							Record: &larkbitable.AppTableRecord{
-								RecordId: stringPtr("record-id"),
-							},
-						},
-					}, nil)
+					CreateRecord(gomock.Any(), gomock.Any()).
+					Return(stringPtr("mock-test-res"), nil)
 			},
 			expectedCode:  0,
 			expectedError: false,
@@ -267,7 +108,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 				tc.setupMocks(mockSvc)
 			}
 
-			result, err := sheet.CreateAppTableRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.CreatTableRecord(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)
@@ -282,10 +123,10 @@ func TestCreateAppTableRecord(t *testing.T) {
 	}
 }
 
-func TestGetAppTableRecord(t *testing.T) {
+func TestGetTableRecordReqByKey(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.GetAppTableRecordReq
+		req           request.GetTableRecordReq
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
 		expectedCode  int
@@ -317,7 +158,7 @@ func TestGetAppTableRecord(t *testing.T) {
 		//	uc: uc, // 正常的 table id
 		//	setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 		//		mockSvc.EXPECT().
-		//			GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		//			GetRecordByStudentID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		//			Return(nil, errors.New("service error"))
 		//	},
 		//	expectedCode:  500,
@@ -325,19 +166,15 @@ func TestGetAppTableRecord(t *testing.T) {
 		//},
 		{
 			name: "get record success",
-			req: request.GetAppTableRecordReq{
-				FieldNames: []string{"name", "age"},
-				FilterName: "name",
-				FilterVal:  "test",
+			req: request.GetTableRecordReq{
+				KeyFieldName: "mock-name",
 			},
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&larkbitable.SearchAppTableRecordResp{
-						Data: &larkbitable.SearchAppTableRecordRespData{
-							Total: intPtr(0),
-						},
+					GetTableRecordReqByKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(&DTO.TableRecords{
+						HasMore: boolPtr(false),
 					}, nil)
 			},
 			expectedCode:  0,
@@ -356,7 +193,7 @@ func TestGetAppTableRecord(t *testing.T) {
 				tc.setupMocks(mockSvc)
 			}
 
-			result, err := sheet.GetAppTableRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.GetTableRecordReqByKey(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)
@@ -371,10 +208,10 @@ func TestGetAppTableRecord(t *testing.T) {
 	}
 }
 
-func TestGetNormalRecord(t *testing.T) {
+func TestGetNormalProblemTableRecord(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.GetAppTableRecordReq
+		req           request.GetNormalProblemTableRecordReg
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
 		expectedCode  int
@@ -415,21 +252,14 @@ func TestGetNormalRecord(t *testing.T) {
 		//},
 		{
 			name: "get normal record success",
-			req: request.GetAppTableRecordReq{
-				FieldNames: []string{"name", "age"},
-				FilterName: "name",
-				FilterVal:  "test",
-				StudentID:  "stu-123",
+			req: request.GetNormalProblemTableRecordReg{
+				RecordNames: []string{"mock-name-1"},
 			},
 			uc: uc,
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
-					GetNormalRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&larkbitable.SearchAppTableRecordResp{
-						Data: &larkbitable.SearchAppTableRecordRespData{
-							Total: intPtr(0),
-						},
-					}, nil).
+					GetNormalProblemTableRecord(gomock.Any(), gomock.Any()).
+					Return(&DTO.TableRecords{HasMore: boolPtr(false)}, nil).
 					AnyTimes()
 			},
 			expectedCode:  0,
@@ -448,7 +278,7 @@ func TestGetNormalRecord(t *testing.T) {
 				tc.setupMocks(mockSvc)
 			}
 
-			result, err := sheet.GetNormalRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.GetNormalProblemTableRecord(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)
@@ -547,4 +377,8 @@ func stringPtr(s string) *string {
 }
 func intPtr(i int) *int {
 	return &i
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }

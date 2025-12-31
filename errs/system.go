@@ -11,9 +11,9 @@ import (
 */
 
 const (
-	InternalServerErrorCode  = 100000 + iota // 内部服务器错误
+	InternalServerErrorCode  = 100000 + iota // 服务内部错误
 	SerializationErrorCode                   // 序列化错误
-	DeserializationErrorCode                 // 反序列化错误 	// 请求失败错误
+	DeserializationErrorCode                 // 反序列化错误
 	QueueOperationErrorCode                  // 队列任务操作错误
 )
 

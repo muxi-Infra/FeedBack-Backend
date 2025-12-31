@@ -13,7 +13,7 @@ type LikeHandler interface {
 	AddLikeTask(c *gin.Context, r request.LikeReq, uc ijwt.UserClaims) (response.Response, error)
 }
 
-func RegisterLikeHandler(r *gin.Engine, lh LikeHandler, authMiddleware gin.HandlerFunc) {
+func RegisterLikeHandler(r *gin.RouterGroup, lh LikeHandler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/like")
 	{
 		c.POST("/addtask", authMiddleware, ginx.WrapClaimsAndReq(lh.AddLikeTask))

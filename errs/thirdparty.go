@@ -12,7 +12,7 @@ import (
 
 const (
 	FeishuRequestErrorCode  = 300000 + iota // 飞书请求接口失败
-	FeishuResponseErrorCode                 // 飞书服务返回错误 	// 读取响应流错误
+	FeishuResponseErrorCode                 // 飞书服务返回错误
 )
 
 var (
