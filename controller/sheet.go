@@ -1,10 +1,13 @@
 package controller
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	"github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
@@ -88,6 +91,11 @@ func (f *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 		ViewID:     &uc.ViewId,
 	}
 
+	err := validateTableIdentify(r.TableIdentify, uc.TableIdentity)
+	if err != nil {
+		return response.Response{}, err
+	}
+
 	resp, err := f.s.GetTableRecordReqByKey(keyField, r.RecordNames, r.PageToken, tableConfig)
 	if err != nil {
 		return response.Response{}, err
@@ -121,6 +129,11 @@ func (f *Sheet) GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalP
 		TableToken: &uc.TableToken,
 		TableID:    &uc.TableId,
 		ViewID:     &uc.ViewId,
+	}
+
+	err := validateTableIdentify(r.TableIdentify, uc.TableIdentity)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	resp, err := f.s.GetNormalProblemTableRecord(r.RecordNames, tableConfig)
@@ -160,4 +173,11 @@ func (f *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 		Message: "Success",
 		Data:    resp.Data,
 	}, nil
+}
+
+func validateTableIdentify(a, b string) error {
+	if a != b {
+		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify is not invalid"))
+	}
+	return nil
 }

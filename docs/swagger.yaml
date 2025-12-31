@@ -242,7 +242,6 @@ paths:
       - description: 分页参数,第一次不需要
         in: query
         name: page_token
-        required: true
         type: string
       - collectionFormat: csv
         description: 需要查询的字段名
@@ -252,6 +251,10 @@ paths:
         name: record_names
         required: true
         type: array
+      - in: query
+        name: table_identify
+        required: true
+        type: string
       produces:
       - application/json
       responses:
@@ -325,6 +328,10 @@ paths:
         name: record_names
         required: true
         type: array
+      - in: query
+        name: table_identify
+        required: true
+        type: string
       produces:
       - application/json
       responses:

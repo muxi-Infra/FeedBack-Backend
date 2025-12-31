@@ -237,8 +237,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "分页参数,第一次不需要",
                         "name": "page_token",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -248,6 +247,12 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
                         "in": "query",
                         "required": true
                     }
@@ -356,6 +361,12 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
                         "in": "query",
                         "required": true
                     }
