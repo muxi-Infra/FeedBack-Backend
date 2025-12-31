@@ -14,10 +14,10 @@ type GetTableRecordReq struct {
 	PageToken     string   `form:"page_token" binding:"omitempty"`  // 分页参数,第一次不需要
 }
 
-// GetNormalProblemTableRecordReg 获取常见问题记录请求参数
+// GetFAQProblemTableRecordReg 获取常见问题记录请求参数
 // 这个接口直接获取全部常见问题
 // 筛选由前端完成，对应字段在前端过滤
-type GetNormalProblemTableRecordReg struct {
+type GetFAQProblemTableRecordReg struct {
 	TableIdentify string   `form:"table_identify" binding:"required"`
 	RecordNames   []string `form:"record_names" binding:"required"` // 需要查询的字段名
 }

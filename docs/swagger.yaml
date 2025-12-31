@@ -308,12 +308,12 @@ paths:
       summary: 创建多维表格记录
       tags:
       - Sheet
-  /api/v1/sheet/records/normal:
+  /api/v1/sheet/records/faq:
     get:
       consumes:
       - application/json
       description: 根据指定条件查询多维表格中的记录数据
-      operationId: get-app-table-normal-problem-record
+      operationId: get-app-table-faq-problem-record
       parameters:
       - description: Bearer Token
         in: header

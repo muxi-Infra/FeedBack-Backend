@@ -108,21 +108,21 @@ func (f *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 	}, nil
 }
 
-// GetNormalProblemTableRecord 获取常见问题记录
+// GetFAQProblemTableRecord 获取常见问题记录
 //
 //	@Summary		获取常见问题记录
 //	@Description	根据指定条件查询多维表格中的记录数据
 //	@Tags			Sheet
-//	@ID				get-app-table-normal-problem-record
+//	@ID				get-app-table-faq-problem-record
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string									true	"Bearer Token"
-//	@Param			request			query		request.GetNormalProblemTableRecordReg	true	"查询记录请求参数"
-//	@Success		200				{object}	response.Response						"成功返回查询结果"
-//	@Failure		400				{object}	response.Response						"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response						"服务器内部错误"
-//	@Router			/api/v1/sheet/records/normal [get]
-func (f *Sheet) GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+//	@Param			Authorization	header		string								true	"Bearer Token"
+//	@Param			request			query		request.GetFAQProblemTableRecordReg	true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response					"成功返回查询结果"
+//	@Failure		400				{object}	response.Response					"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response					"服务器内部错误"
+//	@Router			/api/v1/sheet/records/faq [get]
+func (f *Sheet) GetFAQProblemTableRecord(c *gin.Context, r request.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
 	// 组装参数
 	tableConfig := DTO.TableConfig{
 		TableName:  &uc.TableName,
@@ -136,7 +136,7 @@ func (f *Sheet) GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalP
 		return response.Response{}, err
 	}
 
-	resp, err := f.s.GetNormalProblemTableRecord(r.RecordNames, tableConfig)
+	resp, err := f.s.GetFAQProblemTableRecord(r.RecordNames, tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}

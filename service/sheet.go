@@ -24,7 +24,7 @@ import (
 type SheetService interface {
 	CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error)
 	GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error)
-	GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error)
+	GetFAQProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error)
 	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
 	GetUserLikeRecord(recordID string, userID string) (int, error)
 }
@@ -197,7 +197,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 	return res, nil
 }
 
-func (s *SheetServiceImpl) GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
+func (s *SheetServiceImpl) GetFAQProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).

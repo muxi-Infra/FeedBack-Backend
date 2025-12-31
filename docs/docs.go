@@ -331,7 +331,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sheet/records/normal": {
+        "/api/v1/sheet/records/faq": {
             "get": {
                 "description": "根据指定条件查询多维表格中的记录数据",
                 "consumes": [
@@ -344,7 +344,7 @@ const docTemplate = `{
                     "Sheet"
                 ],
                 "summary": "获取常见问题记录",
-                "operationId": "get-app-table-normal-problem-record",
+                "operationId": "get-app-table-faq-problem-record",
                 "parameters": [
                     {
                         "type": "string",

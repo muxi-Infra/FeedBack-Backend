@@ -12,7 +12,7 @@ import (
 type SheetHandler interface {
 	CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
 	GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
-	GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
+	GetFAQProblemTableRecord(c *gin.Context, r request.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
 	GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error)
 }
 
@@ -22,6 +22,6 @@ func RegisterSheetHandler(r *gin.RouterGroup, sh SheetHandler, authMiddleware gi
 		c.POST("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.CreatTableRecord))
 		c.GET("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByKey))
 		c.GET("/photos/url", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
-		c.GET("/records/normal", authMiddleware, ginx.WrapClaimsAndReq(sh.GetNormalProblemTableRecord))
+		c.GET("/records/normal", authMiddleware, ginx.WrapClaimsAndReq(sh.GetFAQProblemTableRecord))
 	}
 }
