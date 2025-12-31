@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
+	DTO "github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
 )
 
 // MockSheetService is a mock of SheetService interface.
@@ -35,64 +35,34 @@ func (m *MockSheetService) EXPECT() *MockSheetServiceMockRecorder {
 	return m.recorder
 }
 
-// CopyAPP mocks base method.
-func (m *MockSheetService) CopyAPP(appToken, name, folderToken, timeZone string, withoutContent bool) (*larkbitable.CopyAppResp, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyAPP", appToken, name, folderToken, timeZone, withoutContent)
-	ret0, _ := ret[0].(*larkbitable.CopyAppResp)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CopyAPP indicates an expected call of CopyAPP.
-func (mr *MockSheetServiceMockRecorder) CopyAPP(appToken, name, folderToken, timeZone, withoutContent interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyAPP", reflect.TypeOf((*MockSheetService)(nil).CopyAPP), appToken, name, folderToken, timeZone, withoutContent)
-}
-
-// CreateAPP mocks base method.
-func (m *MockSheetService) CreateAPP(name, token string) (*larkbitable.CreateAppResp, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateAPP", name, token)
-	ret0, _ := ret[0].(*larkbitable.CreateAppResp)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreateAPP indicates an expected call of CreateAPP.
-func (mr *MockSheetServiceMockRecorder) CreateAPP(name, token interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAPP", reflect.TypeOf((*MockSheetService)(nil).CreateAPP), name, token)
-}
-
 // CreateRecord mocks base method.
-func (m *MockSheetService) CreateRecord(ignoreConsistencyCheck bool, fields map[string]interface{}, content, problemType, appToken, tableId, viewId string) (*larkbitable.CreateAppTableRecordResp, error) {
+func (m *MockSheetService) CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateRecord", ignoreConsistencyCheck, fields, content, problemType, appToken, tableId, viewId)
-	ret0, _ := ret[0].(*larkbitable.CreateAppTableRecordResp)
+	ret := m.ctrl.Call(m, "CreateRecord", record, tableConfig)
+	ret0, _ := ret[0].(*string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateRecord indicates an expected call of CreateRecord.
-func (mr *MockSheetServiceMockRecorder) CreateRecord(ignoreConsistencyCheck, fields, content, problemType, appToken, tableId, viewId interface{}) *gomock.Call {
+func (mr *MockSheetServiceMockRecorder) CreateRecord(record, tableConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockSheetService)(nil).CreateRecord), ignoreConsistencyCheck, fields, content, problemType, appToken, tableId, viewId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockSheetService)(nil).CreateRecord), record, tableConfig)
 }
 
-// GetNormalRecord mocks base method.
-func (m *MockSheetService) GetNormalRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string, desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error) {
+// GetNormalProblemTableRecord mocks base method.
+func (m *MockSheetService) GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNormalRecord", pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
-	ret0, _ := ret[0].(*larkbitable.SearchAppTableRecordResp)
+	ret := m.ctrl.Call(m, "GetNormalProblemTableRecord", fieldNames, tableConfig)
+	ret0, _ := ret[0].(*DTO.TableRecords)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetNormalRecord indicates an expected call of GetNormalRecord.
-func (mr *MockSheetServiceMockRecorder) GetNormalRecord(pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId interface{}) *gomock.Call {
+// GetNormalProblemTableRecord indicates an expected call of GetNormalProblemTableRecord.
+func (mr *MockSheetServiceMockRecorder) GetNormalProblemTableRecord(fieldNames, tableConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNormalRecord", reflect.TypeOf((*MockSheetService)(nil).GetNormalRecord), pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNormalProblemTableRecord", reflect.TypeOf((*MockSheetService)(nil).GetNormalProblemTableRecord), fieldNames, tableConfig)
 }
 
 // GetPhotoUrl mocks base method.
@@ -110,19 +80,19 @@ func (mr *MockSheetServiceMockRecorder) GetPhotoUrl(fileTokens interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPhotoUrl", reflect.TypeOf((*MockSheetService)(nil).GetPhotoUrl), fileTokens)
 }
 
-// GetRecord mocks base method.
-func (m *MockSheetService) GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string, desc bool, appToken, tableId, viewId string) (*larkbitable.SearchAppTableRecordResp, error) {
+// GetTableRecordReqByKey mocks base method.
+func (m *MockSheetService) GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecord", pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
-	ret0, _ := ret[0].(*larkbitable.SearchAppTableRecordResp)
+	ret := m.ctrl.Call(m, "GetTableRecordReqByKey", keyField, fieldNames, pageToken, tableConfig)
+	ret0, _ := ret[0].(*DTO.TableRecords)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetRecord indicates an expected call of GetRecord.
-func (mr *MockSheetServiceMockRecorder) GetRecord(pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId interface{}) *gomock.Call {
+// GetTableRecordReqByKey indicates an expected call of GetTableRecordReqByKey.
+func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByKey(keyField, fieldNames, pageToken, tableConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecord", reflect.TypeOf((*MockSheetService)(nil).GetRecord), pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByKey", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByKey), keyField, fieldNames, pageToken, tableConfig)
 }
 
 // GetUserLikeRecord mocks base method.

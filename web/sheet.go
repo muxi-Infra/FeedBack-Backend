@@ -10,22 +10,18 @@ import (
 )
 
 type SheetHandler interface {
-	CreateApp(c *gin.Context, r request.CreateAppReq, uc ijwt.UserClaims) (response.Response, error)
-	CopyApp(c *gin.Context, r request.CopyAppReq, uc ijwt.UserClaims) (response.Response, error)
-	CreateAppTableRecord(c *gin.Context, r request.CreateAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
-	GetAppTableRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
+	CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
+	GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
+	GetNormalProblemTableRecord(c *gin.Context, r request.GetNormalProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
 	GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error)
-	GetNormalRecord(c *gin.Context, r request.GetAppTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
 }
 
-func RegisterSheetHandler(r *gin.Engine, sh SheetHandler, authMiddleware gin.HandlerFunc) {
+func RegisterSheetHandler(r *gin.RouterGroup, sh SheetHandler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/sheet")
 	{
-		c.POST("/createapp", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateApp))
-		c.POST("/copyapp", authMiddleware, ginx.WrapClaimsAndReq(sh.CopyApp))
-		c.POST("/createrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateAppTableRecord))
-		c.POST("/getrecord", authMiddleware, ginx.WrapClaimsAndReq(sh.GetAppTableRecord))
-		c.POST("/getphotourl", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
-		c.POST("/getnormal", authMiddleware, ginx.WrapClaimsAndReq(sh.GetNormalRecord))
+		c.POST("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.CreatTableRecord))
+		c.GET("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByKey))
+		c.GET("/photos/url", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
+		c.GET("/records/normal", authMiddleware, ginx.WrapClaimsAndReq(sh.GetNormalProblemTableRecord))
 	}
 }

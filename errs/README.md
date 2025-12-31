@@ -15,7 +15,7 @@
 - 在代码中使用具名常量，注释中写明含义；保持枚举顺序只追加，不修改已存在常量位置。
 
 ## 错误码清单（全量）
-> 以下清单直接来源于 `errs` 包的源代码。
+> 以下清单直接来源于 `errs` 包的源代码（按功能逻辑分组排序）。
 
 ### 系统 / 基础设施（10xxxx）
 - `InternalServerErrorCode = 100000` - 服务内部错误 - HTTP 500
@@ -24,10 +24,10 @@
 - `QueueOperationErrorCode = 100003` - 队列任务操作错误 - HTTP 500
 
 ### 业务（20xxxx）
-- `RecordNotFoundCode = 200000` - 记录不存在 - HTTP 404
-- `AddPendingLikeTaskCode = 200001` - 添加待处理点赞任务失败 - HTTP 500
-- `TableIdentifyNotFoundCode = 200002` - 表格 ID 未找到 - HTTP 404
-- `TokenGeneratedErrorCode = 200003` - Token 生成失败 - HTTP 500
+- `TokenGeneratedErrorCode = 200000` - Token 生成失败 - HTTP 500
+- `TableIdentifyNotFoundCode = 200001` - 表格标识未找到 - HTTP 404
+- `RecordNotFoundCode = 200002` - 记录不存在 - HTTP 404
+- `AddPendingLikeTaskCode = 200003` - 添加待处理点赞任务失败 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500

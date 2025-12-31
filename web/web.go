@@ -16,7 +16,7 @@ import (
 var ProviderSet = wire.NewSet(
 	NewGinEngine,
 	controller.NewOauth,
-	wire.Bind(new(OauthHandler), new(*controller.Auth)),
+	wire.Bind(new(AuthHandler), new(*controller.Auth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
 	controller.NewLike,
@@ -29,7 +29,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	logMiddleware *middleware.LoggerMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
-	sh SheetHandler, oh OauthHandler, lh LikeHandler) *gin.Engine {
+	sh SheetHandler, ah AuthHandler, lh LikeHandler) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
 
@@ -44,13 +44,15 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	// Prometheus metrics 使用 basic auth 保护
 	RegisterPrometheusHandler(r, prometheusMiddleware, basicAuthMiddleware)
 
+	api := r.Group("/api/v1")
+
 	// 健康检查
-	RegisterHealthCheckHandler(r)
+	RegisterHealthCheckHandler(api)
 
 	// 业务路由
-	RegisterSheetHandler(r, sh, authMiddleware.MiddlewareFunc())
-	RegisterOauthRouter(r, oh)
-	RegisterLikeHandler(r, lh, authMiddleware.MiddlewareFunc())
+	RegisterSheetHandler(api, sh, authMiddleware.MiddlewareFunc())
+	RegisterAuthRouter(api, ah)
+	RegisterLikeHandler(api, lh, authMiddleware.MiddlewareFunc())
 
 	return r
 }
@@ -70,6 +72,6 @@ func RegisterPrometheusHandler(r *gin.Engine, prometheusMiddleware *middleware.P
 }
 
 // RegisterHealthCheckHandler 注册健康检查路由
-func RegisterHealthCheckHandler(r *gin.Engine) {
+func RegisterHealthCheckHandler(r *gin.RouterGroup) {
 	r.GET("/health", ginx.Wrap(controller.HealthCheck))
 }
