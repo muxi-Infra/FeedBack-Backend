@@ -36,7 +36,7 @@ func NewOauth(jwtHandler *ijwt.JWT, table service.TableService) *Auth {
 //	@Success		200		{object}	response.Response			"成功返回 JWT 令牌"
 //	@Failure		400		{object}	response.Response			"请求参数错误"
 //	@Failure		500		{object}	response.Response			"服务器内部错误"
-//	@Router			/get_token [post]
+//	@Router			/api/v1/auth/token [post]
 func (o Auth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error) {
 	tableCfg, err := o.table.GetTableConfig(req.TableIdentity)
 	if err != nil {
@@ -68,7 +68,7 @@ func (o Auth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.R
 //	@Produce		json
 //	@Success		200	{object}	response.Response	"成功返回目前支持索引的表格的公开配置"
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
-//	@Router			/refresh_table_config [get]
+//	@Router			/api/v1/auth/table-config/refresh [get]
 func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 	tableCfgs, err := o.table.RefreshTableConfig()
 	if err != nil {

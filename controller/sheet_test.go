@@ -165,7 +165,7 @@ func TestGetAppTableRecord(t *testing.T) {
 		//	uc: uc, // 正常的 table id
 		//	setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 		//		mockSvc.EXPECT().
-		//			GetRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		//			GetRecordByStudentID(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		//			Return(nil, errors.New("service error"))
 		//	},
 		//	expectedCode:  500,
@@ -202,7 +202,7 @@ func TestGetAppTableRecord(t *testing.T) {
 				tc.setupMocks(mockSvc)
 			}
 
-			result, err := sheet.GetAppTableRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.GetAppTableRecordByStudentID(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)

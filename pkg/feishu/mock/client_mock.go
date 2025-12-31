@@ -105,7 +105,7 @@ func (m *MockClient) GetAppTableRecord(ctx context.Context, req *larkbitable.Sea
 	for _, a := range options {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "GetAppTableRecord", varargs...)
+	ret := m.ctrl.Call(m, "GetAppTableRecordByStudentID", varargs...)
 	ret0, _ := ret[0].(*larkbitable.SearchAppTableRecordResp)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -115,7 +115,7 @@ func (m *MockClient) GetAppTableRecord(ctx context.Context, req *larkbitable.Sea
 func (mr *MockClientMockRecorder) GetAppTableRecord(ctx, req interface{}, options ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]interface{}{ctx, req}, options...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAppTableRecord", reflect.TypeOf((*MockClient)(nil).GetAppTableRecord), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAppTableRecordByStudentID", reflect.TypeOf((*MockClient)(nil).GetAppTableRecord), varargs...)
 }
 
 // GetPhotoUrl mocks base method.

@@ -84,7 +84,7 @@ func (mr *MockSheetServiceMockRecorder) GetPhotoUrl(fileTokens interface{}) *gom
 // GetRecord mocks base method.
 func (m *MockSheetService) GetRecord(pageToken, sortOrders, filterName, filterVal string, fieldNames []string, desc bool, appToken, tableId, viewId string) (*service.SearchRecordsResp, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecord", pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
+	ret := m.ctrl.Call(m, "GetRecordByStudentID", pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
 	ret0, _ := ret[0].(*service.SearchRecordsResp)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
@@ -93,7 +93,7 @@ func (m *MockSheetService) GetRecord(pageToken, sortOrders, filterName, filterVa
 // GetRecord indicates an expected call of GetRecord.
 func (mr *MockSheetServiceMockRecorder) GetRecord(pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecord", reflect.TypeOf((*MockSheetService)(nil).GetRecord), pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecordByStudentID", reflect.TypeOf((*MockSheetService)(nil).GetRecord), pageToken, sortOrders, filterName, filterVal, fieldNames, desc, appToken, tableId, viewId)
 }
 
 // GetUserLikeRecord mocks base method.
