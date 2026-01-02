@@ -14,6 +14,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"github.com/muxi-Infra/FeedBack-Backend/web"
@@ -46,7 +47,8 @@ func InitApp() (*App, error) {
 	mysqlConfig := config.NewMysqlConfig()
 	db := ioc.InitMysql(mysqlConfig)
 	faqResolutionDAO := dao.NewFAQResolutionDAO(db)
-	sheetService := service.NewSheetService(feishuClient, loggerLogger, batchNoticeConfig, faqResolutionDAO)
+	faqResolutionStateCache := cache.NewFAQResolutionStateCache(client)
+	sheetService := service.NewSheetService(feishuClient, loggerLogger, batchNoticeConfig, faqResolutionDAO, faqResolutionStateCache)
 	sheet := controller.NewSheet(sheetService)
 	baseTable := config.NewBaseTable()
 	tableService := service.NewTableService(baseTable, feishuClient, loggerLogger)

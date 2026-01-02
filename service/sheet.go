@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,7 +16,9 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
@@ -39,14 +42,16 @@ type SheetServiceImpl struct {
 	log    logger.Logger
 	bc     *config.BatchNoticeConfig
 	faqDAO dao.FAQResolutionDAO
+	cache  cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c feishu.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO) SheetService {
+func NewSheetService(c feishu.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
 	return &SheetServiceImpl{
 		c:      c,
 		log:    log,
 		bc:     bc,
 		faqDAO: faqDAO,
+		cache:  cache,
 	}
 }
 
@@ -310,54 +315,73 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionFindError(err)
 	}
-	if record != nil {
-		s.log.Info("UpdateFAQResolutionRecord resolution already exist",
-			logger.String("user_id", *resolution.UserID),
-			logger.String("record_id", *resolution.RecordID))
-		return errs.FAQResolutionExistError(fmt.Errorf("user %s has already set resolution for record %s", *resolution.UserID, *resolution.RecordID))
+	var first = false
+	if record == nil {
+		// 不存在
+		first = true
+	}
+	if record != nil && record.IsResolved != nil && *record.IsResolved == *resolution.IsResolved {
+		// 状态未变化
+		return errs.FAQResolutionExistError(errors.New("faq resolution status exist"))
 	}
 
-	// TODO 这里会有一致性问题，展示没有想到好的方案
-	// 创建请求对象
-	//var fieldName string
-	//var fieldValue int
-	//if resolution.IsResolved != nil && *resolution.IsResolved {
-	//	fieldName = *resolution.ResolvedFieldName // 已解决字段
-	//	fieldValue = 4
-	//} else {
-	//	fieldName = *resolution.UnresolvedFieldName // 未解决字段
-	//	fieldValue = 2
-	//}
-	//req := larkbitable.NewUpdateAppTableRecordReqBuilder().
-	//	AppToken(*tableConfig.TableToken).
-	//	TableId(*tableConfig.TableID).
-	//	RecordId(*resolution.RecordID).
-	//	AppTableRecord(larkbitable.NewAppTableRecordBuilder().
-	//		Fields(map[string]interface{}{fieldName: fieldValue}).
-	//		Build()).
-	//	Build()
-	//
-	//// 发起请求
-	//ctx := context.Background()
-	//resp, err := s.c.UpdateRecord(ctx, req)
-	//
-	//// 处理错误
-	//if err != nil {
-	//	s.log.Error("UpdateFAQResolutionRecord 调用失败",
-	//		logger.String("error", err.Error()))
-	//	return errs.FeishuRequestError(err)
-	//}
-	//
-	//// 服务端错误处理
-	//if !resp.Success() {
-	//	s.log.Error("UpdateFAQResolutionRecord Lark 接口错误",
-	//		logger.String("request_id", resp.RequestId()),
-	//		logger.String("error", larkcore.Prettify(resp.CodeError)))
-	//
-	//	return errs.FeishuResponseError(err)
-	//}
+	// 生成缓存 key
+	ResolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
+	UnresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
+	var resolvedCount, unresolvedCount uint64
+	switch {
+	case first && *resolution.IsResolved: // 首次选择 已解决
+		resolvedCount, unresolvedCount, err = s.cache.IncAAndGetB(ResolvedKey, UnresolvedKey)
+	case first && !*resolution.IsResolved: // 首次选择 未解决
+		unresolvedCount, resolvedCount, err = s.cache.IncAAndGetB(UnresolvedKey, ResolvedKey)
+	case !first && *record.IsResolved:
+		resolvedCount, unresolvedCount, err = s.cache.IncAAndDecB(ResolvedKey, UnresolvedKey)
+	case !first && !*record.IsResolved:
+		unresolvedCount, resolvedCount, err = s.cache.IncAAndDecB(UnresolvedKey, ResolvedKey)
+	}
+	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord redis get resolved/unresolved count err",
+			logger.String("error", err.Error()))
+		return errs.FAQResolutionCountGetError(err)
+	}
 
-	err = s.faqDAO.UpsertFAQResolution(resolution)
+	// 只能保证最终一致性
+	go func(rName, uName string, rNum, uNum uint64) {
+		// 创建请求对象
+		req := larkbitable.NewUpdateAppTableRecordReqBuilder().
+			AppToken(*tableConfig.TableToken).
+			TableId(*tableConfig.TableID).
+			RecordId(*resolution.RecordID).
+			AppTableRecord(larkbitable.NewAppTableRecordBuilder().
+				Fields(map[string]interface{}{rName: rNum, uName: uNum}).
+				Build()).
+			Build()
+
+		// 发起请求
+		ctx := context.Background()
+		resp, err := s.c.UpdateRecord(ctx, req)
+
+		// 处理错误
+		if err != nil {
+			s.log.Error("UpdateFAQResolutionRecord 调用失败",
+				logger.String("error", err.Error()))
+		}
+
+		// 服务端错误处理
+		if !resp.Success() {
+			s.log.Error("UpdateFAQResolutionRecord Lark 接口错误",
+				logger.String("request_id", resp.RequestId()),
+				logger.String("error", larkcore.Prettify(resp.CodeError)))
+		}
+	}(*resolution.ResolvedFieldName, *resolution.UnresolvedFieldName, resolvedCount, unresolvedCount)
+
+	// 更新或插入数据库记录
+	m := &model.FAQResolution{
+		RecordID:   resolution.RecordID,
+		UserID:     resolution.UserID,
+		IsResolved: resolution.IsResolved,
+	}
+	err = s.faqDAO.UpsertFAQResolution(m)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord faqDAO.UpsertFAQResolution err",
 			logger.String("error", err.Error()))
