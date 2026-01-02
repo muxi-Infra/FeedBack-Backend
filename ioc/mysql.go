@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/config"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -33,7 +33,7 @@ func InitMysql(cfg *config.MysqlConfig) *gorm.DB {
 		panic(fmt.Sprintf("Mysql 连接失败: %v", err))
 	}
 
-	err = dao.InitTables(db)
+	err = repository.InitTables(db)
 	if err != nil {
 		panic(err)
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"github.com/muxi-Infra/FeedBack-Backend/web"
 
@@ -24,7 +24,7 @@ func InitApp() (*App, error) {
 		logger.NewZapLogger,
 		feishu.ProviderSet,
 		ijwt.NewJWT,
-		dao.ProviderSet,
+		repository.ProviderSet,
 		service.ProviderSet,
 		middleware.NewCorsMiddleware,
 		middleware.NewAuthMiddleware,

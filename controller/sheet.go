@@ -47,10 +47,11 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 		Record: r.Record,
 	}
 	tableConfig := domain.TableConfig{
-		TableName:  &uc.TableName,
-		TableToken: &uc.TableToken,
-		TableID:    &uc.TableId,
-		ViewID:     &uc.ViewId,
+		TableIdentity: &uc.TableIdentity,
+		TableName:     &uc.TableName,
+		TableToken:    &uc.TableToken,
+		TableID:       &uc.TableId,
+		ViewID:        &uc.ViewId,
 	}
 
 	// 发起请求
@@ -92,10 +93,11 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 		Value:     r.KeyFieldValue,
 	}
 	tableConfig := domain.TableConfig{
-		TableName:  &uc.TableName,
-		TableToken: &uc.TableToken,
-		TableID:    &uc.TableId,
-		ViewID:     &uc.ViewId,
+		TableIdentity: &uc.TableIdentity,
+		TableName:     &uc.TableName,
+		TableToken:    &uc.TableToken,
+		TableID:       &uc.TableId,
+		ViewID:        &uc.ViewId,
 	}
 
 	resp, err := s.s.GetTableRecordReqByKey(&keyField, r.RecordNames, r.PageToken, &tableConfig)
@@ -132,10 +134,11 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 
 	// 组装参数
 	tableConfig := domain.TableConfig{
-		TableName:  &uc.TableName,
-		TableToken: &uc.TableToken,
-		TableID:    &uc.TableId,
-		ViewID:     &uc.ViewId,
+		TableIdentity: &uc.TableIdentity,
+		TableName:     &uc.TableName,
+		TableToken:    &uc.TableToken,
+		TableID:       &uc.TableId,
+		ViewID:        &uc.ViewId,
 	}
 
 	resp, err := s.s.GetFAQProblemTableRecord(r.StudentID, r.RecordNames, &tableConfig)
@@ -172,15 +175,18 @@ func (s *Sheet) UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutio
 
 	// 组装参数
 	FAQResolution := domain.FAQResolution{
-		UserID:     r.UserID,
-		RecordID:   r.RecordID,
-		IsResolved: r.IsResolved,
+		UserID:              r.UserID,
+		RecordID:            r.RecordID,
+		ResolvedFieldName:   r.ResolvedFieldName,
+		UnresolvedFieldName: r.UnresolvedFieldName,
+		IsResolved:          r.IsResolved,
 	}
 	tableConfig := domain.TableConfig{
-		TableName:  &uc.TableName,
-		TableToken: &uc.TableToken,
-		TableID:    &uc.TableId,
-		ViewID:     &uc.ViewId,
+		TableIdentity: &uc.TableIdentity,
+		TableName:     &uc.TableName,
+		TableToken:    &uc.TableToken,
+		TableID:       &uc.TableId,
+		ViewID:        &uc.ViewId,
 	}
 
 	err = s.s.UpdateFAQResolutionRecord(&FAQResolution, &tableConfig)
@@ -191,7 +197,7 @@ func (s *Sheet) UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutio
 	return response.Response{
 		Code:    0,
 		Message: "Success",
-		Data:    FAQResolution,
+		Data:    nil,
 	}, nil
 }
 

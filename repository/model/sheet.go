@@ -11,6 +11,7 @@ type FAQResolution struct {
 	RecordID   *string `gorm:"column:record_id;not null;type:varchar(255);uniqueIndex:uk_user_record"`
 	IsResolved *bool   `gorm:"column:is_resolved"`
 	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 func (FAQResolution) TableName() string {
