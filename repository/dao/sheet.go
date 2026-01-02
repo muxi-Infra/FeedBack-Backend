@@ -34,7 +34,7 @@ func (f *faqResolution) GetResolutionByUserAndRecord(userID, recordID *string) (
 	var res model.FAQResolution
 	err := f.db.
 		Where("user_id = ? AND record_id = ?", userID, recordID).
-		First(&res).Error
+		Take(&res).Error
 
 	// 如果没有找到记录，返回 nil 而不是错误
 	// 这里表示的是用户未选择该 FAQ 解决状态

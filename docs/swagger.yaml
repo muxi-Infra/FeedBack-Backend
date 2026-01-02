@@ -18,14 +18,20 @@ definitions:
         type: boolean
       record_id:
         type: string
+      resolved_field_name:
+        type: string
       table_identify:
+        type: string
+      unresolved_field_name:
         type: string
       user_id:
         type: string
     required:
     - is_resolved
     - record_id
+    - resolved_field_name
     - table_identify
+    - unresolved_field_name
     - user_id
     type: object
   request.GenerateTokenReq:
@@ -317,7 +323,7 @@ paths:
       consumes:
       - application/json
       description: 根据指定条件查询多维表格中的记录数据
-      operationId: get-app-table-faq-problem-record
+      operationId: get-faq-resolution-record
       parameters:
       - description: Bearer Token
         in: header
@@ -363,7 +369,7 @@ paths:
       consumes:
       - application/json
       description: 更新FAQ解决方案的 已解决/未解决 状态
-      operationId: faq-resolution-update
+      operationId: update-faq-resolution
       parameters:
       - description: Bearer Token
         in: header

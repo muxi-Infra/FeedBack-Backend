@@ -337,6 +337,7 @@ type MysqlConfig struct {
 	DBName   string `yaml:"dbname" mapstructure:"dbname"`
 	UserName string `yaml:"username" mapstructure:"username"`
 	Password string `yaml:"password" mapstructure:"password"`
+	LogFile  string `yaml:"logfile" mapstructure:"logfile"`
 }
 
 func NewMysqlConfig() *MysqlConfig {
@@ -354,6 +355,9 @@ func NewMysqlConfig() *MysqlConfig {
 	}
 	if mysqlConfig.UserName == "" || mysqlConfig.Password == "" {
 		panic("MySQL 配置无效: username 和 password 不能为空")
+	}
+	if mysqlConfig.LogFile == "" {
+		panic("MySQL 配置无效: logfile 不能为空")
 	}
 	return mysqlConfig
 }
