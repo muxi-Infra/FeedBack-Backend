@@ -155,7 +155,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 					larkbitable.NewConditionBuilder().
 						FieldName(*keyField.FieldName).
 						Operator(`contains`).
-						Value([]string{keyField.Value.(string)}).
+						Value([]string{*keyField.Value.(*string)}).
 						Build(),
 				}).
 				Build()).
@@ -306,9 +306,14 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
 	record, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, resolution.RecordID)
 	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord faqDAO.GetResolutionByUserAndRecord err",
+			logger.String("error", err.Error()))
 		return errs.FAQResolutionFindError(err)
 	}
 	if record != nil {
+		s.log.Info("UpdateFAQResolutionRecord resolution already exist",
+			logger.String("user_id", *resolution.UserID),
+			logger.String("record_id", *resolution.RecordID))
 		return errs.FAQResolutionExistError(fmt.Errorf("user %s has already set resolution for record %s", *resolution.UserID, *resolution.RecordID))
 	}
 
@@ -354,6 +359,8 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 
 	err = s.faqDAO.UpsertFAQResolution(resolution)
 	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord faqDAO.UpsertFAQResolution err",
+			logger.String("error", err.Error()))
 		return errs.FAQResolutionChangeError(err)
 	}
 	return nil

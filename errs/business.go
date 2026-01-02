@@ -27,7 +27,7 @@ var (
 		return errorx.New(http.StatusNotFound, TableIdentifyNotFoundCode, "表格标识未找到", err)
 	}
 	TableIdentifierInvalidError = func(err error) error {
-		return errorx.New(http.StatusBadRequest, TableIdentifierInvalidCode, "表格标识无效", err)
+		return errorx.New(http.StatusInternalServerError, TableIdentifierInvalidCode, "表格标识无效", err)
 	}
 	FAQResolutionChangeError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, FAQResolutionChangeErrorCode, "FAQ 解决状态更新失败", err)
@@ -36,6 +36,6 @@ var (
 		return errorx.New(http.StatusInternalServerError, FAQResolutionFindErrorCode, "FAQ 解决状态查询失败", err)
 	}
 	FAQResolutionExistError = func(err error) error {
-		return errorx.New(http.StatusBadRequest, FAQResolutionExistCode, "FAQ 解决状态已存在", err)
+		return errorx.New(http.StatusInternalServerError, FAQResolutionExistCode, "FAQ 解决状态已存在", err)
 	}
 )

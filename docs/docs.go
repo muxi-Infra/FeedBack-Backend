@@ -344,7 +344,7 @@ const docTemplate = `{
                     "Sheet"
                 ],
                 "summary": "获取常见问题记录",
-                "operationId": "get-app-table-faq-problem-record",
+                "operationId": "get-faq-resolution-record",
                 "parameters": [
                     {
                         "type": "string",
@@ -411,7 +411,7 @@ const docTemplate = `{
                     "Sheet"
                 ],
                 "summary": "更新FAQ解决方案的 已解决/未解决 状态",
-                "operationId": "faq-resolution-update",
+                "operationId": "update-faq-resolution",
                 "parameters": [
                     {
                         "type": "string",
@@ -476,7 +476,9 @@ const docTemplate = `{
             "required": [
                 "is_resolved",
                 "record_id",
+                "resolved_field_name",
                 "table_identify",
+                "unresolved_field_name",
                 "user_id"
             ],
             "properties": {
@@ -486,7 +488,13 @@ const docTemplate = `{
                 "record_id": {
                     "type": "string"
                 },
+                "resolved_field_name": {
+                    "type": "string"
+                },
                 "table_identify": {
+                    "type": "string"
+                },
+                "unresolved_field_name": {
                     "type": "string"
                 },
                 "user_id": {
