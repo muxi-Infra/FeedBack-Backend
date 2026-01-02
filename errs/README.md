@@ -30,6 +30,7 @@
 - `FAQResolutionChangeErrorCode = 200003` - FAQ 解决状态更新失败 - HTTP 500
 - `FAQResolutionFindErrorCode = 200004` - FAQ 解决状态查询失败 - HTTP 500
 - `FAQResolutionExistCode = 200005` - FAQ 解决状态已存在 - HTTP 500
+- `FAQResolutionCountGetErrorCode = 200006` - FAQ 解决状态计数获取失败 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500
