@@ -26,6 +26,10 @@
 ### 业务（20xxxx）
 - `TokenGeneratedErrorCode = 200000` - Token 生成失败 - HTTP 500
 - `TableIdentifyNotFoundCode = 200001` - 表格标识未找到 - HTTP 404
+- `TableIdentifierInvalidCode = 200002` - 表格标识无效 - HTTP 500
+- `FAQResolutionChangeErrorCode = 200003` - FAQ 解决状态更新失败 - HTTP 500
+- `FAQResolutionFindErrorCode = 200004` - FAQ 解决状态查询失败 - HTTP 500
+- `FAQResolutionExistCode = 200005` - FAQ 解决状态已存在 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500

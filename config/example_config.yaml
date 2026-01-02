@@ -51,6 +51,7 @@ mysql:
   dbname: "xxxxx"
   username: "xxxxx"
   password: "xxxxx"
+  logfile: "logs/mysql.log"  # MySQL日志文件路径
 
 log:
   file: "logs/app.log"  # 日志文件路径

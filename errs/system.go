@@ -14,7 +14,6 @@ const (
 	InternalServerErrorCode  = 100000 + iota // 服务内部错误
 	SerializationErrorCode                   // 序列化错误
 	DeserializationErrorCode                 // 反序列化错误
-	QueueOperationErrorCode                  // 队列任务操作错误
 )
 
 var (
@@ -26,8 +25,5 @@ var (
 	}
 	DeserializationError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, DeserializationErrorCode, "反序列化错误", err)
-	}
-	QueueOperationError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, QueueOperationErrorCode, "队列任务操作错误", err)
 	}
 )
