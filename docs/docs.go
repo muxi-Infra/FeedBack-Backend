@@ -237,8 +237,7 @@ const docTemplate = `{
                         "type": "string",
                         "description": "分页参数,第一次不需要",
                         "name": "page_token",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "array",
@@ -248,6 +247,12 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
                         "in": "query",
                         "required": true
                     }
@@ -326,7 +331,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sheet/records/normal": {
+        "/api/v1/sheet/records/faq": {
             "get": {
                 "description": "根据指定条件查询多维表格中的记录数据",
                 "consumes": [
@@ -339,7 +344,7 @@ const docTemplate = `{
                     "Sheet"
                 ],
                 "summary": "获取常见问题记录",
-                "operationId": "get-app-table-normal-problem-record",
+                "operationId": "get-app-table-faq-problem-record",
                 "parameters": [
                     {
                         "type": "string",
@@ -356,6 +361,19 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "学号，用于标记用户身份",
+                        "name": "student_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
                         "in": "query",
                         "required": true
                     }
@@ -380,11 +398,9 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/like/addtask": {
+            },
             "post": {
-                "description": "添加一个点赞或取消点赞的任务",
+                "description": "更新FAQ解决方案的 已解决/未解决 状态",
                 "consumes": [
                     "application/json"
                 ],
@@ -392,29 +408,43 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "点赞"
+                    "Sheet"
                 ],
-                "summary": "添加点赞任务",
+                "summary": "更新FAQ解决方案的 已解决/未解决 状态",
+                "operationId": "faq-resolution-update",
                 "parameters": [
                     {
-                        "description": "点赞请求参数",
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "查询记录请求参数",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.LikeReq"
+                            "$ref": "#/definitions/request.FAQResolutionUpdateReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "添加点赞任务成功",
+                        "description": "成功返回查询结果",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
-                        "description": "添加点赞任务失败",
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -427,13 +457,40 @@ const docTemplate = `{
         "request.CreatTableRecordReg": {
             "type": "object",
             "required": [
-                "records"
+                "records",
+                "table_identify"
             ],
             "properties": {
                 "records": {
                     "description": "记录列表",
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "table_identify": {
+                    "type": "string"
+                }
+            }
+        },
+        "request.FAQResolutionUpdateReq": {
+            "type": "object",
+            "required": [
+                "is_resolved",
+                "record_id",
+                "table_identify",
+                "user_id"
+            ],
+            "properties": {
+                "is_resolved": {
+                    "type": "boolean"
+                },
+                "record_id": {
+                    "type": "string"
+                },
+                "table_identify": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -445,28 +502,6 @@ const docTemplate = `{
             "properties": {
                 "table_identity": {
                     "description": "反馈表格 Identity，反馈表的唯一标识",
-                    "type": "string"
-                }
-            }
-        },
-        "request.LikeReq": {
-            "type": "object",
-            "required": [
-                "action",
-                "record_id",
-                "user_id"
-            ],
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "is_like": {
-                    "type": "integer"
-                },
-                "record_id": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }

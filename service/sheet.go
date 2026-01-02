@@ -6,46 +6,51 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/muxi-Infra/FeedBack-Backend/config"
-	"github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
-	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
-
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
+	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
+const (
+	StatusNotSelected = "未选择"
+	StatusResolved    = "已解决"
+	StatusUnresolved  = "未解决"
+)
+
 type SheetService interface {
-	CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error)
-	GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error)
-	GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error)
+	CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
+	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
+	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
-	GetUserLikeRecord(recordID string, userID string) (int, error)
 }
 
 type SheetServiceImpl struct {
-	likeDao dao.Like
-	c       feishu.Client
-	log     logger.Logger
-	bcfg    *config.BatchNoticeConfig
+	c      feishu.Client
+	log    logger.Logger
+	bc     *config.BatchNoticeConfig
+	faqDAO dao.FAQResolutionDAO
 }
 
-func NewSheetService(likeDao dao.Like, c feishu.Client, log logger.Logger, bcfg *config.BatchNoticeConfig) SheetService {
+func NewSheetService(c feishu.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO) SheetService {
 	return &SheetServiceImpl{
-		likeDao: likeDao,
-		c:       c,
-		log:     log,
-		bcfg:    bcfg,
+		c:      c,
+		log:    log,
+		bc:     bc,
+		faqDAO: faqDAO,
 	}
 }
 
-func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error) {
+func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -78,7 +83,7 @@ func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.
 	}
 
 	// 异步发送批量通知
-	go func(r DTO.TableRecord, t DTO.TableConfig) {
+	go func(r domain.TableRecord, t *domain.TableConfig) {
 		// 防止 panic
 		defer func() {
 			if err := recover(); err != nil {
@@ -93,16 +98,16 @@ func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.
 			if len(fc.(string)) > 15 {
 				fc = fc.(string)[0:15] + "..."
 			}
-			s.bcfg.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
+			s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
 		}
 		// 反馈类型
 		if ft, ok := r.Record["问题类型"]; ok {
-			s.bcfg.Content.Data.TemplateVariable.FeedbackType = ft.(string)
+			s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
 		}
 		// 反馈来源
-		s.bcfg.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
+		s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
 
-		contentBytes, err := json.Marshal(s.bcfg.Content)
+		contentBytes, err := json.Marshal(s.bc.Content)
 		if err != nil {
 			s.log.Error("json.Marshal failed",
 				logger.String("error", err.Error()),
@@ -123,18 +128,18 @@ func (s *SheetServiceImpl) CreateRecord(record DTO.TableRecord, tableConfig DTO.
 		//		logger.String("error", err.Error()),
 		//	)
 		//}
-	}(record, tableConfig)
+	}(*record, tableConfig)
 
 	return resp.Data.Record.RecordId, nil
 }
 
-func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
 		TableId(*tableConfig.TableID).
-		PageToken(pageToken). // 分页参数,第一次不需要
-		PageSize(10).         // 分页大小
+		PageToken(*pageToken). // 分页参数,第一次不需要
+		PageSize(10).          // 分页大小
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(*tableConfig.ViewID).
 			FieldNames(fieldNames).
@@ -164,7 +169,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 
 	// 处理错误
 	if err != nil {
-		s.log.Error("GetAppTableRecordByStudentID 调用失败",
+		s.log.Error("GetTableRecordReqByKey 调用失败",
 			logger.String("error", err.Error()),
 		)
 		return nil, errs.FeishuRequestError(err)
@@ -172,22 +177,23 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 
 	// 服务端错误处理
 	if !resp.Success() {
-		s.log.Error("GetAppTableRecordByStudentID Lark 接口错误",
+		s.log.Error("GetTableRecordReqByKey Lark 接口错误",
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
 		return nil, errs.FeishuResponseError(err)
 	}
 
-	var records []DTO.TableRecord
+	var records []domain.TableRecord
 	for _, r := range resp.Data.Items {
-		records = append(records, DTO.TableRecord{
-			Record: simplifyFields(r.Fields),
+		records = append(records, domain.TableRecord{
+			RecordID: r.RecordId,
+			Record:   simplifyFields(r.Fields),
 		})
 	}
 
 	// 组装返回值
-	res := &DTO.TableRecords{
+	res := &domain.TableRecords{
 		Records:   records,
 		HasMore:   resp.Data.HasMore,
 		PageToken: resp.Data.PageToken,
@@ -197,56 +203,160 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField DTO.TableField, field
 	return res, nil
 }
 
-func (s *SheetServiceImpl) GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
-	// 创建请求对象
-	req := larkbitable.NewSearchAppTableRecordReqBuilder().
-		AppToken(*tableConfig.TableToken).
-		TableId(*tableConfig.TableID).
-		PageToken("").
-		PageSize(100). // 分页大小，拿全部，有更大的需求再改大
-		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
-			ViewId(*tableConfig.ViewID).
-			FieldNames(fieldNames).
-			Build()).
-		Build()
+func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// 发起请求
-	ctx := context.Background()
-	resp, err := s.c.GetAppTableRecord(ctx, req)
+	g, ctx := errgroup.WithContext(ctx)
 
-	// 处理错误
-	if err != nil {
-		s.log.Error("GetNormalRecord 调用失败",
-			logger.String("error", err.Error()),
-		)
-		return nil, errs.FeishuRequestError(err)
+	var resolutionMap map[string]*bool
+	var feishuResp *larkbitable.SearchAppTableRecordResp
+
+	// 并发查数据库
+	g.Go(func() error {
+		if studentID == nil {
+			resolutionMap = nil
+			s.log.Error("GetFAQProblemTableRecord studentID is nil")
+			return nil
+		}
+
+		list, err := s.faqDAO.ListResolutionsByUser(studentID)
+		if err != nil {
+			s.log.Error("GetFAQProblemTableRecord faqDAO.ListResolutionsByUser err",
+				logger.String("error", err.Error()))
+			return err
+		}
+
+		m := make(map[string]*bool, len(list))
+		for _, r := range list {
+			if r.RecordID != nil {
+				m[*r.RecordID] = r.IsResolved
+			}
+		}
+		resolutionMap = m
+		return nil
+	})
+
+	// 并发查飞书表格
+	g.Go(func() error {
+		// 创建请求对象
+		req := larkbitable.NewSearchAppTableRecordReqBuilder().
+			AppToken(*tableConfig.TableToken).
+			TableId(*tableConfig.TableID).
+			PageToken("").
+			PageSize(100). // 分页大小，拿全部，有更大的需求再改大
+			Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+				ViewId(*tableConfig.ViewID).
+				FieldNames(fieldNames).
+				Build()).
+			Build()
+
+		// 发起请求
+		resp, err := s.c.GetAppTableRecord(ctx, req)
+		if err != nil {
+			s.log.Error("GetFAQProblemTableRecord 调用失败",
+				logger.String("error", err.Error()),
+			)
+			return errs.FeishuRequestError(err)
+		}
+
+		// 服务端错误处理
+		if !resp.Success() {
+			s.log.Error("GetFAQProblemTableRecord Lark 接口错误",
+				logger.String("request_id", resp.RequestId()),
+				logger.String("error", larkcore.Prettify(resp.CodeError)),
+			)
+			return errs.FeishuResponseError(err)
+		}
+		feishuResp = resp
+		return nil
+	})
+
+	// 任何一个失败，整体失败
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
-	// 服务端错误处理
-	if !resp.Success() {
-		s.log.Error("GetNormalRecord Lark 接口错误",
-			logger.String("request_id", resp.RequestId()),
-			logger.String("error", larkcore.Prettify(resp.CodeError)),
-		)
-		return nil, errs.FeishuResponseError(err)
-	}
+	// 组装记录
+	var records []domain.FAQTableRecord
+	for _, r := range feishuResp.Data.Items {
+		var isResolved *bool
 
-	var records []DTO.TableRecord
-	for _, r := range resp.Data.Items {
-		records = append(records, DTO.TableRecord{
-			RecordID: r.RecordId,
-			Record:   simplifyFields(r.Fields),
+		if resolutionMap != nil {
+			if val, ok := resolutionMap[*r.RecordId]; ok {
+				isResolved = val
+			}
+		}
+
+		records = append(records, domain.FAQTableRecord{
+			RecordID:   r.RecordId,
+			Record:     simplifyFields(r.Fields),
+			IsResolved: stringIsResolved(isResolved),
 		})
 	}
 
 	// 组装返回值
-	res := &DTO.TableRecords{
-		Records:   records,
-		HasMore:   resp.Data.HasMore,
-		PageToken: resp.Data.PageToken,
-		Total:     resp.Data.Total,
+	res := &domain.FAQTableRecords{
+		Records: records,
+		Total:   feishuResp.Data.Total,
 	}
 	return res, nil
+}
+
+func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
+	record, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, resolution.RecordID)
+	if err != nil {
+		return errs.FAQResolutionFindError(err)
+	}
+	if record != nil {
+		return errs.FAQResolutionExistError(fmt.Errorf("user %s has already set resolution for record %s", *resolution.UserID, *resolution.RecordID))
+	}
+
+	// TODO 这里会有一致性问题，展示没有想到好的方案
+	// 创建请求对象
+	//var fieldName string
+	//var fieldValue int
+	//if resolution.IsResolved != nil && *resolution.IsResolved {
+	//	fieldName = *resolution.ResolvedFieldName // 已解决字段
+	//	fieldValue = 4
+	//} else {
+	//	fieldName = *resolution.UnresolvedFieldName // 未解决字段
+	//	fieldValue = 2
+	//}
+	//req := larkbitable.NewUpdateAppTableRecordReqBuilder().
+	//	AppToken(*tableConfig.TableToken).
+	//	TableId(*tableConfig.TableID).
+	//	RecordId(*resolution.RecordID).
+	//	AppTableRecord(larkbitable.NewAppTableRecordBuilder().
+	//		Fields(map[string]interface{}{fieldName: fieldValue}).
+	//		Build()).
+	//	Build()
+	//
+	//// 发起请求
+	//ctx := context.Background()
+	//resp, err := s.c.UpdateRecord(ctx, req)
+	//
+	//// 处理错误
+	//if err != nil {
+	//	s.log.Error("UpdateFAQResolutionRecord 调用失败",
+	//		logger.String("error", err.Error()))
+	//	return errs.FeishuRequestError(err)
+	//}
+	//
+	//// 服务端错误处理
+	//if !resp.Success() {
+	//	s.log.Error("UpdateFAQResolutionRecord Lark 接口错误",
+	//		logger.String("request_id", resp.RequestId()),
+	//		logger.String("error", larkcore.Prettify(resp.CodeError)))
+	//
+	//	return errs.FeishuResponseError(err)
+	//}
+
+	err = s.faqDAO.UpsertFAQResolution(resolution)
+	if err != nil {
+		return errs.FAQResolutionChangeError(err)
+	}
+	return nil
 }
 
 // SendBatchNotice  发送通知
@@ -260,7 +370,7 @@ func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 	g, ctx := errgroup.WithContext(context.Background())
 
 	// 根据open_id发送消息
-	for _, old := range s.bcfg.OpenIDs {
+	for _, old := range s.bc.OpenIDs {
 		name := old.Name
 		openId := old.OpenID
 
@@ -315,7 +425,7 @@ func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 	g, ctx := errgroup.WithContext(context.Background())
 
 	// 根据chat_id发送消息
-	for _, old := range s.bcfg.ChatIDs {
+	for _, old := range s.bc.ChatIDs {
 		name := old.Name
 		chatId := old.ChatID
 
@@ -385,10 +495,6 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 	return resp, nil
 }
 
-func (s *SheetServiceImpl) GetUserLikeRecord(recordID string, userID string) (int, error) {
-	return s.likeDao.GetUserLikeRecord(recordID, userID)
-}
-
 func simplifyFields(fields map[string]any) map[string]any {
 	result := make(map[string]any, len(fields))
 
@@ -444,4 +550,19 @@ func simplifyFields(fields map[string]any) map[string]any {
 	}
 
 	return result
+}
+
+func stringIsResolved(isResolved *bool) *string {
+	var status string
+
+	switch {
+	case isResolved == nil:
+		status = StatusNotSelected
+	case *isResolved:
+		status = StatusResolved
+	default:
+		status = StatusUnresolved
+	}
+
+	return &status
 }

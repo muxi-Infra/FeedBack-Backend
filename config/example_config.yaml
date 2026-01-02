@@ -46,6 +46,12 @@ redis:
   password: "xxxxx"
   db: 0
 
+mysql:
+  addr: "xxxxx:3306"
+  dbname: "xxxxx"
+  username: "xxxxx"
+  password: "xxxxx"
+
 log:
   file: "logs/app.log"  # 日志文件路径
   maxSize: 5  # 单个日志文件的最大大小，单位为 MB

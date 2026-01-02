@@ -24,6 +24,7 @@ var ProviderSet = wire.NewSet(
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewBatchNoticeConfig,
+	NewMysqlConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
 	NewBasicAuthConfig,
@@ -329,6 +330,32 @@ func NewRedisConfig() *RedisConfig {
 
 	//fmt.Printf("redisConfig :%v\n", redisConfig)
 	return redisConfig
+}
+
+type MysqlConfig struct {
+	Addr     string `yaml:"addr" mapstructure:"addr"`
+	DBName   string `yaml:"dbname" mapstructure:"dbname"`
+	UserName string `yaml:"username" mapstructure:"username"`
+	Password string `yaml:"password" mapstructure:"password"`
+}
+
+func NewMysqlConfig() *MysqlConfig {
+	mysqlConfig := &MysqlConfig{}
+	err := vp.UnmarshalKey("mysql", &mysqlConfig)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析 MySQL 配置: %v", err))
+	}
+
+	if mysqlConfig.Addr == "" {
+		panic("MySQL 配置无效: addr 不能为空")
+	}
+	if mysqlConfig.DBName == "" {
+		panic("MySQL 配置无效: dbname 不能为空")
+	}
+	if mysqlConfig.UserName == "" || mysqlConfig.Password == "" {
+		panic("MySQL 配置无效: username 和 password 不能为空")
+	}
+	return mysqlConfig
 }
 
 type LogConfig struct {

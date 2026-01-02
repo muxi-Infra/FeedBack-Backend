@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
-	DTO "github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
+	domain "github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
 // MockSheetService is a mock of SheetService interface.
@@ -36,7 +36,7 @@ func (m *MockSheetService) EXPECT() *MockSheetServiceMockRecorder {
 }
 
 // CreateRecord mocks base method.
-func (m *MockSheetService) CreateRecord(record DTO.TableRecord, tableConfig DTO.TableConfig) (*string, error) {
+func (m *MockSheetService) CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateRecord", record, tableConfig)
 	ret0, _ := ret[0].(*string)
@@ -50,19 +50,19 @@ func (mr *MockSheetServiceMockRecorder) CreateRecord(record, tableConfig interfa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRecord", reflect.TypeOf((*MockSheetService)(nil).CreateRecord), record, tableConfig)
 }
 
-// GetNormalProblemTableRecord mocks base method.
-func (m *MockSheetService) GetNormalProblemTableRecord(fieldNames []string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
+// GetFAQProblemTableRecord mocks base method.
+func (m *MockSheetService) GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNormalProblemTableRecord", fieldNames, tableConfig)
-	ret0, _ := ret[0].(*DTO.TableRecords)
+	ret := m.ctrl.Call(m, "GetFAQProblemTableRecord", studentID, fieldNames, tableConfig)
+	ret0, _ := ret[0].(*domain.FAQTableRecords)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetNormalProblemTableRecord indicates an expected call of GetNormalProblemTableRecord.
-func (mr *MockSheetServiceMockRecorder) GetNormalProblemTableRecord(fieldNames, tableConfig interface{}) *gomock.Call {
+// GetFAQProblemTableRecord indicates an expected call of GetFAQProblemTableRecord.
+func (mr *MockSheetServiceMockRecorder) GetFAQProblemTableRecord(studentID, fieldNames, tableConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNormalProblemTableRecord", reflect.TypeOf((*MockSheetService)(nil).GetNormalProblemTableRecord), fieldNames, tableConfig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFAQProblemTableRecord", reflect.TypeOf((*MockSheetService)(nil).GetFAQProblemTableRecord), studentID, fieldNames, tableConfig)
 }
 
 // GetPhotoUrl mocks base method.
@@ -81,10 +81,10 @@ func (mr *MockSheetServiceMockRecorder) GetPhotoUrl(fileTokens interface{}) *gom
 }
 
 // GetTableRecordReqByKey mocks base method.
-func (m *MockSheetService) GetTableRecordReqByKey(keyField DTO.TableField, fieldNames []string, pageToken string, tableConfig DTO.TableConfig) (*DTO.TableRecords, error) {
+func (m *MockSheetService) GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTableRecordReqByKey", keyField, fieldNames, pageToken, tableConfig)
-	ret0, _ := ret[0].(*DTO.TableRecords)
+	ret0, _ := ret[0].(*domain.TableRecords)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -95,17 +95,16 @@ func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByKey(keyField, fieldNa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByKey", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByKey), keyField, fieldNames, pageToken, tableConfig)
 }
 
-// GetUserLikeRecord mocks base method.
-func (m *MockSheetService) GetUserLikeRecord(recordID, userID string) (int, error) {
+// UpdateFAQResolutionRecord mocks base method.
+func (m *MockSheetService) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserLikeRecord", recordID, userID)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "UpdateFAQResolutionRecord", resolution, tableConfig)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// GetUserLikeRecord indicates an expected call of GetUserLikeRecord.
-func (mr *MockSheetServiceMockRecorder) GetUserLikeRecord(recordID, userID interface{}) *gomock.Call {
+// UpdateFAQResolutionRecord indicates an expected call of UpdateFAQResolutionRecord.
+func (mr *MockSheetServiceMockRecorder) UpdateFAQResolutionRecord(resolution, tableConfig interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserLikeRecord", reflect.TypeOf((*MockSheetService)(nil).GetUserLikeRecord), recordID, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFAQResolutionRecord", reflect.TypeOf((*MockSheetService)(nil).UpdateFAQResolutionRecord), resolution, tableConfig)
 }
