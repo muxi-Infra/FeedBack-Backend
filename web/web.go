@@ -19,8 +19,6 @@ var ProviderSet = wire.NewSet(
 	wire.Bind(new(AuthHandler), new(*controller.Auth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
-	controller.NewLike,
-	wire.Bind(new(LikeHandler), new(*controller.Like)),
 )
 
 func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
@@ -29,7 +27,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	logMiddleware *middleware.LoggerMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
-	sh SheetHandler, ah AuthHandler, lh LikeHandler) *gin.Engine {
+	sh SheetHandler, ah AuthHandler) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
 
@@ -50,9 +48,8 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(api)
 
 	// 业务路由
-	RegisterSheetHandler(api, sh, authMiddleware.MiddlewareFunc())
 	RegisterAuthRouter(api, ah)
-	RegisterLikeHandler(api, lh, authMiddleware.MiddlewareFunc())
+	RegisterSheetHandler(api, sh, authMiddleware.MiddlewareFunc())
 
 	return r
 }

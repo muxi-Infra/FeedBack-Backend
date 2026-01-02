@@ -6,8 +6,27 @@ definitions:
         additionalProperties: {}
         description: 记录列表
         type: object
+      table_identify:
+        type: string
     required:
     - records
+    - table_identify
+    type: object
+  request.FAQResolutionUpdateReq:
+    properties:
+      is_resolved:
+        type: boolean
+      record_id:
+        type: string
+      table_identify:
+        type: string
+      user_id:
+        type: string
+    required:
+    - is_resolved
+    - record_id
+    - table_identify
+    - user_id
     type: object
   request.GenerateTokenReq:
     properties:
@@ -16,21 +35,6 @@ definitions:
         type: string
     required:
     - table_identity
-    type: object
-  request.LikeReq:
-    properties:
-      action:
-        type: string
-      is_like:
-        type: integer
-      record_id:
-        type: string
-      user_id:
-        type: string
-    required:
-    - action
-    - record_id
-    - user_id
     type: object
   response.HealthCheckResponse:
     properties:
@@ -328,6 +332,11 @@ paths:
         name: record_names
         required: true
         type: array
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
+        required: true
+        type: string
       - in: query
         name: table_identify
         required: true
@@ -350,30 +359,39 @@ paths:
       summary: 获取常见问题记录
       tags:
       - Sheet
-  /like/addtask:
     post:
       consumes:
       - application/json
-      description: 添加一个点赞或取消点赞的任务
+      description: 更新FAQ解决方案的 已解决/未解决 状态
+      operationId: faq-resolution-update
       parameters:
-      - description: 点赞请求参数
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 查询记录请求参数
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.LikeReq'
+          $ref: '#/definitions/request.FAQResolutionUpdateReq'
       produces:
       - application/json
       responses:
         "200":
-          description: 添加点赞任务成功
+          description: 成功返回查询结果
           schema:
             $ref: '#/definitions/response.Response'
         "400":
-          description: 添加点赞任务失败
+          description: 请求参数错误或飞书接口调用失败
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 添加点赞任务
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 更新FAQ解决方案的 已解决/未解决 状态
       tags:
-      - 点赞
+      - Sheet
 swagger: "2.0"

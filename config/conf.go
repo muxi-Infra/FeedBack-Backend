@@ -24,6 +24,7 @@ var ProviderSet = wire.NewSet(
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewBatchNoticeConfig,
+	NewMysqlConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
 	NewBasicAuthConfig,

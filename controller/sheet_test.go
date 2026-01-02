@@ -1,9 +1,10 @@
 package controller
 
 import (
-	"github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
 	"testing"
 	"time"
+
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
 
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
@@ -173,7 +174,7 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
 					GetTableRecordReqByKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-					Return(&DTO.TableRecords{
+					Return(&domain.TableRecords{
 						HasMore: boolPtr(false),
 					}, nil)
 			},
@@ -259,7 +260,7 @@ func TestGetNormalProblemTableRecord(t *testing.T) {
 			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
 				mockSvc.EXPECT().
 					GetNormalProblemTableRecord(gomock.Any(), gomock.Any()).
-					Return(&DTO.TableRecords{HasMore: boolPtr(false)}, nil).
+					Return(&domain.TableRecords{HasMore: boolPtr(false)}, nil).
 					AnyTimes()
 			},
 			expectedCode:  0,

@@ -26,8 +26,6 @@
 ### 业务（20xxxx）
 - `TokenGeneratedErrorCode = 200000` - Token 生成失败 - HTTP 500
 - `TableIdentifyNotFoundCode = 200001` - 表格标识未找到 - HTTP 404
-- `RecordNotFoundCode = 200002` - 记录不存在 - HTTP 404
-- `AddPendingLikeTaskCode = 200003` - 添加待处理点赞任务失败 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500

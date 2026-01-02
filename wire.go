@@ -24,6 +24,7 @@ func InitApp() (*App, error) {
 		logger.NewZapLogger,
 		feishu.ProviderSet,
 		ijwt.NewJWT,
+		dao.ProviderSet,
 		service.ProviderSet,
 		middleware.NewCorsMiddleware,
 		middleware.NewAuthMiddleware,
@@ -32,7 +33,6 @@ func InitApp() (*App, error) {
 		middleware.NewPrometheusMiddleware,
 		middleware.NewLimitMiddleware,
 		web.ProviderSet,
-		dao.ProviderSet,
 	)
 	return &App{}, nil
 }

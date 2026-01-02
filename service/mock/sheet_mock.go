@@ -9,7 +9,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
-	DTO "github.com/muxi-Infra/FeedBack-Backend/domain/DTO"
+	DTO "github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
 // MockSheetService is a mock of SheetService interface.
