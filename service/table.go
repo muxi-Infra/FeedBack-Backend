@@ -35,13 +35,21 @@ type Table struct {
 }
 
 func NewTableService(cfg *config.BaseTable, c feishu.Client, log logger.Logger) TableService {
-	return &TableServiceImpl{
+	svc := &TableServiceImpl{
 		tableCfg:     make(map[string]Table),
 		baseTableCfg: cfg,
 		mutex:        sync.RWMutex{},
 		c:            c,
 		log:          log,
 	}
+	// 启动时同步刷新一次表配置，失败只记录日志
+	if _, err := svc.RefreshTableConfig(); err != nil {
+		svc.log.Error("启动阶段 RefreshTableConfig 初始调用失败",
+			logger.String("error", err.Error()),
+		)
+	}
+
+	return svc
 }
 
 func (t *TableServiceImpl) RefreshTableConfig() ([]Table, error) {
