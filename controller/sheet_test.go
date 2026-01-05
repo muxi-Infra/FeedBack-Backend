@@ -50,8 +50,12 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record success",
 			req: request.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				Record: map[string]interface{}{
-					"name": "mock-test",
+				StudentID:     stringPtr("2021001234"),
+				Content:       stringPtr("测试反馈内容"),
+				Images:        []string{"token1", "token2"},
+				ContactInfo:   stringPtr("test@example.com"),
+				ExtraRecord: map[string]interface{}{
+					"额外字段": "额外值",
 				},
 			},
 			uc: uc,
@@ -62,6 +66,66 @@ func TestCreateAppTableRecord(t *testing.T) {
 			},
 			expectedCode:  0,
 			expectedError: false,
+		},
+		{
+			name: "create record with missing student id",
+			req: request.CreatTableRecordReg{
+				TableIdentify: stringPtr("mock-table-identity"),
+				StudentID:     nil,
+				Content:       stringPtr("测试反馈内容"),
+			},
+			uc:            uc,
+			setupMocks:    nil,
+			expectedCode:  0,
+			expectedError: true,
+		},
+		{
+			name: "create record with invalid student id length",
+			req: request.CreatTableRecordReg{
+				TableIdentify: stringPtr("mock-table-identity"),
+				StudentID:     stringPtr("123"),
+				Content:       stringPtr("测试反馈内容"),
+			},
+			uc:            uc,
+			setupMocks:    nil,
+			expectedCode:  0,
+			expectedError: true,
+		},
+		{
+			name: "create record with missing content",
+			req: request.CreatTableRecordReg{
+				TableIdentify: stringPtr("mock-table-identity"),
+				StudentID:     stringPtr("2021001234"),
+				Content:       nil,
+			},
+			uc:            uc,
+			setupMocks:    nil,
+			expectedCode:  0,
+			expectedError: true,
+		},
+		{
+			name: "create record with empty content",
+			req: request.CreatTableRecordReg{
+				TableIdentify: stringPtr("mock-table-identity"),
+				StudentID:     stringPtr("2021001234"),
+				Content:       stringPtr(""),
+			},
+			uc:            uc,
+			setupMocks:    nil,
+			expectedCode:  0,
+			expectedError: true,
+		},
+		{
+			name: "create record with table identify mismatch",
+			req: request.CreatTableRecordReg{
+				TableIdentify: stringPtr("wrong-table-identity"),
+				StudentID:     stringPtr("2021001234"),
+				Content:       stringPtr("测试反馈内容"),
+			},
+			uc:            uc,
+			setupMocks:    nil,
+			expectedCode:  0,
+			expectedError: true,
 		},
 	}
 
