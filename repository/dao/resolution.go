@@ -11,7 +11,7 @@ import (
 type FAQResolutionDAO interface {
 	GetResolutionByUserAndRecord(userID, recordID *string) (*model.FAQResolution, error)
 	ListResolutionsByUser(userID *string) ([]model.FAQResolution, error)
-	UpsertFAQResolution(input *model.FAQResolution) error
+	CreateOrUpsertFAQResolution(input *model.FAQResolution) error
 }
 
 type faqResolutionDAO struct {
@@ -58,7 +58,7 @@ func (f *faqResolutionDAO) ListResolutionsByUser(userID *string) ([]model.FAQRes
 	return list, err
 }
 
-func (f *faqResolutionDAO) UpsertFAQResolution(m *model.FAQResolution) error {
+func (f *faqResolutionDAO) CreateOrUpsertFAQResolution(m *model.FAQResolution) error {
 	// 逻辑层兜底校验
 	if m.UserID == nil || m.RecordID == nil {
 		return errors.New("user_id or record_id is nil")
@@ -72,6 +72,7 @@ func (f *faqResolutionDAO) UpsertFAQResolution(m *model.FAQResolution) error {
 		},
 		DoUpdates: clause.Assignments(map[string]interface{}{
 			"is_resolved": gorm.Expr("VALUES(is_resolved)"),
+			"frequency":   gorm.Expr("VALUES(frequency)"),
 			"updated_at":  gorm.Expr("NOW(3)"),
 		}),
 	}).Create(m).Error

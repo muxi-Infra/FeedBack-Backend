@@ -309,38 +309,59 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 }
 
 func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
-	record, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, resolution.RecordID)
+	// 1. 查询用户是否已经对该 FAQ 做过选择
+	existingRecord, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, resolution.RecordID)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord faqDAO.GetResolutionByUserAndRecord err",
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionFindError(err)
 	}
-	var first = false
-	if record == nil {
-		// 不存在
-		first = true
-	}
-	if record != nil && record.IsResolved != nil && *record.IsResolved == *resolution.IsResolved {
-		// 状态未变化
-		return errs.FAQResolutionExistError(errors.New("faq resolution status exist"))
+
+	// 2. 判断是否为首次选择
+	isFirstChoice := existingRecord == nil
+
+	// 3. 如果是修改状态，检查修改次数限制（最多允许修改 3 次）
+	if !isFirstChoice {
+		if existingRecord.Frequency != nil && *existingRecord.Frequency >= 3 {
+			return errs.FAQResolutionChangeLimitExceededError(errors.New("faq resolution change limit exceeded"))
+		}
+
+		// 检查状态是否真的发生变化
+		if existingRecord.IsResolved != nil && *existingRecord.IsResolved == *resolution.IsResolved {
+			return errs.FAQResolutionExistError(errors.New("faq resolution status exist"))
+		}
 	}
 
-	// 生成缓存 key
-	ResolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
-	UnresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
-	var resolvedCount, unresolvedCount uint64
-	switch {
-	case first && *resolution.IsResolved: // 首次选择 已解决
-		resolvedCount, unresolvedCount, err = s.cache.IncAAndGetB(ResolvedKey, UnresolvedKey)
-	case first && !*resolution.IsResolved: // 首次选择 未解决
-		unresolvedCount, resolvedCount, err = s.cache.IncAAndGetB(UnresolvedKey, ResolvedKey)
-	case !first && *record.IsResolved:
-		resolvedCount, unresolvedCount, err = s.cache.IncAAndDecB(ResolvedKey, UnresolvedKey)
-	case !first && !*record.IsResolved:
-		unresolvedCount, resolvedCount, err = s.cache.IncAAndDecB(UnresolvedKey, ResolvedKey)
+	// 4. 计算 修改次数
+	newFrequency := 1
+	if !isFirstChoice {
+		newFrequency = *existingRecord.Frequency + 1
 	}
+
+	// 5. 生成 Redis 缓存 key
+	resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
+	unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
+
+	// 6. 使用 Lua 脚本原子性更新 Redis 计数器
+	var resolvedCount, unresolvedCount uint64
+	if isFirstChoice {
+		// 首次选择：只增加对应状态的计数
+		if *resolution.IsResolved {
+			resolvedCount, unresolvedCount, err = s.cache.IncAAndGetB(resolvedKey, unresolvedKey)
+		} else {
+			unresolvedCount, resolvedCount, err = s.cache.IncAAndGetB(unresolvedKey, resolvedKey)
+		}
+	} else {
+		// 修改状态：新状态计数 +1，旧状态计数 -1
+		if *resolution.IsResolved {
+			resolvedCount, unresolvedCount, err = s.cache.IncAAndDecB(resolvedKey, unresolvedKey)
+		} else {
+			unresolvedCount, resolvedCount, err = s.cache.IncAAndDecB(unresolvedKey, resolvedKey)
+		}
+	}
+
 	if err != nil {
-		s.log.Error("UpdateFAQResolutionRecord redis get resolved/unresolved count err",
+		s.log.Error("UpdateFAQResolutionRecord redis cache update err",
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionCountGetError(err)
 	}
@@ -380,10 +401,11 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 		RecordID:   resolution.RecordID,
 		UserID:     resolution.UserID,
 		IsResolved: resolution.IsResolved,
+		Frequency:  &newFrequency,
 	}
-	err = s.faqDAO.UpsertFAQResolution(m)
+	err = s.faqDAO.CreateOrUpsertFAQResolution(m)
 	if err != nil {
-		s.log.Error("UpdateFAQResolutionRecord faqDAO.UpsertFAQResolution err",
+		s.log.Error("UpdateFAQResolutionRecord faqDAO.CreateOrUpsertFAQResolution err",
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionChangeError(err)
 	}
