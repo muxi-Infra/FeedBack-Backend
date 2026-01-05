@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
@@ -43,8 +43,9 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 	}
 
 	// 组装参数
-	record := domain.TableRecord{
-		Record: r.Record,
+	record, err := buildCreateTableRecord(r)
+	if err != nil {
+		return response.Response{}, err
 	}
 	tableConfig := domain.TableConfig{
 		TableIdentity: &uc.TableIdentity,
@@ -55,7 +56,7 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 	}
 
 	// 发起请求
-	resp, err := s.s.CreateRecord(&record, &tableConfig)
+	resp, err := s.s.CreateRecord(record, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -230,7 +231,46 @@ func (s *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 
 func validateTableIdentify(a, b string) error {
 	if a != b {
-		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify is not invalid"))
+		return errs.TableIdentifierInvalidError(errors.New("table identify is not invalid"))
 	}
 	return nil
+}
+
+// buildCreateTableRecord 组装以及校验创建记录的参数
+func buildCreateTableRecord(r request.CreatTableRecordReg) (*domain.TableRecord, error) {
+	// 拷贝 ExtraRecord，避免修改调用方原始 map
+	totalRecord := make(map[string]any, len(r.ExtraRecord)+4)
+	for k, v := range r.ExtraRecord {
+		totalRecord[k] = v
+	}
+
+	// 必填字段校验
+	if r.StudentID == nil {
+		return nil, errs.CreateRecordEmptyStudentIDError(errors.New("student_id is required"))
+	} else if len(*r.StudentID) != 10 { // 学号长度为10，后续可以追加校验真实学号
+		return nil, errs.CreateRecordInvalidStudentIDError(errors.New("student_id is invalid, length must be 10"))
+	}
+	totalRecord["学号"] = *r.StudentID
+	if r.Content == nil {
+		return nil, errs.CreateRecordEmptyContentError(errors.New("content is required"))
+	} else if len(*r.Content) == 0 {
+		return nil, errs.CreateRecordEmptyContentError(errors.New("content is required"))
+	}
+	totalRecord["反馈内容"] = *r.Content
+
+	// 可选字段处理
+	// 将图片文件 token 数组转换为 Feishu API 期望的对象数组: [{"file_token": "your_file_token"}]
+	fileObjs := make([]map[string]string, 0, len(r.Images))
+	for _, t := range r.Images {
+		fileObjs = append(fileObjs, map[string]string{"file_token": t})
+	}
+	totalRecord["截图"] = fileObjs
+	if r.ContactInfo != nil {
+		totalRecord["联系方式（QQ/邮箱）"] = *r.ContactInfo
+	}
+
+	record := &domain.TableRecord{
+		Record: totalRecord,
+	}
+	return record, nil
 }

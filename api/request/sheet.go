@@ -3,7 +3,11 @@ package request
 // CreatTableRecordReg 创建表格记录请求参数
 type CreatTableRecordReg struct {
 	TableIdentify *string        `json:"table_identify" binding:"required"`
-	Record        map[string]any `json:"records" binding:"required"` // 记录列表
+	StudentID     *string        `json:"student_id" binding:"required"`    // 学号，用于标记用户身份
+	Content       *string        `json:"content" binding:"required"`       // 反馈内容
+	Images        []string       `json:"images" binding:"omitempty"`       // 图片附件 URL 列表，可选
+	ContactInfo   *string        `json:"contact_info" binding:"omitempty"` // 联系方式，可选
+	ExtraRecord   map[string]any `json:"extra_record" binding:"omitempty"` // 额外记录列表，可选
 }
 
 // GetTableRecordReq 获取表格记录请求参数（个人历史记录）
