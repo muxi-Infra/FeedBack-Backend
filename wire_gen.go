@@ -40,6 +40,8 @@ func InitApp() (*App, error) {
 	redisConfig := config.NewRedisConfig()
 	client := ioc.InitRedis(redisConfig)
 	limitMiddleware := middleware.NewLimitMiddleware(limiterConfig, client)
+	swagService := service.NewSwagService(loggerLogger)
+	swag := controller.NewSwag(swagService)
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
 	feishuClient := feishu.NewClient(larkClient)
@@ -53,7 +55,7 @@ func InitApp() (*App, error) {
 	baseTable := config.NewBaseTable()
 	tableService := service.NewTableService(baseTable, feishuClient, loggerLogger)
 	auth := controller.NewOauth(jwt, tableService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, sheet, auth)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swag, sheet, auth)
 	app := &App{
 		r: engine,
 	}

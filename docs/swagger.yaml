@@ -2,14 +2,29 @@ basePath: /
 definitions:
   request.CreatTableRecordReg:
     properties:
-      records:
+      contact_info:
+        description: 联系方式，可选
+        type: string
+      content:
+        description: 反馈内容
+        type: string
+      extra_record:
         additionalProperties: {}
-        description: 记录列表
+        description: 额外记录列表，可选
         type: object
+      images:
+        description: 图片附件 URL 列表，可选
+        items:
+          type: string
+        type: array
+      student_id:
+        description: 学号，用于标记用户身份
+        type: string
       table_identify:
         type: string
     required:
-    - records
+    - content
+    - student_id
     - table_identify
     type: object
   request.FAQResolutionUpdateReq:
@@ -116,7 +131,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: 刷新表格 token 配置接口
+      description: 刷新并返回目前支持索引的表格的公开配置
+      operationId: refresh-table-config
       produces:
       - application/json
       responses:
@@ -189,6 +205,32 @@ paths:
                   type: string
               type: object
       summary: 健康检查，返回当前服务占用的资源等信息
+      tags:
+      - Health
+  /api/v1/openapi:
+    get:
+      description: 接口直接返回 docs/openapi3.yaml yaml格式的原始内容，使用BasicAuth进行验证
+      operationId: get-openapi3
+      produces:
+      - application/x-yaml
+      responses:
+        "200":
+          description: 成功返回 OpenAPI3 文档内容
+          schema:
+            type: string
+        "401":
+          description: 未授权，BasicAuth 验证失败
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BasicAuth: []
+      summary: 获取 OpenAPI3 接口文档 (YAML)
+      tags:
+      - Swag
   /api/v1/sheet/photos/url:
     get:
       consumes:
@@ -376,7 +418,7 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 查询记录请求参数
+      - description: 更新FAQ解决状态请求参数
         in: body
         name: request
         required: true
@@ -386,7 +428,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 成功返回查询结果
+          description: 成功更新FAQ解决状态
           schema:
             $ref: '#/definitions/response.Response'
         "400":

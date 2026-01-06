@@ -11,6 +11,7 @@ import (
 //
 //	@Summary		健康检查，返回当前服务占用的资源等信息
 //	@Description	健康检查，返回当前服务占用的资源等信息
+//	@Tags			Health
 //	@ID				health-check
 //	@Accept			json
 //	@Produce		json

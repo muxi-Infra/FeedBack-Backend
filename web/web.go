@@ -9,12 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var ProviderSet = wire.NewSet(
 	NewGinEngine,
+	controller.NewSwag,
+	wire.Bind(new(SwagHandler), new(*controller.Swag)),
 	controller.NewOauth,
 	wire.Bind(new(AuthHandler), new(*controller.Auth)),
 	controller.NewSheet,
@@ -27,6 +27,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	logMiddleware *middleware.LoggerMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
+	swag SwagHandler,
 	sh SheetHandler, ah AuthHandler) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
@@ -37,12 +38,12 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	r.Use(prometheusMiddleware.MiddlewareFunc()) // Prometheus 监控中间件
 	r.Use(limitMiddleware.Middleware())          // 限流中间件
 
-	// Swagger 文档使用 basic auth 保护
-	RegisterSwaggerHandler(r, basicAuthMiddleware)
-	// Prometheus metrics 使用 basic auth 保护
-	RegisterPrometheusHandler(r, prometheusMiddleware, basicAuthMiddleware)
-
 	api := r.Group("/api/v1")
+
+	// Swagger 文档使用 basic auth 保护
+	RegisterSwagHandler(api, swag, basicAuthMiddleware.MiddlewareFunc())
+	// Prometheus metrics 使用 basic auth 保护
+	RegisterPrometheusHandler(api, prometheusMiddleware, basicAuthMiddleware)
 
 	// 健康检查
 	RegisterHealthCheckHandler(api)
@@ -54,13 +55,8 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	return r
 }
 
-// RegisterSwaggerHandler 注册 Swagger 文档路由，使用 Basic Auth 保护
-func RegisterSwaggerHandler(r *gin.Engine, basicAuthMiddleware *middleware.BasicAuthMiddleware) {
-	r.GET("/swagger/*any", basicAuthMiddleware.MiddlewareFunc(), ginSwagger.WrapHandler(swaggerFiles.Handler))
-}
-
 // RegisterPrometheusHandler 注册 Prometheus 监控路由，使用 Basic Auth 保护
-func RegisterPrometheusHandler(r *gin.Engine, prometheusMiddleware *middleware.PrometheusMiddleware, basicAuthMiddleware *middleware.BasicAuthMiddleware) {
+func RegisterPrometheusHandler(r *gin.RouterGroup, prometheusMiddleware *middleware.PrometheusMiddleware, basicAuthMiddleware *middleware.BasicAuthMiddleware) {
 	reg := prometheusMiddleware.GetRegistry()
 	r.GET("/metrics", basicAuthMiddleware.MiddlewareFunc(), gin.WrapH(promhttp.HandlerFor(
 		reg,

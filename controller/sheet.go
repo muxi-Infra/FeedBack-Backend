@@ -163,8 +163,8 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"
-//	@Param			request			body		request.FAQResolutionUpdateReq	true	"查询记录请求参数"
-//	@Success		200				{object}	response.Response				"成功返回查询结果"
+//	@Param			request			body		request.FAQResolutionUpdateReq	true	"更新FAQ解决状态请求参数"
+//	@Success		200				{object}	response.Response				"成功更新FAQ解决状态"
 //	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [post]
