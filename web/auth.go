@@ -9,14 +9,16 @@ import (
 )
 
 type AuthHandler interface {
-	GetToken(c *gin.Context, req request.GenerateTokenReq) (response.Response, error)
+	GetTableToken(c *gin.Context, req request.GenerateTableTokenReq) (response.Response, error)
 	RefreshTableConfig(c *gin.Context) (response.Response, error)
+	GetTenantToken(c *gin.Context) (response.Response, error)
 }
 
 func RegisterAuthRouter(r *gin.RouterGroup, ah AuthHandler) {
 	c := r.Group("/auth")
 	{
-		c.POST("/token", ginx.WrapReq(ah.GetToken))
+		c.POST("/table-config/token", ginx.WrapReq(ah.GetTableToken))
 		c.GET("/table-config/refresh", ginx.Wrap(ah.RefreshTableConfig))
+		c.POST("/tenant/token", ginx.Wrap(ah.GetTenantToken))
 	}
 }

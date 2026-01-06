@@ -45,9 +45,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/auth/token": {
+        "/api/v1/auth/table-config/token": {
             "post": {
-                "description": "获取 token 接口",
+                "description": "获取 table token 接口",
                 "consumes": [
                     "application/json"
                 ],
@@ -57,7 +57,8 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "获取 token 接口",
+                "summary": "获取 table token 接口",
+                "operationId": "get-table-token",
                 "parameters": [
                     {
                         "description": "获取Token请求参数",
@@ -65,10 +66,46 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.GenerateTokenReq"
+                            "$ref": "#/definitions/request.GenerateTableTokenReq"
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回 JWT 令牌",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/tenant/token": {
+            "post": {
+                "description": "获取 tenant token 接口，用于上传图片等",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "获取 tenant token 接口",
+                "operationId": "get-tenant-token",
                 "responses": {
                     "200": {
                         "description": "成功返回 JWT 令牌",
@@ -564,7 +601,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.GenerateTokenReq": {
+        "request.GenerateTableTokenReq": {
             "type": "object",
             "required": [
                 "table_identity"
