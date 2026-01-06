@@ -62,8 +62,9 @@ func (o Auth) GetToken(c *gin.Context, req request.GenerateTokenReq) (response.R
 // RefreshTableConfig godoc
 //
 //	@Summary		刷新表格 token 配置接口
-//	@Description	刷新表格 token 配置接口
+//	@Description	刷新并返回目前支持索引的表格的公开配置
 //	@Tags			Auth
+//	@ID				refresh-table-config
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	response.Response	"成功返回目前支持索引的表格的公开配置"

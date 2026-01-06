@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/auth/table-config/refresh": {
             "get": {
-                "description": "刷新表格 token 配置接口",
+                "description": "刷新并返回目前支持索引的表格的公开配置",
                 "consumes": [
                     "application/json"
                 ],
@@ -28,6 +28,7 @@ const docTemplate = `{
                     "Auth"
                 ],
                 "summary": "刷新表格 token 配置接口",
+                "operationId": "refresh-table-config",
                 "responses": {
                     "200": {
                         "description": "成功返回目前支持索引的表格的公开配置",
@@ -99,6 +100,9 @@ const docTemplate = `{
                 "produces": [
                     "application/json"
                 ],
+                "tags": [
+                    "Health"
+                ],
                 "summary": "健康检查，返回当前服务占用的资源等信息",
                 "operationId": "health-check",
                 "responses": {
@@ -136,6 +140,44 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/openapi": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    }
+                ],
+                "description": "接口直接返回 docs/openapi3.yaml yaml格式的原始内容，使用BasicAuth进行验证",
+                "produces": [
+                    "application/x-yaml"
+                ],
+                "tags": [
+                    "Swag"
+                ],
+                "summary": "获取 OpenAPI3 接口文档 (YAML)",
+                "operationId": "get-openapi3",
+                "responses": {
+                    "200": {
+                        "description": "成功返回 OpenAPI3 文档内容",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "未授权，BasicAuth 验证失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -421,7 +463,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "查询记录请求参数",
+                        "description": "更新FAQ解决状态请求参数",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -432,7 +474,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回查询结果",
+                        "description": "成功更新FAQ解决状态",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -457,14 +499,34 @@ const docTemplate = `{
         "request.CreatTableRecordReg": {
             "type": "object",
             "required": [
-                "records",
+                "content",
+                "student_id",
                 "table_identify"
             ],
             "properties": {
-                "records": {
-                    "description": "记录列表",
+                "contact_info": {
+                    "description": "联系方式，可选",
+                    "type": "string"
+                },
+                "content": {
+                    "description": "反馈内容",
+                    "type": "string"
+                },
+                "extra_record": {
+                    "description": "额外记录列表，可选",
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "images": {
+                    "description": "图片附件 URL 列表，可选",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "student_id": {
+                    "description": "学号，用于标记用户身份",
+                    "type": "string"
                 },
                 "table_identify": {
                     "type": "string"
