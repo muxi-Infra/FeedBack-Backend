@@ -25,15 +25,6 @@ RUN apk add --no-cache tzdata
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
-# 安装运行依赖 + 构建 Swagger 所需工具
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        make \
-        nodejs \
-        npm \
-    && npm install -g swagger2openapi \
-    && rm -rf /var/lib/apt/lists/*
-
 # 设置工作目录为
 WORKDIR /app
 

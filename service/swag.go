@@ -2,11 +2,12 @@ package service
 
 import (
 	"os"
-	"os/exec"
 
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 )
+
+const Filepath = "docs/openapi3.yaml"
 
 type SwagService interface {
 	GenerateOpenAPI() ([]byte, error)
@@ -23,15 +24,14 @@ func NewSwagService(log logger.Logger) SwagService {
 }
 
 func (s *SwagServiceImpl) GenerateOpenAPI() ([]byte, error) {
-	cmd := exec.Command("make", "swag")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return nil, errs.SwagMakeFailureError(err)
-	}
+	//cmd := exec.Command("make", "swag")
+	//cmd.Stdout = os.Stdout
+	//cmd.Stderr = os.Stderr
+	//if err := cmd.Run(); err != nil {
+	//	return nil, errs.SwagMakeFailureError(err)
+	//}
 
-	filepath := "docs/openapi3.yaml"
-	content, err := os.ReadFile(filepath)
+	content, err := os.ReadFile(Filepath)
 	if err != nil {
 		return nil, errs.SwagOpenFailureError(err)
 	}
