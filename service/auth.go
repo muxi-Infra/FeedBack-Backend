@@ -170,10 +170,15 @@ func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (Table, error) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
+	// 防止传入 nil 指针引起 panic
+	if tableIdentity == nil {
+		return Table{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
+	}
+
 	table, exists := t.tableCfg[*tableIdentity]
 	if !exists {
 		return Table{},
-			errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", tableIdentity))
+			errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
 	}
 	return table, nil
 }
