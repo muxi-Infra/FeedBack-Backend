@@ -1,9 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
+	"time"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
@@ -13,14 +18,19 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 )
 
-type TableService interface {
+const RefreshInterval = time.Hour + 35*time.Minute
+
+type AuthService interface {
 	RefreshTableConfig() ([]Table, error)
-	GetTableConfig(tableIdentity string) (Table, error)
+	GetTableConfig(tableIdentity *string) (Table, error)
+	GetTenantToken() string
 }
 
-type TableServiceImpl struct {
-	baseTableCfg *config.BaseTable
+type AuthServiceImpl struct {
 	tableCfg     map[string]Table
+	tenantToken  string // 上传资源（如：图片等）使用
+	baseTableCfg *config.BaseTable
+	clientCfg    *config.ClientConfig
 	mutex        sync.RWMutex
 	c            feishu.Client
 	log          logger.Logger
@@ -34,10 +44,12 @@ type Table struct {
 	ViewID     string
 }
 
-func NewTableService(cfg *config.BaseTable, c feishu.Client, log logger.Logger) TableService {
-	svc := &TableServiceImpl{
+func NewTableService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c feishu.Client, log logger.Logger) AuthService {
+	svc := &AuthServiceImpl{
 		tableCfg:     make(map[string]Table),
-		baseTableCfg: cfg,
+		tenantToken:  "",
+		baseTableCfg: baseCfg,
+		clientCfg:    clientCfg,
 		mutex:        sync.RWMutex{},
 		c:            c,
 		log:          log,
@@ -48,11 +60,12 @@ func NewTableService(cfg *config.BaseTable, c feishu.Client, log logger.Logger) 
 			logger.String("error", err.Error()),
 		)
 	}
+	svc.startTenantTokenRefresher()
 
 	return svc
 }
 
-func (t *TableServiceImpl) RefreshTableConfig() ([]Table, error) {
+func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(t.baseTableCfg.TableToken).
@@ -153,14 +166,112 @@ func (t *TableServiceImpl) RefreshTableConfig() ([]Table, error) {
 	return tables, nil
 }
 
-func (t *TableServiceImpl) GetTableConfig(tableIdentity string) (Table, error) {
+func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (Table, error) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
-	table, exists := t.tableCfg[tableIdentity]
+	table, exists := t.tableCfg[*tableIdentity]
 	if !exists {
 		return Table{},
 			errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", tableIdentity))
 	}
 	return table, nil
+}
+
+func (t *AuthServiceImpl) GetTenantToken() string {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+
+	return t.tenantToken
+}
+
+func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
+	// 局部定义请求/响应结构体
+	type TokenRequest struct {
+		AppID     string `json:"app_id"`
+		AppSecret string `json:"app_secret"`
+	}
+	type TokenResponse struct {
+		Code              int    `json:"code"`
+		Msg               string `json:"msg"`
+		TenantAccessToken string `json:"tenant_access_token"`
+		Expire            int    `json:"expire"`
+	}
+
+	// 构造请求
+	url := "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+	requestBody := TokenRequest{
+		AppID:     t.clientCfg.AppID,
+		AppSecret: t.clientCfg.AppSecret,
+	}
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return nil, errs.SerializationError(err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, errs.FeishuRequestError(fmt.Errorf("创建请求失败: %v", err))
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, errs.FeishuRequestError(fmt.Errorf("HTTP请求失败: %v", err))
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errs.FeishuResponseError(fmt.Errorf("读取响应失败: %v", err))
+	}
+	var tokenResp TokenResponse
+	err = json.Unmarshal(body, &tokenResp)
+	if err != nil {
+		return nil, errs.DeserializationError(err)
+	}
+
+	// 检查响应码
+	if tokenResp.Code != 0 {
+		return nil, errs.FeishuResponseError(fmt.Errorf("获取token失败: code=%d, msg=%s", tokenResp.Code, tokenResp.Msg))
+	}
+
+	// 同步更新配置
+	t.mutex.Lock()
+	t.tenantToken = tokenResp.TenantAccessToken
+	t.mutex.Unlock()
+
+	return &tokenResp.TenantAccessToken, nil
+}
+
+func (t *AuthServiceImpl) startTenantTokenRefresher() {
+	// 启动立即刷新一次
+	// TODO 重试机制
+	if _, err := t.refreshTenantToken(); err != nil {
+		t.log.Error(
+			"启动阶段 RefreshTenantToken 初始调用失败",
+			logger.String("error", err.Error()),
+		)
+	}
+
+	// 后台定时刷新
+	ticker := time.NewTicker(RefreshInterval)
+
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// TODO 重试机制
+				if _, err := t.refreshTenantToken(); err != nil {
+					t.log.Error(
+						"定时刷新租户 Token 失败",
+						logger.String("error", err.Error()),
+					)
+				}
+			}
+		}
+	}()
 }

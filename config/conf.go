@@ -34,11 +34,11 @@ var ProviderSet = wire.NewSet(
 var vp *viper.Viper
 
 func InitNacos() error {
-	//从nacos获取
+	// 从 nacos 获取
 	content, err := getConfigFromNacos()
 	if err != nil {
 		log.Println(err)
-		//本地兜底获取
+		// 本地兜底获取
 		localPath := "./config/config.yaml"
 		fileContent, err := os.ReadFile(localPath)
 		if err != nil {

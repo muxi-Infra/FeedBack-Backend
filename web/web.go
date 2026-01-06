@@ -15,7 +15,7 @@ var ProviderSet = wire.NewSet(
 	NewGinEngine,
 	controller.NewSwag,
 	wire.Bind(new(SwagHandler), new(*controller.Swag)),
-	controller.NewOauth,
+	controller.NewAuth,
 	wire.Bind(new(AuthHandler), new(*controller.Auth)),
 	controller.NewSheet,
 	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
