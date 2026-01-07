@@ -1,18 +1,20 @@
 package controller
 
 import (
+	_ "embed"
+
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
-	"github.com/muxi-Infra/FeedBack-Backend/service"
+	"github.com/muxi-Infra/FeedBack-Backend/docs"
 )
 
 type Swag struct {
-	s service.SwagService
+	openapi string
 }
 
-func NewSwag(s service.SwagService) *Swag {
+func NewSwag() *Swag {
 	return &Swag{
-		s: s,
+		openapi: docs.OpenAPI,
 	}
 }
 
@@ -29,13 +31,10 @@ func NewSwag(s service.SwagService) *Swag {
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/api/v1/openapi [get]
 func (s *Swag) GetOpenApi3(c *gin.Context) (response.Response, error) {
-	content, err := s.s.GenerateOpenAPI()
-	if err != nil {
-		return response.Response{}, err
-	}
+	content := s.openapi
 
 	// 返回 YAML 字符串
-	c.String(200, string(content))
+	c.String(200, content)
 	// 为保证返回的文件纯净性，不打印通用响应体
 	c.Abort()
 	return response.Response{}, nil

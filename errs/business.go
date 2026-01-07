@@ -60,10 +60,4 @@ var (
 	FAQResolutionChangeLimitExceededError = func(err error) error {
 		return errorx.New(http.StatusTooManyRequests, FAQResolutionChangeLimitExceededCode, "FAQ 解决状态修改次数达到上限", err)
 	}
-	SwagMakeFailureError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, SwagMakeFailureErrorCode, "生成 Swagger 文档失败", err)
-	}
-	SwagOpenFailureError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, SwagOpenFailureErrorCode, "打开 Swagger 文档失败", err)
-	}
 )

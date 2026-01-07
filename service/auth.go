@@ -170,15 +170,10 @@ func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (Table, error) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
-	// 防止传入 nil 指针引起 panic
-	if tableIdentity == nil {
-		return Table{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
-	}
-
 	table, exists := t.tableCfg[*tableIdentity]
 	if !exists {
 		return Table{},
-			errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
+			errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", tableIdentity))
 	}
 	return table, nil
 }
@@ -211,25 +206,25 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 	}
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, errs.SerializationError(err)
+		return nil, fmt.Errorf("序列化请求体失败: %v", err)
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return nil, errs.FeishuRequestError(fmt.Errorf("创建请求失败: %v", err))
+		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errs.FeishuRequestError(fmt.Errorf("HTTP请求失败: %v", err))
+		return nil, fmt.Errorf("HTTP请求失败: %v", err)
 	}
 
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errs.FeishuResponseError(fmt.Errorf("读取响应失败: %v", err))
+		return nil, fmt.Errorf("读取响应失败: %v", err)
 	}
 	var tokenResp TokenResponse
 	err = json.Unmarshal(body, &tokenResp)
@@ -239,7 +234,7 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 
 	// 检查响应码
 	if tokenResp.Code != 0 {
-		return nil, errs.FeishuResponseError(fmt.Errorf("获取token失败: code=%d, msg=%s", tokenResp.Code, tokenResp.Msg))
+		return nil, fmt.Errorf("获取token失败: code=%d, msg=%s", tokenResp.Code, tokenResp.Msg)
 	}
 
 	// 同步更新配置
