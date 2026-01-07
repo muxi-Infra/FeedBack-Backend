@@ -5,5 +5,4 @@ import "github.com/google/wire"
 var ProviderSet = wire.NewSet(
 	NewTableService,
 	NewSheetService,
-	NewSwagService,
 )
