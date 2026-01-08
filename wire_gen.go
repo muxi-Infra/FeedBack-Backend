@@ -52,7 +52,7 @@ func InitApp() (*App, error) {
 	sheetService := service.NewSheetService(feishuClient, loggerLogger, batchNoticeConfig, faqResolutionDAO, faqResolutionStateCache)
 	sheet := controller.NewSheet(sheetService)
 	baseTable := config.NewBaseTable()
-	authService := service.NewTableService(baseTable, clientConfig, feishuClient, loggerLogger)
+	authService := service.NewAuthService(baseTable, clientConfig, feishuClient, loggerLogger)
 	auth := controller.NewAuth(jwt, authService)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swag, sheet, auth)
 	app := &App{

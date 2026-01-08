@@ -16,6 +16,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
 )
 
 const RefreshInterval = time.Hour + 35*time.Minute
@@ -44,8 +45,8 @@ type Table struct {
 	ViewID     string
 }
 
-func NewTableService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c feishu.Client, log logger.Logger) AuthService {
-	svc := &AuthServiceImpl{
+func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c feishu.Client, log logger.Logger) AuthService {
+	s := &AuthServiceImpl{
 		tableCfg:     make(map[string]Table),
 		tenantToken:  "",
 		baseTableCfg: baseCfg,
@@ -55,14 +56,14 @@ func NewTableService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, 
 		log:          log,
 	}
 	// 启动时同步刷新一次表配置，失败只记录日志
-	if _, err := svc.RefreshTableConfig(); err != nil {
-		svc.log.Error("启动阶段 RefreshTableConfig 初始调用失败",
+	if _, err := s.RefreshTableConfig(); err != nil {
+		s.log.Error("启动阶段 RefreshTableConfig 初始调用失败",
 			logger.String("error", err.Error()),
 		)
 	}
-	svc.startTenantTokenRefresher()
+	s.startTenantTokenRefresher()
 
-	return svc
+	return s
 }
 
 func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
@@ -251,8 +252,7 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 
 func (t *AuthServiceImpl) startTenantTokenRefresher() {
 	// 启动立即刷新一次
-	// TODO 重试机制
-	if _, err := t.refreshTenantToken(); err != nil {
+	if _, err := retry.Retry(t.refreshTenantToken); err != nil {
 		t.log.Error(
 			"启动阶段 RefreshTenantToken 初始调用失败",
 			logger.String("error", err.Error()),
@@ -268,8 +268,7 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 		for {
 			select {
 			case <-ticker.C:
-				// TODO 重试机制
-				if _, err := t.refreshTenantToken(); err != nil {
+				if _, err := retry.Retry(t.refreshTenantToken); err != nil {
 					t.log.Error(
 						"定时刷新租户 Token 失败",
 						logger.String("error", err.Error()),
