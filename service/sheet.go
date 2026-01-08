@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -14,7 +13,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
@@ -38,14 +37,14 @@ type SheetService interface {
 }
 
 type SheetServiceImpl struct {
-	c      feishu.Client
+	c      lark.Client
 	log    logger.Logger
 	bc     *config.BatchNoticeConfig
 	faqDAO dao.FAQResolutionDAO
 	cache  cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c feishu.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
+func NewSheetService(c lark.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
 	return &SheetServiceImpl{
 		c:      c,
 		log:    log,
@@ -75,7 +74,7 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 		s.log.Error("CreateAppTableRecord 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -84,56 +83,56 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.FeishuResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
 	// 异步发送批量通知
-	go func(r domain.TableRecord, t *domain.TableConfig) {
-		// 防止 panic
-		defer func() {
-			if err := recover(); err != nil {
-				s.log.Error("panic recovered",
-					logger.Reflect("error", err),
-				)
-			}
-		}()
-
-		// 反馈内容 截取前15个字符
-		if fc, ok := r.Record["反馈内容"]; ok {
-			if len(fc.(string)) > 15 {
-				fc = fc.(string)[0:15] + "..."
-			}
-			s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
-		}
-		// 反馈类型
-		if ft, ok := r.Record["问题类型"]; ok {
-			s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
-		}
-		// 反馈来源
-		s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
-
-		contentBytes, err := json.Marshal(s.bc.Content)
-		if err != nil {
-			s.log.Error("json.Marshal failed",
-				logger.String("error", err.Error()),
-			)
-			return
-		}
-
-		// 批量发送 群组通知
-		if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
-			s.log.Error("SendBatchGroupNotice failed",
-				logger.String("error", err.Error()),
-			)
-		}
-
-		//发送个人通知
-		//if err := s.SendBatchNotice(string(contentBytes)); err != nil {
-		//	s.log.Error("SendBatchNotice failed",
-		//		logger.String("error", err.Error()),
-		//	)
-		//}
-	}(*record, tableConfig)
+	//go func(r domain.TableRecord, t *domain.TableConfig) {
+	//	// 防止 panic
+	//	defer func() {
+	//		if err := recover(); err != nil {
+	//			s.log.Error("panic recovered",
+	//				logger.Reflect("error", err),
+	//			)
+	//		}
+	//	}()
+	//
+	//	// 反馈内容 截取前15个字符
+	//	if fc, ok := r.Record["反馈内容"]; ok {
+	//		if len(fc.(string)) > 15 {
+	//			fc = fc.(string)[0:15] + "..."
+	//		}
+	//		s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
+	//	}
+	//	// 反馈类型
+	//	if ft, ok := r.Record["问题类型"]; ok {
+	//		s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
+	//	}
+	//	// 反馈来源
+	//	s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
+	//
+	//	contentBytes, err := json.Marshal(s.bc.Content)
+	//	if err != nil {
+	//		s.log.Error("json.Marshal failed",
+	//			logger.String("error", err.Error()),
+	//		)
+	//		return
+	//	}
+	//
+	//	// 批量发送 群组通知
+	//	if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
+	//		s.log.Error("SendBatchGroupNotice failed",
+	//			logger.String("error", err.Error()),
+	//		)
+	//	}
+	//
+	//	// 发送个人通知
+	//	if err := s.SendBatchNotice(string(contentBytes)); err != nil {
+	//		s.log.Error("SendBatchNotice failed",
+	//			logger.String("error", err.Error()),
+	//		)
+	//	}
+	//}(*record, tableConfig)
 
 	return resp.Data.Record.RecordId, nil
 }
@@ -177,7 +176,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 		s.log.Error("GetTableRecordReqByKey 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -186,7 +185,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.FeishuResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
 	var records []domain.TableRecord
@@ -262,7 +261,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 			s.log.Error("GetFAQProblemTableRecord 调用失败",
 				logger.String("error", err.Error()),
 			)
-			return errs.FeishuRequestError(err)
+			return errs.LarkRequestError(err)
 		}
 
 		// 服务端错误处理
@@ -271,7 +270,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 				logger.String("request_id", resp.RequestId()),
 				logger.String("error", larkcore.Prettify(resp.CodeError)),
 			)
-			return errs.FeishuResponseError(err)
+			return errs.LarkResponseError(err)
 		}
 		feishuResp = resp
 		return nil
@@ -414,6 +413,7 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 
 // SendBatchNotice  发送通知
 // 批量发送给个人通知
+// 2026-01-08：已弃用，后续将删除
 func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
@@ -469,6 +469,7 @@ func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 
 // SendBatchGroupNotice 发送群组通知
 // 支持批量发送
+// 2026-01-08：已弃用，后续将删除
 func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
@@ -533,7 +534,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 		s.log.Error("GetPhotoUrl 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -542,10 +543,16 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.FeishuResponseError(err)
+		return resp, errs.LarkResponseError(err)
 	}
 
 	return resp, nil
+}
+
+// scheduledSendLarkMessage 定时发送飞书消息
+// 每天 18:00 像飞书群发送消息，提醒处理未解决的问题
+func scheduledSendLarkMessage() {
+
 }
 
 func simplifyFields(fields map[string]any) map[string]any {
