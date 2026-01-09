@@ -14,6 +14,12 @@ FeedBack-Backend 是一个基于 Go 的后端服务，用于收集和管理来�
 
 ---
 
+## 🖼️ 架构图
+
+![架构图](https://github.com/muxi-Infra/FeedBack-Backend/blob/main/docs/architecture.png)
+
+---
+
 ## ❌ 错误码说明
 
 错误码规范（6 位）：
