@@ -268,6 +268,12 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 				TemplateVariable: TemplateVariable{
 					FeedbackSource: vp.GetString("content.data.template_variable.feedback_source"),
 					DailyNewCount:  vp.GetInt("content.data.template_variable.daily_new_count"),
+					TableUrl: TableUrl{
+						PCUrl:      vp.GetString("content.data.template_variable.table_url.pc_url"),
+						AndroidUrl: vp.GetString("content.data.template_variable.table_url.android_url"),
+						IOSUrl:     vp.GetString("content.data.template_variable.table_url.ios_url"),
+						Url:        vp.GetString("content.data.template_variable.table_url.url"),
+					},
 				},
 			},
 		},
@@ -294,8 +300,16 @@ type Data struct {
 }
 
 type TemplateVariable struct {
-	FeedbackSource string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
-	DailyNewCount  int    `mapstructure:"daily_new_count" yaml:"daily_new_count" json:"daily_new_count"`
+	FeedbackSource string   `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
+	DailyNewCount  int      `mapstructure:"daily_new_count" yaml:"daily_new_count" json:"daily_new_count"`
+	TableUrl       TableUrl `mapstructure:"table_url" yaml:"table_url" json:"table_url"`
+}
+
+type TableUrl struct {
+	PCUrl      string `mapstructure:"pc_url" yaml:"pc_url" json:"pc_url"`
+	AndroidUrl string `mapstructure:"android_url" yaml:"android_url" json:"android_url"`
+	IOSUrl     string `mapstructure:"ios_url" yaml:"ios_url" json:"ios_url"`
+	Url        string `mapstructure:"url" yaml:"url" json:"url"`
 }
 
 // OpenID 发送消息的人员

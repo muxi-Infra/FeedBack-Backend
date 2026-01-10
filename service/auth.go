@@ -50,6 +50,7 @@ type Table struct {
 	TableID    string
 	ViewID     string
 	TableType  string
+	TableUrl   string
 }
 
 func NewAuthServiceImpl(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c lark.Client, log logger.Logger) *AuthServiceImpl {
@@ -82,7 +83,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 		PageSize(50). // 分页大小，先给 50， 应该用不到这么多
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(t.baseTableCfg.ViewID).
-			FieldNames([]string{`table_identity`, `table_name`, `table_token`, `table_id`, `view_id`, `table_type`}).
+			FieldNames([]string{`table_identity`, `table_name`, `table_token`, `table_id`, `view_id`, `table_type`, `table_url`}).
 			Build()).
 		Build()
 
@@ -126,19 +127,46 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 					}
 					elem := v[0]
 					if s, ok := elem.(map[string]interface{}); ok {
-						if txt, ok := s["text"]; ok {
-							if ss, ok := txt.(string); ok {
-								return ss
+						// 获取类型
+						tp, ok := s["type"]
+						if !ok {
+							return ""
+						}
+						switch tp {
+						case "text":
+							if txt, ok := s["text"]; ok {
+								if ss, ok := txt.(string); ok {
+									return ss
+								}
+							}
+						case "mention":
+							if link, ok := s["link"]; ok {
+								if linkStr, ok := link.(string); ok {
+									return linkStr
+								}
 							}
 						}
 						return ""
 					}
 					return ""
 				case map[string]interface{}:
-					// 尝试获取 text 字段
-					if txt, ok := v["text"]; ok {
-						if s, ok := txt.(string); ok {
-							return s
+					// 获取类型
+					tp, ok := v["type"]
+					if !ok {
+						return ""
+					}
+					switch tp {
+					case "text":
+						if txt, ok := v["text"]; ok {
+							if ss, ok := txt.(string); ok {
+								return ss
+							}
+						}
+					case "mention":
+						if link, ok := v["link"]; ok {
+							if linkStr, ok := link.(string); ok {
+								return linkStr
+							}
 						}
 					}
 					return ""
@@ -153,6 +181,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 			table.TableID = extract("table_id")
 			table.ViewID = extract("view_id")
 			table.TableType = extract("table_type")
+			table.TableUrl = extract("table_url")
 		}
 
 		if table.Identity != "" {

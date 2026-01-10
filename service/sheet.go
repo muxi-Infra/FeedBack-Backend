@@ -63,6 +63,7 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 	}
 
 	impl.MessageSchedulerStart()
+	//impl.SendMessage()
 
 	return impl
 }
@@ -440,14 +441,14 @@ func (s *SheetServiceImpl) MessageSchedulerStart() {
 // SendMessage 发送消息
 func (s *SheetServiceImpl) SendMessage() {
 	// 1. 获取 table 配置
-	fmt.Println("1. 获取 table 配置")
+	//fmt.Println("1. 获取 table 配置")
 	tables := s.tableProvider.GetTablesByType(TableTypeFeedback)
 	if len(tables) == 0 {
 		return
 	}
 
 	// 2. 根据 table_identity 来获取一天的反馈量
-	fmt.Println("2. 根据 table_identity 来获取一天的反馈量")
+	//fmt.Println("2. 根据 table_identity 来获取一天的反馈量")
 	for _, table := range tables {
 		key := fmt.Sprintf(FeedbackCountTableIdentityKey, table.Identity)
 		count, err := s.msgCountCache.GetAndReset(key)
@@ -457,9 +458,18 @@ func (s *SheetServiceImpl) SendMessage() {
 		}
 
 		// 3. 构建卡片消息
-		fmt.Println("3. 构建卡片消息")
+		//fmt.Println("3. 构建卡片消息")
 		s.bc.Content.Data.TemplateVariable.FeedbackSource = table.Name
 		s.bc.Content.Data.TemplateVariable.DailyNewCount = int(count)
+		// todo 目前是一样的，后续可以优化
+		// pc Url
+		s.bc.Content.Data.TemplateVariable.TableUrl.PCUrl = table.TableUrl
+		// ios Url
+		s.bc.Content.Data.TemplateVariable.TableUrl.IOSUrl = table.TableUrl
+		// android Url
+		s.bc.Content.Data.TemplateVariable.TableUrl.AndroidUrl = table.TableUrl
+		// 兜底url
+		s.bc.Content.Data.TemplateVariable.TableUrl.Url = table.TableUrl
 
 		contentBytes, err := json.Marshal(s.bc.Content)
 		if err != nil {
@@ -468,7 +478,7 @@ func (s *SheetServiceImpl) SendMessage() {
 		}
 
 		// 4. 发送卡片消息
-		fmt.Println("4. 发送卡片消息")
+		//fmt.Println("4. 发送卡片消息")
 		if err := s.sendMessage(string(contentBytes)); err != nil {
 			s.log.Error("sendMessage failed", logger.String("error", err.Error()))
 			continue
