@@ -2,10 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
-
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
@@ -18,14 +17,20 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
+	"github.com/robfig/cron/v3"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
+	"time"
 )
 
 const (
 	StatusNotSelected = "未选择"
 	StatusResolved    = "已解决"
 	StatusUnresolved  = "未解决"
+)
+
+const (
+	FeedbackCountTableIdentityKey = "feedback:count:%s"
 )
 
 type SheetService interface {
@@ -37,21 +42,29 @@ type SheetService interface {
 }
 
 type SheetServiceImpl struct {
-	c      lark.Client
-	log    logger.Logger
-	bc     *config.BatchNoticeConfig
-	faqDAO dao.FAQResolutionDAO
-	cache  cache.FAQResolutionStateCache
+	c             lark.Client
+	bc            *config.BatchNoticeConfig
+	log           logger.Logger
+	faqDAO        dao.FAQResolutionDAO
+	cache         cache.FAQResolutionStateCache
+	msgCountCache cache.MessageCountCache
+	tableProvider TableConfigProvider
 }
 
-func NewSheetService(c lark.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
-	return &SheetServiceImpl{
-		c:      c,
-		log:    log,
-		bc:     bc,
-		faqDAO: faqDAO,
-		cache:  cache,
+func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache, bc *config.BatchNoticeConfig, msgCountCache cache.MessageCountCache, tableProvider TableConfigProvider) SheetService {
+	impl := &SheetServiceImpl{
+		c:             c,
+		bc:            bc,
+		log:           log,
+		faqDAO:        faqDAO,
+		cache:         cache,
+		msgCountCache: msgCountCache,
+		tableProvider: tableProvider,
 	}
+
+	impl.MessageSchedulerStart()
+
+	return impl
 }
 
 func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
@@ -86,53 +99,14 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 		return nil, errs.LarkResponseError(err)
 	}
 
-	// 异步发送批量通知
-	//go func(r domain.TableRecord, t *domain.TableConfig) {
-	//	// 防止 panic
-	//	defer func() {
-	//		if err := recover(); err != nil {
-	//			s.log.Error("panic recovered",
-	//				logger.Reflect("error", err),
-	//			)
-	//		}
-	//	}()
-	//
-	//	// 反馈内容 截取前15个字符
-	//	if fc, ok := r.Record["反馈内容"]; ok {
-	//		if len(fc.(string)) > 15 {
-	//			fc = fc.(string)[0:15] + "..."
-	//		}
-	//		s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
-	//	}
-	//	// 反馈类型
-	//	if ft, ok := r.Record["问题类型"]; ok {
-	//		s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
-	//	}
-	//	// 反馈来源
-	//	s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
-	//
-	//	contentBytes, err := json.Marshal(s.bc.Content)
-	//	if err != nil {
-	//		s.log.Error("json.Marshal failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//		return
-	//	}
-	//
-	//	// 批量发送 群组通知
-	//	if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
-	//		s.log.Error("SendBatchGroupNotice failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//	}
-	//
-	//	// 发送个人通知
-	//	if err := s.SendBatchNotice(string(contentBytes)); err != nil {
-	//		s.log.Error("SendBatchNotice failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//	}
-	//}(*record, tableConfig)
+	// 成功之后增加反馈数量
+	key := fmt.Sprintf(FeedbackCountTableIdentityKey, *tableConfig.TableIdentity)
+	err = s.msgCountCache.Increment(key)
+	if err != nil {
+		s.log.Error("CreateAppTableRecord 增加反馈数量失败",
+			logger.String("error", err.Error()),
+		)
+	}
 
 	return resp.Data.Record.RecordId, nil
 }
@@ -411,66 +385,99 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	return nil
 }
 
-// SendBatchNotice  发送通知
-// 批量发送给个人通知
-// 2026-01-08：已弃用，后续将删除
-func (s *SheetServiceImpl) SendBatchNotice(content string) error {
-	// 发送消息这个接口限速50次/s
-	// 创建一个限制器
-	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
+func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
+	// 创建请求对象
+	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
+		FileTokens(fileTokens).
+		Build()
 
-	// 创建errgroup 接受错误
-	g, ctx := errgroup.WithContext(context.Background())
+	// 发起请求
+	ctx := context.Background()
+	resp, err := s.c.GetPhotoUrl(ctx, req)
 
-	// 根据open_id发送消息
-	for _, old := range s.bc.OpenIDs {
-		name := old.Name
-		openId := old.OpenID
-
-		g.Go(func() error {
-			// 等待限速
-			if err := limiter.Wait(ctx); err != nil {
-				return err
-			}
-
-			// 创建请求对象
-			req := larkim.NewCreateMessageReqBuilder().
-				ReceiveIdType(`open_id`).
-				Body(larkim.NewCreateMessageReqBodyBuilder().
-					ReceiveId(openId).
-					MsgType(`interactive`).
-					Content(content).
-					Build()).
-				Build()
-
-			// 发起请求
-			resp, err := s.c.SendNotice(context.Background(), req)
-
-			// 处理错误
-			if err != nil {
-				return fmt.Errorf("send to name [%s] open_id [%s] failed: %w", name, openId, err)
-			}
-
-			// 服务端错误处理
-			if !resp.Success() {
-				s.log.Error("SendBatchNotice Lark 接口错误",
-					logger.String("request_id", resp.RequestId()),
-					logger.String("name", name),
-					logger.String("open_id", openId),
-					logger.String("error", larkcore.Prettify(resp.CodeError)),
-				)
-				return fmt.Errorf("send to name [%s] open_id [%s] failed: %v", name, openId, larkcore.Prettify(resp.CodeError))
-			}
-			return nil
-		})
+	// 处理错误
+	if err != nil {
+		s.log.Error("GetPhotoUrl 调用失败",
+			logger.String("error", err.Error()),
+		)
+		return nil, errs.LarkRequestError(err)
 	}
-	return g.Wait()
+
+	// 服务端错误处理
+	if !resp.Success() {
+		s.log.Error("GetPhotoUrl Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
+		return resp, errs.LarkResponseError(err)
+	}
+
+	return resp, nil
 }
 
-// SendBatchGroupNotice 发送群组通知
-// 支持批量发送
-// 2026-01-08：已弃用，后续将删除
-func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
+func (s *SheetServiceImpl) MessageSchedulerStart() {
+	// 时区
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+	c := cron.New(
+		cron.WithSeconds(),
+		cron.WithLocation(loc),
+	)
+
+	_, err := c.AddFunc("0 0 18 * * *", func() {
+		s.log.Info("MessageSchedulerStart")
+
+		s.SendMessage()
+
+		s.log.Info("MessageSchedulerEnd")
+	})
+
+	if err != nil {
+		s.log.Error("MessageSchedulerStart cron.AddFunc err", logger.String("error", err.Error()))
+	}
+	c.Start()
+}
+
+// SendMessage 发送消息
+func (s *SheetServiceImpl) SendMessage() {
+	// 1. 获取 table 配置
+	fmt.Println("1. 获取 table 配置")
+	tables := s.tableProvider.GetTablesByType(TableTypeFeedback)
+	if len(tables) == 0 {
+		return
+	}
+
+	// 2. 根据 table_identity 来获取一天的反馈量
+	fmt.Println("2. 根据 table_identity 来获取一天的反馈量")
+	for _, table := range tables {
+		key := fmt.Sprintf(FeedbackCountTableIdentityKey, table.Identity)
+		count, err := s.msgCountCache.GetAndReset(key)
+		if err != nil {
+			s.log.Error("GetAndReset failed", logger.String("key", key), logger.String("error", err.Error()))
+			continue
+		}
+
+		// 3. 构建卡片消息
+		fmt.Println("3. 构建卡片消息")
+		s.bc.Content.Data.TemplateVariable.FeedbackSource = table.Name
+		s.bc.Content.Data.TemplateVariable.DailyNewCount = int(count)
+
+		contentBytes, err := json.Marshal(s.bc.Content)
+		if err != nil {
+			s.log.Error("json.Marshal failed", logger.String("error", err.Error()))
+			continue
+		}
+
+		// 4. 发送卡片消息
+		fmt.Println("4. 发送卡片消息")
+		if err := s.sendMessage(string(contentBytes)); err != nil {
+			s.log.Error("sendMessage failed", logger.String("error", err.Error()))
+			continue
+		}
+	}
+}
+
+// sendMessage 发送卡片
+func (s *SheetServiceImpl) sendMessage(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
 	limiter := rate.NewLimiter(rate.Every(25*time.Millisecond), 1) // 每25ms一次，即40次/s
@@ -517,42 +524,6 @@ func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 		})
 	}
 	return g.Wait()
-}
-
-func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
-	// 创建请求对象
-	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
-		FileTokens(fileTokens).
-		Build()
-
-	// 发起请求
-	ctx := context.Background()
-	resp, err := s.c.GetPhotoUrl(ctx, req)
-
-	// 处理错误
-	if err != nil {
-		s.log.Error("GetPhotoUrl 调用失败",
-			logger.String("error", err.Error()),
-		)
-		return nil, errs.LarkRequestError(err)
-	}
-
-	// 服务端错误处理
-	if !resp.Success() {
-		s.log.Error("GetPhotoUrl Lark 接口错误",
-			logger.String("request_id", resp.RequestId()),
-			logger.String("error", larkcore.Prettify(resp.CodeError)),
-		)
-		return resp, errs.LarkResponseError(err)
-	}
-
-	return resp, nil
-}
-
-// scheduledSendLarkMessage 定时发送飞书消息
-// 每天 18:00 像飞书群发送消息，提醒处理未解决的问题
-func scheduledSendLarkMessage() {
-
 }
 
 func simplifyFields(fields map[string]any) map[string]any {

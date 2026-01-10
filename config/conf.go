@@ -266,9 +266,8 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 			Data: Data{
 				TemplateID: vp.GetString("content.data.template_id"),
 				TemplateVariable: TemplateVariable{
-					FeedbackContent: vp.GetString("content.data.template_variable.feedback_content"),
-					FeedbackSource:  vp.GetString("content.data.template_variable.feedback_source"),
-					FeedbackType:    vp.GetString("content.data.template_variable.feedback_type"),
+					FeedbackSource: vp.GetString("content.data.template_variable.feedback_source"),
+					DailyNewCount:  vp.GetInt("content.data.template_variable.daily_new_count"),
 				},
 			},
 		},
@@ -295,9 +294,8 @@ type Data struct {
 }
 
 type TemplateVariable struct {
-	FeedbackContent string `mapstructure:"feedback_content" yaml:"feedback_content" json:"feedback_content"`
-	FeedbackSource  string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
-	FeedbackType    string `mapstructure:"feedback_type" yaml:"feedback_type" json:"feedback_type"`
+	FeedbackSource string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
+	DailyNewCount  int    `mapstructure:"daily_new_count" yaml:"daily_new_count" json:"daily_new_count"`
 }
 
 // OpenID 发送消息的人员
