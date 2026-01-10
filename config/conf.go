@@ -266,9 +266,14 @@ func NewBatchNoticeConfig() *BatchNoticeConfig {
 			Data: Data{
 				TemplateID: vp.GetString("content.data.template_id"),
 				TemplateVariable: TemplateVariable{
-					FeedbackContent: vp.GetString("content.data.template_variable.feedback_content"),
-					FeedbackSource:  vp.GetString("content.data.template_variable.feedback_source"),
-					FeedbackType:    vp.GetString("content.data.template_variable.feedback_type"),
+					FeedbackSource: vp.GetString("content.data.template_variable.feedback_source"),
+					DailyNewCount:  vp.GetInt("content.data.template_variable.daily_new_count"),
+					TableUrl: TableUrl{
+						PCUrl:      vp.GetString("content.data.template_variable.table_url.pc_url"),
+						AndroidUrl: vp.GetString("content.data.template_variable.table_url.android_url"),
+						IOSUrl:     vp.GetString("content.data.template_variable.table_url.ios_url"),
+						Url:        vp.GetString("content.data.template_variable.table_url.url"),
+					},
 				},
 			},
 		},
@@ -295,9 +300,16 @@ type Data struct {
 }
 
 type TemplateVariable struct {
-	FeedbackContent string `mapstructure:"feedback_content" yaml:"feedback_content" json:"feedback_content"`
-	FeedbackSource  string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
-	FeedbackType    string `mapstructure:"feedback_type" yaml:"feedback_type" json:"feedback_type"`
+	FeedbackSource string   `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
+	DailyNewCount  int      `mapstructure:"daily_new_count" yaml:"daily_new_count" json:"daily_new_count"`
+	TableUrl       TableUrl `mapstructure:"table_url" yaml:"table_url" json:"table_url"`
+}
+
+type TableUrl struct {
+	PCUrl      string `mapstructure:"pc_url" yaml:"pc_url" json:"pc_url"`
+	AndroidUrl string `mapstructure:"android_url" yaml:"android_url" json:"android_url"`
+	IOSUrl     string `mapstructure:"ios_url" yaml:"ios_url" json:"ios_url"`
+	Url        string `mapstructure:"url" yaml:"url" json:"url"`
 }
 
 // OpenID 发送消息的人员

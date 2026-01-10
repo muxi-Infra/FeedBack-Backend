@@ -16,6 +16,7 @@ var DaoSet = wire.NewSet(
 
 var CacheSet = wire.NewSet(
 	cache.NewFAQResolutionStateCache,
+	cache.NewMessageCache,
 )
 
 func InitTables(db *gorm.DB) error {
