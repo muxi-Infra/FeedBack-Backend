@@ -61,6 +61,14 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 		return response.Response{}, err
 	}
 
+	if resp == nil {
+		return response.Response{
+			Code:    0,
+			Message: "Success",
+			Data:    "",
+		}, nil
+	}
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",
@@ -106,10 +114,30 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 		return response.Response{}, err
 	}
 
+	res := response.GetTableRecordResp{
+		Records:   make([]domain.TableRecord, 0),
+		HasMore:   false,
+		PageToken: "",
+		Total:     0,
+	}
+
+	if resp.Records != nil {
+		res.Records = resp.Records
+	}
+	if resp.PageToken != nil {
+		res.PageToken = *resp.PageToken
+	}
+	if resp.HasMore != nil {
+		res.HasMore = *resp.HasMore
+	}
+	if resp.Total != nil {
+		res.Total = *resp.Total
+	}
+
 	return response.Response{
 		Code:    0,
 		Message: "Success",
-		Data:    resp,
+		Data:    res,
 	}, nil
 }
 
@@ -145,6 +173,18 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 	resp, err := s.s.GetFAQProblemTableRecord(r.StudentID, r.RecordNames, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
+	}
+
+	res := response.GetFAQProblemTableRecordResp{
+		Records: make([]domain.FAQTableRecord, 0),
+		Total:   0,
+	}
+
+	if resp.Records != nil {
+		res.Records = resp.Records
+	}
+	if resp.Total != nil {
+		res.Total = *resp.Total
 	}
 
 	return response.Response{
