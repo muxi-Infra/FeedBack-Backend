@@ -39,7 +39,7 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) *Auth {
 //	@Failure		500		{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/auth/table-config/token [post]
 func (o Auth) GetTableToken(c *gin.Context, req request.GenerateTableTokenReq) (response.Response, error) {
-	tableCfg, err := o.s.GetTableConfig(&req.TableIdentity)
+	tableCfg, err := o.s.GetTableConfig(&req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err
 	}

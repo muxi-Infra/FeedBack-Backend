@@ -604,11 +604,11 @@ const docTemplate = `{
         "request.GenerateTableTokenReq": {
             "type": "object",
             "required": [
-                "table_identity"
+                "table_identify"
             ],
             "properties": {
-                "table_identity": {
-                    "description": "反馈表格 Identity，反馈表的唯一标识",
+                "table_identify": {
+                    "description": "反馈表格 Identify，反馈表的唯一标识",
                     "type": "string"
                 }
             }
