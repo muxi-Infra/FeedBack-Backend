@@ -11,15 +11,15 @@ import (
 */
 
 const (
-	FeishuRequestErrorCode  = 300000 + iota // 飞书请求接口失败
-	FeishuResponseErrorCode                 // 飞书服务返回错误
+	LarkRequestErrorCode  = 300000 + iota // 飞书请求接口失败
+	LarkResponseErrorCode                 // 飞书服务返回错误
 )
 
 var (
-	FeishuRequestError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, FeishuRequestErrorCode, "飞书请求接口失败", err)
+	LarkRequestError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, LarkRequestErrorCode, "飞书请求接口失败", err)
 	}
-	FeishuResponseError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, FeishuResponseErrorCode, "飞书服务返回错误", err)
+	LarkResponseError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, LarkResponseErrorCode, "飞书服务返回错误", err)
 	}
 )

@@ -11,8 +11,8 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
@@ -43,7 +43,7 @@ func InitApp() (*App, error) {
 	swag := controller.NewSwag()
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
-	feishuClient := feishu.NewClient(larkClient)
+	feishuClient := lark.NewClient(larkClient)
 	batchNoticeConfig := config.NewBatchNoticeConfig()
 	mysqlConfig := config.NewMysqlConfig()
 	db := ioc.InitMysql(mysqlConfig)

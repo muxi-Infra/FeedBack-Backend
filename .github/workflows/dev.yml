@@ -82,7 +82,7 @@ jobs:
 
       - name: SSH and deploy
         run: |
-          ssh root@${{ secrets.SERVER_ADDR_DEV }} "
+          ssh ubuntu@${{ secrets.SERVER_ADDR_DEV }} "
             set -e
             cd feedback
             echo '${{ secrets.ALIYUN_PASSWORD }}' | docker login \

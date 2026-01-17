@@ -14,7 +14,7 @@ import (
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
 )
@@ -33,7 +33,7 @@ type AuthServiceImpl struct {
 	baseTableCfg *config.BaseTable
 	clientCfg    *config.ClientConfig
 	mutex        sync.RWMutex
-	c            feishu.Client
+	c            lark.Client
 	log          logger.Logger
 }
 
@@ -45,7 +45,7 @@ type Table struct {
 	ViewID     string
 }
 
-func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c feishu.Client, log logger.Logger) AuthService {
+func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c lark.Client, log logger.Logger) AuthService {
 	s := &AuthServiceImpl{
 		tableCfg:     make(map[string]Table),
 		tenantToken:  "",
@@ -88,7 +88,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 		t.log.Error("RefreshTableConfig 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -97,7 +97,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.FeishuResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
 	var tables []Table
