@@ -14,7 +14,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
@@ -38,14 +38,14 @@ type SheetService interface {
 }
 
 type SheetServiceImpl struct {
-	c      feishu.Client
+	c      lark.Client
 	log    logger.Logger
 	bc     *config.BatchNoticeConfig
 	faqDAO dao.FAQResolutionDAO
 	cache  cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c feishu.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
+func NewSheetService(c lark.Client, log logger.Logger, bc *config.BatchNoticeConfig, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
 	return &SheetServiceImpl{
 		c:      c,
 		log:    log,
@@ -75,7 +75,7 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 		s.log.Error("CreateAppTableRecord 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -84,7 +84,7 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.FeishuResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
 	// 异步发送批量通知
@@ -126,13 +126,6 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 				logger.String("error", err.Error()),
 			)
 		}
-
-		//发送个人通知
-		//if err := s.SendBatchNotice(string(contentBytes)); err != nil {
-		//	s.log.Error("SendBatchNotice failed",
-		//		logger.String("error", err.Error()),
-		//	)
-		//}
 	}(*record, tableConfig)
 
 	return resp.Data.Record.RecordId, nil
@@ -177,7 +170,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 		s.log.Error("GetTableRecordReqByKey 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -186,7 +179,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.FeishuResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
 	var records []domain.TableRecord
@@ -262,7 +255,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 			s.log.Error("GetFAQProblemTableRecord 调用失败",
 				logger.String("error", err.Error()),
 			)
-			return errs.FeishuRequestError(err)
+			return errs.LarkRequestError(err)
 		}
 
 		// 服务端错误处理
@@ -271,7 +264,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 				logger.String("request_id", resp.RequestId()),
 				logger.String("error", larkcore.Prettify(resp.CodeError)),
 			)
-			return errs.FeishuResponseError(err)
+			return errs.LarkResponseError(err)
 		}
 		feishuResp = resp
 		return nil
@@ -533,7 +526,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 		s.log.Error("GetPhotoUrl 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.FeishuRequestError(err)
+		return nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -542,7 +535,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.FeishuResponseError(err)
+		return resp, errs.LarkResponseError(err)
 	}
 
 	return resp, nil

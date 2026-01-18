@@ -6,8 +6,8 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/feishu"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
@@ -22,7 +22,7 @@ func InitApp() (*App, error) {
 		config.ProviderSet,
 		ioc.ProviderSet,
 		logger.NewZapLogger,
-		feishu.ProviderSet,
+		lark.ProviderSet,
 		ijwt.NewJWT,
 		repository.ProviderSet,
 		service.ProviderSet,
