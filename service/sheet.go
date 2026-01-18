@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -87,52 +88,45 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 	}
 
 	// 异步发送批量通知
-	//go func(r domain.TableRecord, t *domain.TableConfig) {
-	//	// 防止 panic
-	//	defer func() {
-	//		if err := recover(); err != nil {
-	//			s.log.Error("panic recovered",
-	//				logger.Reflect("error", err),
-	//			)
-	//		}
-	//	}()
-	//
-	//	// 反馈内容 截取前15个字符
-	//	if fc, ok := r.Record["反馈内容"]; ok {
-	//		if len(fc.(string)) > 15 {
-	//			fc = fc.(string)[0:15] + "..."
-	//		}
-	//		s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
-	//	}
-	//	// 反馈类型
-	//	if ft, ok := r.Record["问题类型"]; ok {
-	//		s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
-	//	}
-	//	// 反馈来源
-	//	s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
-	//
-	//	contentBytes, err := json.Marshal(s.bc.Content)
-	//	if err != nil {
-	//		s.log.Error("json.Marshal failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//		return
-	//	}
-	//
-	//	// 批量发送 群组通知
-	//	if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
-	//		s.log.Error("SendBatchGroupNotice failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//	}
-	//
-	//	// 发送个人通知
-	//	if err := s.SendBatchNotice(string(contentBytes)); err != nil {
-	//		s.log.Error("SendBatchNotice failed",
-	//			logger.String("error", err.Error()),
-	//		)
-	//	}
-	//}(*record, tableConfig)
+	go func(r domain.TableRecord, t *domain.TableConfig) {
+		// 防止 panic
+		defer func() {
+			if err := recover(); err != nil {
+				s.log.Error("panic recovered",
+					logger.Reflect("error", err),
+				)
+			}
+		}()
+
+		// 反馈内容 截取前15个字符
+		if fc, ok := r.Record["反馈内容"]; ok {
+			if len(fc.(string)) > 15 {
+				fc = fc.(string)[0:15] + "..."
+			}
+			s.bc.Content.Data.TemplateVariable.FeedbackContent = fc.(string)
+		}
+		// 反馈类型
+		if ft, ok := r.Record["问题类型"]; ok {
+			s.bc.Content.Data.TemplateVariable.FeedbackType = ft.(string)
+		}
+		// 反馈来源
+		s.bc.Content.Data.TemplateVariable.FeedbackSource = *t.TableName
+
+		contentBytes, err := json.Marshal(s.bc.Content)
+		if err != nil {
+			s.log.Error("json.Marshal failed",
+				logger.String("error", err.Error()),
+			)
+			return
+		}
+
+		// 批量发送 群组通知
+		if err := s.SendBatchGroupNotice(string(contentBytes)); err != nil {
+			s.log.Error("SendBatchGroupNotice failed",
+				logger.String("error", err.Error()),
+			)
+		}
+	}(*record, tableConfig)
 
 	return resp.Data.Record.RecordId, nil
 }
@@ -413,7 +407,6 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 
 // SendBatchNotice  发送通知
 // 批量发送给个人通知
-// 2026-01-08：已弃用，后续将删除
 func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
@@ -469,7 +462,6 @@ func (s *SheetServiceImpl) SendBatchNotice(content string) error {
 
 // SendBatchGroupNotice 发送群组通知
 // 支持批量发送
-// 2026-01-08：已弃用，后续将删除
 func (s *SheetServiceImpl) SendBatchGroupNotice(content string) error {
 	// 发送消息这个接口限速50次/s
 	// 创建一个限制器
@@ -547,12 +539,6 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 	}
 
 	return resp, nil
-}
-
-// scheduledSendLarkMessage 定时发送飞书消息
-// 每天 18:00 像飞书群发送消息，提醒处理未解决的问题
-func scheduledSendLarkMessage() {
-
 }
 
 func simplifyFields(fields map[string]any) map[string]any {

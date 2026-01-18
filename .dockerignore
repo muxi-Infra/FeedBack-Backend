@@ -2,5 +2,4 @@
 .github
 *.md
 *.log
-public/img
 tmp
