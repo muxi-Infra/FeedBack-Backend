@@ -84,7 +84,7 @@ jobs:
         run: |
           ssh root@${{ secrets.SERVER_ADDR }} "
             set -e
-            cd feedback
+            cd feedback/prod
             echo '${{ secrets.ALIYUN_PASSWORD }}' | docker login \
             --username=${{ secrets.ALIYUN_USERNAME }} \
             --password-stdin \
