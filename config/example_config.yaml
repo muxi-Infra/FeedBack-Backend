@@ -1,71 +1,65 @@
 # 飞书 app
 client:
-  appID: "xxxxx"
-  appSecret: "xxxxx"
+  appID: "cli_a123456789012345"               # 飞书应用 AppID
+  appSecret: "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOo" # 飞书应用 AppSecret
 
 # JWT 配置
 jwt:
-  secretKey: "xxxxx"  # JWT 加密秘钥
-  encKey: "xxxxx"  # JWT 加密敏感信息秘钥
-  timeout: 2592000          # 一个月过期一次
+  secretKey: "your-jwt-secret-key-here"       # JWT 签名密钥
+  encKey: "your-encryption-key-here"          # 敏感数据加密密钥
+  timeout: 2592000                            # 过期时间（秒），默认一个月
 
 # 中间件配置
 middleware:
   allowedOrigins:
-    - "*"  # 允许跨域访问的来源地址，例如前端开发服务器地址
+    - "*"                                      # 允许跨域访问的域名
 
-# 基础表格信息，改表格用于储存其他表格的各种基础信息
+# 基础表格信息（用于存储元数据）
 baseTable:
-  tableToken: "xxxxx"
-  tableId: "xxxxx"
-  viewId: "xxxxx"
+  tableToken: "basxxxxxxxxxxxxxxxxxxxxxxxx"    # 飞书表格 Token
+  tableId: "tblxxxxxxxxxxxxxxxx"               # 表格 ID
+  viewId: "vewxxxxxxxxxxxx"                    # 视图 ID
 
 # 发送通知的内容
 content:
-  type: "template"                              # 发送卡片时候的默认值
+  type: "template"                             # 消息类型
   data:
-    template_id: "xxxxx"                # 卡片模版id
-    #template_version_name: "1.0.0"             # 卡片模版版本，若不填，则为最新版本 这里不填，如果要填，则修改配置文件中的结构体，添加一个字段
-    template_variable:                          # 卡片模版中设置的变量
-      feedback_content: "反馈内容"
-      feedback_source: "反馈来源"
-      feedback_type: "反馈类型"
+    template_id: "AAxxxxxxxxxxxxx"             # 飞书卡片模板 ID
 
-# 发送通知人员的open_id
-open_ids:
-  - name: "xxx"
-    open_id: "xxxxx"
+# 消息接收者配置
+receive_ids:
+  - type: "chat_id"                            # 接收者类型
+    id: "oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # 聊天会话 ID
 
-# 要发送的群组
-chat_ids:
-  - name: "xxxxx"
-    chat_id: "xxxxx"
-
+# Redis 配置
 redis:
-  addr: "xxxxx:6379"
-  password: "xxxxx"
-  db: 0
+  addr: "127.0.0.1:6379"                       # Redis 地址
+  password: "your-redis-password"              # Redis 密码
+  db: 1                                         # 数据库编号
 
+# MySQL 配置
 mysql:
-  addr: "xxxxx:3306"
-  dbname: "xxxxx"
-  username: "xxxxx"
-  password: "xxxxx"
-  logfile: "logs/mysql.log"  # MySQL日志文件路径
+  addr: "localhost:3306"                       # MySQL 地址
+  dbname: "your_database"                      # 数据库名
+  username: "your_username"                    # 用户名
+  password: "your-mysql-password"              # 密码
+  logfile: "logs/mysql.log"                    # MySQL 日志路径
 
+# 日志配置
 log:
-  file: "logs/app.log"  # 日志文件路径
-  maxSize: 5  # 单个日志文件的最大大小，单位为 MB
-  maxBackups: 10  # 保留的旧日志文件数量
-  maxAge: 30  # 日志文件的最大保存天数
-  compress: false  # 是否压缩旧日志文件
+  file: "logs/app.log"                         # 应用日志路径
+  maxSize: 5                                   # 单个文件最大大小（MB）
+  maxBackups: 10                               # 保留的旧文件数量
+  maxAge: 30                                   # 文件最大保存天数
+  compress: false                              # 是否压缩旧文件
 
-# 请求限流配置(令牌桶算法)
+# 请求限流配置（令牌桶算法）
 limiter:
-  capacity: 1000  # 令牌桶容量
-  fillInterval: 1 # 每秒补充令牌的次数
-  quantum: 100 # 每次放置的令牌数
+  capacity: 1000                               # 令牌桶容量
+  fillInterval: 1                              # 补充间隔（秒）
+  quantum: 100                                 # 每次补充数量
 
+# 基础认证配置
 basicAuth:
-  - username: "xxxxx"
-    password: "xxxxx"
+  - username: "admin"                          # 管理员用户名
+    password: "your-admin-password"            # 管理员密码
