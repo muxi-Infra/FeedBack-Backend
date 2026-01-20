@@ -95,6 +95,21 @@ func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByKey(keyField, fieldNa
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByKey", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByKey), keyField, fieldNames, pageToken, tableConfig)
 }
 
+// GetTableRecordReqByRecordID mocks base method.
+func (m *MockSheetService) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTableRecordReqByRecordID", recordID, tableConfig)
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTableRecordReqByRecordID indicates an expected call of GetTableRecordReqByRecordID.
+func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByRecordID(recordID, tableConfig interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByRecordID", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByRecordID), recordID, tableConfig)
+}
+
 // UpdateFAQResolutionRecord mocks base method.
 func (m *MockSheetService) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
 	m.ctrl.T.Helper()

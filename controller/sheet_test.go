@@ -18,13 +18,15 @@ import (
 )
 
 // 创建一个 mock 的 Sheet 对象
-func NewMockSheet(crtl *gomock.Controller) (*Sheet, *ServiceMock.MockSheetService) {
+func NewMockSheet(crtl *gomock.Controller) (*Sheet, *ServiceMock.MockSheetService, *ServiceMock.MockMessageService) {
 	// 接口 mock
 	mockSheetService := ServiceMock.NewMockSheetService(crtl)
+	mockMessageService := ServiceMock.NewMockMessageService(crtl)
 
 	return &Sheet{
 		s: mockSheetService,
-	}, mockSheetService
+		m: mockMessageService,
+	}, mockSheetService, mockMessageService
 }
 
 // uc
@@ -33,6 +35,10 @@ var uc = ijwt.UserClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), // 这里mock 1小时过期
 	},
 	TableIdentity: "mock-table-identity",
+	TableName:     "mock-table-name",
+	TableToken:    "mock-table-token",
+	TableId:       "mock-table-id",
+	ViewId:        "mock-view-id",
 }
 
 func TestCreateAppTableRecord(t *testing.T) {
@@ -40,7 +46,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		name          string
 		req           request.CreatTableRecordReg
 		uc            ijwt.UserClaims
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
+		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
 		expectedError bool
 	}
@@ -59,10 +65,21 @@ func TestCreateAppTableRecord(t *testing.T) {
 				},
 			},
 			uc: uc,
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
+			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
+				mockSheetSvc.EXPECT().
 					CreateRecord(gomock.Any(), gomock.Any()).
 					Return(stringPtr("mock-record-id"), nil)
+
+				// Mock the goroutine calls
+				mockSheetSvc.EXPECT().
+					GetTableRecordReqByRecordID(gomock.Any(), gomock.Any()).
+					Return(stringPtr("http://mock-url.com"), nil).
+					AnyTimes()
+
+				mockMessageSvc.EXPECT().
+					SendFeedbackNotification(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil).
+					AnyTimes()
 			},
 			expectedCode:  0,
 			expectedError: false,
@@ -134,10 +151,10 @@ func TestCreateAppTableRecord(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			sheet, mockSvc := NewMockSheet(ctrl)
+			sheet, mockSheetSvc, mockMessageSvc := NewMockSheet(ctrl)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
+				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
 			result, err := sheet.CreatTableRecord(&gin.Context{}, tc.req, tc.uc)
@@ -160,7 +177,7 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 		name          string
 		req           request.GetTableRecordReq
 		uc            ijwt.UserClaims
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
+		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
 		expectedError bool
 	}
@@ -175,8 +192,8 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 				RecordNames:   []string{"field1", "field2"},
 			},
 			uc: uc,
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
+			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
+				mockSheetSvc.EXPECT().
 					GetTableRecordReqByKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(&domain.TableRecords{
 						HasMore: boolPtr(false),
@@ -192,10 +209,10 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			sheet, mockSvc := NewMockSheet(ctrl)
+			sheet, mockSheetSvc, mockMessageSvc := NewMockSheet(ctrl)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
+				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
 			result, err := sheet.GetTableRecordReqByKey(&gin.Context{}, tc.req, tc.uc)
@@ -218,7 +235,7 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 		name          string
 		req           request.GetFAQProblemTableRecordReg
 		uc            ijwt.UserClaims
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
+		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
 		expectedError bool
 	}
@@ -232,8 +249,8 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 				RecordNames:   []string{"mock-name-1"},
 			},
 			uc: uc,
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
+			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
+				mockSheetSvc.EXPECT().
 					GetFAQProblemTableRecord(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(&domain.FAQTableRecords{
 						Records: []domain.FAQTableRecord{},
@@ -251,10 +268,10 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			sheet, mockSvc := NewMockSheet(ctrl)
+			sheet, mockSheetSvc, mockMessageSvc := NewMockSheet(ctrl)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
+				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
 			result, err := sheet.GetFAQResolutionRecord(&gin.Context{}, tc.req, tc.uc)
@@ -276,7 +293,7 @@ func TestGetPhotoUrl(t *testing.T) {
 	type testCase struct {
 		name          string
 		req           request.GetPhotoUrlReq
-		setupMocks    func(mockSvc *ServiceMock.MockSheetService)
+		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
 		expectedError bool
 	}
@@ -287,8 +304,8 @@ func TestGetPhotoUrl(t *testing.T) {
 			req: request.GetPhotoUrlReq{
 				FileTokens: []string{"token1", "token2"},
 			},
-			setupMocks: func(mockSvc *ServiceMock.MockSheetService) {
-				mockSvc.EXPECT().
+			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
+				mockSheetSvc.EXPECT().
 					GetPhotoUrl(gomock.Any()).
 					Return(&larkdrive.BatchGetTmpDownloadUrlMediaResp{
 						Data: &larkdrive.BatchGetTmpDownloadUrlMediaRespData{
@@ -315,10 +332,10 @@ func TestGetPhotoUrl(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			sheet, mockSvc := NewMockSheet(ctrl)
+			sheet, mockSheetSvc, mockMessageSvc := NewMockSheet(ctrl)
 
 			if tc.setupMocks != nil {
-				tc.setupMocks(mockSvc)
+				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
 			result, err := sheet.GetPhotoUrl(&gin.Context{}, tc.req, uc)
