@@ -23,7 +23,7 @@ var ProviderSet = wire.NewSet(
 	NewJWTConfig,
 	NewMiddlewareConfig,
 	NewBaseTable,
-	NewBatchNoticeConfig,
+	NewLarkMessageConfig,
 	NewMysqlConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
@@ -39,7 +39,7 @@ func InitNacos() error {
 	if err != nil {
 		log.Println(err)
 		// 本地兜底获取
-		localPath := "./config/config.yaml"
+		localPath := "./config/config-dev.yaml"
 		fileContent, err := os.ReadFile(localPath)
 		if err != nil {
 			// 如果本地文件也读取失败，则彻底失败
@@ -226,90 +226,32 @@ func NewBaseTable() *BaseTable {
 	return baseTableCfg
 }
 
-type BatchNoticeConfig struct {
-	OpenIDs []OpenID `mapstructure:"open_ids" yaml:"open_ids" json:"open_ids"`
-	ChatIDs []ChatID `mapstructure:"chat_ids" yaml:"chat_ids" json:"chat_ids"`
-	Content Content  `mapstructure:"content" yaml:"content" json:"content"`
+// LarkMessage 发送的内容
+type LarkMessage struct {
+	TemplateID string      `mapstructure:"templateID" yaml:"templateID" json:"templateID"`
+	ReceiveIDs []ReceiveID `mapstructure:"receiveIDs" yaml:"receiveIDs" json:"receiveIDs"`
 }
 
-func NewBatchNoticeConfig() *BatchNoticeConfig {
-	openIDs := make([]OpenID, 0)
-	chatIDs := make([]ChatID, 0)
-	openIDsData := vp.Get("open_ids")
-	if arr, ok := openIDsData.([]interface{}); ok {
-		for _, v := range arr {
-			if m, ok := v.(map[string]interface{}); ok {
-				openIDs = append(openIDs, OpenID{
-					Name:   m["name"].(string),
-					OpenID: m["open_id"].(string),
-				})
-			}
-		}
-	}
-	chatIDsData := vp.Get("chat_ids")
-	if arr, ok := chatIDsData.([]interface{}); ok {
-		for _, v := range arr {
-			if m, ok := v.(map[string]interface{}); ok {
-				chatIDs = append(chatIDs, ChatID{
-					Name:   m["name"].(string),
-					ChatID: m["chat_id"].(string),
-				})
-			}
-		}
-	}
-
-	batchNoticeConfig := &BatchNoticeConfig{
-		OpenIDs: openIDs,
-		ChatIDs: chatIDs,
-		Content: Content{
-			Type: vp.GetString("content.type"),
-			Data: Data{
-				TemplateID: vp.GetString("content.data.template_id"),
-				TemplateVariable: TemplateVariable{
-					FeedbackContent: vp.GetString("content.data.template_variable.feedback_content"),
-					FeedbackSource:  vp.GetString("content.data.template_variable.feedback_source"),
-					FeedbackType:    vp.GetString("content.data.template_variable.feedback_type"),
-				},
-			},
-		},
-	}
-
-	if batchNoticeConfig.Content.Type == "" || batchNoticeConfig.Content.Data.TemplateID == "" {
-		panic("batch_notice 配置无效: content.type 和 content.data.template_id 不能为空")
-	}
-
-	//fmt.Printf("batchNoticeConfig :%v\n", batchNoticeConfig)
-	return batchNoticeConfig
-}
-
-// Content 发送消息的内容
-type Content struct {
+type ReceiveID struct {
 	Type string `mapstructure:"type" yaml:"type" json:"type"`
-	Data Data   `mapstructure:"data" yaml:"data" json:"data"`
+	ID   string `mapstructure:"id" yaml:"id" json:"id"`
 }
 
-type Data struct {
-	TemplateID          string           `mapstructure:"template_id" yaml:"template_id" json:"template_id"`
-	TemplateVersionName string           `mapstructure:"template_version_name,omitempty" yaml:"template_version_name" json:"template_version_name,omitempty"`
-	TemplateVariable    TemplateVariable `mapstructure:"template_variable" yaml:"template_variable" json:"template_variable"`
-}
+func NewLarkMessageConfig() *LarkMessage {
+	larkMessage := &LarkMessage{}
+	err := vp.UnmarshalKey("larkMessage", &larkMessage)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析 receive_ids 配置: %v", err))
+	}
+	if larkMessage.TemplateID == "" {
+		panic("receive_ids 配置无效: templateID 不能为空")
+	}
+	if len(larkMessage.ReceiveIDs) == 0 {
+		panic("receive_ids 配置无效: 至少需要一个接收者")
+	}
 
-type TemplateVariable struct {
-	FeedbackContent string `mapstructure:"feedback_content" yaml:"feedback_content" json:"feedback_content"`
-	FeedbackSource  string `mapstructure:"feedback_source" yaml:"feedback_source" json:"feedback_source"`
-	FeedbackType    string `mapstructure:"feedback_type" yaml:"feedback_type" json:"feedback_type"`
-}
-
-// OpenID 发送消息的人员
-type OpenID struct {
-	Name   string `mapstructure:"name" yaml:"name" json:"name"`
-	OpenID string `mapstructure:"open_id" yaml:"open_id" json:"open_id"`
-}
-
-// ChatID 发送给群组
-type ChatID struct {
-	Name   string `mapstructure:"name" yaml:"name" json:"name"`
-	ChatID string `mapstructure:"chat_id" yaml:"chat_id" json:"chat_id"`
+	//fmt.Println(larkMessage)
+	return larkMessage
 }
 
 type RedisConfig struct {

@@ -14,11 +14,13 @@ import (
 
 type Sheet struct {
 	s service.SheetService
+	m service.MessageService
 }
 
-func NewSheet(s service.SheetService) *Sheet {
+func NewSheet(s service.SheetService, m service.MessageService) *Sheet {
 	return &Sheet{
 		s: s,
+		m: m,
 	}
 }
 
@@ -68,6 +70,19 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 			Data:    "",
 		}, nil
 	}
+
+	// TODO
+	go func(recordID, content string, tc domain.TableConfig) {
+		// 发送消息通知
+		url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
+		if err != nil || url == nil {
+			return
+		}
+		err = s.m.SendFeedbackNotification(*tc.TableName, content, *url)
+		if err != nil {
+			return
+		}
+	}(*resp, *r.Content, tableConfig)
 
 	return response.Response{
 		Code:    0,

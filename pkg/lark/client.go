@@ -55,6 +55,11 @@ func (c *ClientImpl) GetAppTableRecord(ctx context.Context, req *larkbitable.Sea
 	return c.c.Bitable.V1.AppTableRecord.Search(ctx, req, options...)
 }
 
+// GetAppTableRecordByID 通过ID获取多维表格记录
+func (c *ClientImpl) GetAppTableRecordByID(ctx context.Context, req *larkbitable.BatchGetAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.BatchGetAppTableRecordResp, error) {
+	return c.c.Bitable.V1.AppTableRecord.BatchGet(ctx, req, options...)
+}
+
 // GetPhotoUrl 获取图片链接
 func (c *ClientImpl) GetPhotoUrl(ctx context.Context, req *larkdrive.BatchGetTmpDownloadUrlMediaReq, options ...larkcore.RequestOptionFunc) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
 	return c.c.Drive.V1.Media.BatchGetTmpDownloadUrl(ctx, req, options...)
