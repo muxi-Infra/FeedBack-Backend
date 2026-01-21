@@ -13,6 +13,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 )
 
+//go:generate mockgen -destination=./mock/message_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service MessageService
 type MessageService interface {
 	SendFeedbackNotification(tableName, content, url string) error
 }

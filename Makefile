@@ -2,13 +2,23 @@ DOCS_DIR := docs
 SWAGGER_FILE := $(DOCS_DIR)/swagger.yaml
 OPENAPI_FILE := $(DOCS_DIR)/openapi3.yaml
 
-.PHONY: swag
+.PHONY: swag generate test
 swag:
-	@echo === 格式化 Swagger 文档中 ===
+	@echo "📚 Formatting Swagger documentation..."
 	@swag fmt
-	@echo === 生成 Swagger 文档中 ===
+	@echo "📝 Generating Swagger documentation..."
 	@swag init
-	@echo === Swagger 文档已生成: $(SWAGGER_FILE) ===
-	@echo === 转换为 OpenAPI3... ===
+	@echo "✅ Swagger documentation generated: $(SWAGGER_FILE)"
+	@echo "🔄 Converting to OpenAPI3..."
 	@swagger2openapi $(SWAGGER_FILE) -o $(OPENAPI_FILE) --patch
-	@echo === OpenAPI 3 文档已生成: $(OPENAPI_FILE) ===
+	@echo "✅ OpenAPI 3 documentation generated: $(OPENAPI_FILE)"
+
+generate:
+	@echo "🔧 Generating code..."
+	go generate ./...
+	@echo "✅ Code generation complete"
+
+test:
+	@echo "🧪 Running tests..."
+	go test ./... -v
+	@echo "✅ Tests complete"

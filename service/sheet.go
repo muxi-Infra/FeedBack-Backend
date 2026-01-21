@@ -24,6 +24,7 @@ const (
 	StatusUnresolved  = "未解决"
 )
 
+//go:generate mockgen -destination=./mock/sheet_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service SheetService
 type SheetService interface {
 	CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
