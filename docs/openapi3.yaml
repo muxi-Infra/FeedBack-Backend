@@ -6,7 +6,7 @@ info:
 paths:
   /api/v1/auth/table-config/refresh:
     get:
-      description: 刷新并返回目前支持索引的表格的公开配置
+      description: 刷新并重新加载系统中所有支持的表格配置信息，返回当前可用的表格列表及其基本信息。通常用于配置更新后的缓存刷新。
       operationId: refresh-table-config
       responses:
         "200":
@@ -21,12 +21,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 刷新表格 token 配置接口
+      summary: 刷新表格配置缓存
       tags:
         - Auth
   /api/v1/auth/table-config/token:
     post:
-      description: 获取 table token 接口
+      description: 根据表格标识符生成JWT访问令牌，用于后续的表格数据操作。该令牌包含表格配置信息和访问权限。
       operationId: get-table-token
       requestBody:
         content:
@@ -41,7 +41,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.GenerateTableTokenResp"
+                    type: object
         "400":
           description: 请求参数错误
           content:
@@ -54,12 +59,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 获取 table token 接口
+      summary: 获取表格访问令牌
       tags:
         - Auth
   /api/v1/auth/tenant/token:
     post:
-      description: 获取 tenant token 接口，用于上传图片等
+      description: 获取飞书应用的租户访问令牌，主要用于文件上传、图片处理等需要应用级权限的操作。该令牌具有较高的访问权限。
       operationId: get-tenant-token
       responses:
         "200":
@@ -67,7 +72,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.GenerateTenantToken"
+                    type: object
         "400":
           description: 请求参数错误
           content:
@@ -80,16 +90,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 获取 tenant token 接口
+      summary: 获取租户访问令牌
       tags:
         - Auth
   /api/v1/health:
     get:
-      description: 健康检查，返回当前服务占用的资源等信息
+      description: 检查系统运行状态，返回服务健康信息、资源使用情况等监控数据。用于负载均衡器健康检查和系统监控。
       operationId: health-check
       responses:
         "200":
-          description: 成功返回健康检查结果
+          description: 系统运行正常，返回健康检查详情
           content:
             application/json:
               schema:
@@ -100,7 +110,7 @@ paths:
                         $ref: "#/components/schemas/response.HealthCheckResponse"
                     type: object
         "500":
-          description: 服务器内部错误
+          description: 系统异常或部分服务不可用
           content:
             application/json:
               schema:
@@ -110,7 +120,7 @@ paths:
                       data:
                         type: string
                     type: object
-      summary: 健康检查，返回当前服务占用的资源等信息
+      summary: 系统健康检查
       tags:
         - Health
   /api/v1/openapi:
@@ -143,7 +153,7 @@ paths:
         - Swag
   /api/v1/sheet/photos/url:
     get:
-      description: 根据文件Token获取截图的临时下载URL，URL有效期为24小时
+      description: 根据文件Token列表批量获取截图的临时下载URL。返回的URL有效期为24小时，用于前端展示或下载图片。
       operationId: get-photo-url
       parameters:
         - description: Bearer Token
@@ -186,7 +196,7 @@ paths:
         - Sheet
   /api/v1/sheet/records:
     get:
-      description: 根据指定条件查询多维表格中的记录数据
+      description: 根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。
       operationId: get-table-record
       parameters:
         - description: Bearer Token
@@ -233,7 +243,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.GetTableRecordResp"
+                    type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
           content:
@@ -246,11 +261,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 获取多维表格记录
+      summary: 查询历史反馈记录
       tags:
         - Sheet
     post:
-      description: 向指定的多维表格应用中添加记录数据
+      description: 向指定的多维表格应用中添加用户反馈记录，支持文本内容、截图附件和联系方式。创建成功后会异步发送通知消息。
       operationId: create-table-record
       parameters:
         - description: Bearer Token
@@ -272,7 +287,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.CreatTableRecordResp"
+                    type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
           content:
@@ -285,12 +305,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 创建多维表格记录
+      summary: 创建反馈记录
       tags:
         - Sheet
   /api/v1/sheet/records/faq:
     get:
-      description: 根据指定条件查询多维表格中的记录数据
+      description: 根据学号查询用户相关的常见问题记录及其解决状态。用于展示FAQ列表和跟踪问题解决进度。
       operationId: get-faq-resolution-record
       parameters:
         - description: Bearer Token
@@ -326,7 +346,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.GetFAQProblemTableRecordResp"
+                    type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
           content:
@@ -339,11 +364,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 获取常见问题记录
+      summary: 查询FAQ问题记录
       tags:
         - Sheet
     post:
-      description: 更新FAQ解决方案的 已解决/未解决 状态
+      description: 管理员或用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。支持批量更新操作。
       operationId: update-faq-resolution
       parameters:
         - description: Bearer Token
@@ -378,13 +403,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 更新FAQ解决方案的 已解决/未解决 状态
+      summary: 标记FAQ问题解决状态
       tags:
         - Sheet
 servers:
   - url: //localhost:8080
 components:
   schemas:
+    domain.FAQTableRecord:
+      properties:
+        isResolved:
+          type: string
+        record:
+          additionalProperties: {}
+          type: object
+        recordID:
+          type: string
+      type: object
+    domain.TableRecord:
+      properties:
+        record:
+          additionalProperties: {}
+          type: object
+        recordID:
+          type: string
+      type: object
     request.CreatTableRecordReg:
       properties:
         contact_info:
@@ -441,6 +484,43 @@ components:
           type: string
       required:
         - table_identify
+      type: object
+    response.CreatTableRecordResp:
+      properties:
+        record_id:
+          type: string
+      type: object
+    response.GenerateTableTokenResp:
+      properties:
+        access_token:
+          type: string
+      type: object
+    response.GenerateTenantToken:
+      properties:
+        access_token:
+          type: string
+      type: object
+    response.GetFAQProblemTableRecordResp:
+      properties:
+        records:
+          items:
+            $ref: "#/components/schemas/domain.FAQTableRecord"
+          type: array
+        total:
+          type: integer
+      type: object
+    response.GetTableRecordResp:
+      properties:
+        has_more:
+          type: boolean
+        page_token:
+          type: string
+        records:
+          items:
+            $ref: "#/components/schemas/domain.TableRecord"
+          type: array
+        total:
+          type: integer
       type: object
     response.HealthCheckResponse:
       properties:
