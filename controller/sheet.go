@@ -71,7 +71,7 @@ func (s *Sheet) CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, 
 		}, nil
 	}
 
-	// TODO
+	// TODO 后续想改成 kafka 异步处理
 	go func(recordID, content string, tc domain.TableConfig) {
 		// 发送消息通知
 		url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)

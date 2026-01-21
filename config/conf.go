@@ -39,7 +39,7 @@ func InitNacos() error {
 	if err != nil {
 		log.Println(err)
 		// 本地兜底获取
-		localPath := "./config/config-dev.yaml"
+		localPath := "./config/config.yaml"
 		fileContent, err := os.ReadFile(localPath)
 		if err != nil {
 			// 如果本地文件也读取失败，则彻底失败
