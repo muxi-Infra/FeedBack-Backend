@@ -31,7 +31,7 @@ type SheetService interface {
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
-	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
+	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
 }
 
 type SheetServiceImpl struct {
@@ -394,7 +394,12 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	return nil
 }
 
-func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
+func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, error) {
+	if len(fileTokens) == 0 {
+		s.log.Error("GetPhotoUrl fileTokens is empty")
+		return nil, errs.FileTokenInvalidError(errors.New("file token 为空"))
+	}
+
 	// 创建请求对象
 	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
 		FileTokens(fileTokens).
@@ -418,10 +423,22 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.LarkResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
-	return resp, nil
+	var files []domain.File
+	for _, item := range resp.Data.TmpDownloadUrls {
+		files = append(files, domain.File{
+			FileToken:      item.FileToken,
+			TmpDownloadURL: item.TmpDownloadUrl,
+		})
+	}
+
+	if len(files) != len(fileTokens) {
+		return nil, errs.FileTokenInvalidError(errors.New("存在无效 file token"))
+	}
+
+	return files, nil
 }
 
 func simplifyFields(fields map[string]any) map[string]any {

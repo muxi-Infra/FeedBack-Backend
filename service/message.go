@@ -124,3 +124,8 @@ func (m MessageServiceImpl) SendFeedbackNotification(tableName, content, url str
 
 	return nil
 }
+
+func (m MessageServiceImpl) SendCCNUBoxNotification(content, url string) error {
+	//TODO implement me
+	panic("implement me")
+}

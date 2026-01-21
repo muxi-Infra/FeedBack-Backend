@@ -2,12 +2,12 @@ basePath: /
 definitions:
   domain.FAQTableRecord:
     properties:
-      isResolved:
+      is_resolved:
         type: string
       record:
         additionalProperties: {}
         type: object
-      recordID:
+      record_id:
         type: string
     type: object
   domain.TableRecord:
@@ -15,7 +15,7 @@ definitions:
       record:
         additionalProperties: {}
         type: object
-      recordID:
+      record_id:
         type: string
     type: object
   request.CreatTableRecordReg:

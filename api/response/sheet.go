@@ -20,3 +20,7 @@ type GetFAQProblemTableRecordResp struct {
 	Records []domain.FAQTableRecord `json:"records"`
 	Total   int                     `json:"total"`
 }
+
+type GetPhotoUrlResp struct {
+	File []domain.File `json:"file"`
+}

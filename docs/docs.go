@@ -596,14 +596,14 @@ const docTemplate = `{
         "domain.FAQTableRecord": {
             "type": "object",
             "properties": {
-                "isResolved": {
+                "is_resolved": {
                     "type": "string"
                 },
                 "record": {
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "recordID": {
+                "record_id": {
                     "type": "string"
                 }
             }
@@ -615,7 +615,7 @@ const docTemplate = `{
                     "type": "object",
                     "additionalProperties": {}
                 },
-                "recordID": {
+                "record_id": {
                     "type": "string"
                 }
             }

@@ -46,3 +46,8 @@ type FAQResolution struct {
 	UserID              *string
 	IsResolved          *bool
 }
+
+type File struct {
+	FileToken      *string `json:"file_token"`
+	TmpDownloadURL *string `json:"tmp_download_url"`
+}
