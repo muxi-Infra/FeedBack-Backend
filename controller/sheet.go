@@ -163,7 +163,7 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 // GetFAQResolutionRecord 获取常见问题及解决状态
 //
 //	@Summary		查询FAQ问题记录
-//	@Description	根据学号查询用户相关的常见问题记录及其解决状态。用于展示FAQ列表和跟踪问题解决进度。
+//	@Description	根据学号查询用户相关的常见问题记录及其解决状态。
 //	@Tags			Sheet
 //	@ID				get-faq-resolution-record
 //	@Accept			json
@@ -216,7 +216,7 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 // UpdateFAQResolutionRecord 更新FAQ问题解决状态
 //
 //	@Summary		标记FAQ问题解决状态
-//	@Description	管理员或用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。支持批量更新操作。
+//	@Description	用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
 //	@Tags			Sheet
 //	@ID				update-faq-resolution
 //	@Accept			json
@@ -264,7 +264,7 @@ func (s *Sheet) UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutio
 // GetPhotoUrl 获取截图临时下载链接
 //
 //	@Summary		获取截图临时URL
-//	@Description	根据文件Token列表批量获取截图的临时下载URL。返回的URL有效期为24小时，用于前端展示或下载图片。
+//	@Description	根据文件Token列表批量获取截图的临时下载URL，用于前端展示或下载图片。
 //	@Tags			Sheet
 //	@ID				get-photo-url
 //	@Accept			json

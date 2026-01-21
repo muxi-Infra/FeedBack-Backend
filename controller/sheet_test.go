@@ -157,7 +157,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
-			result, err := sheet.CreatTableRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.CreateTableRecord(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)

@@ -246,7 +246,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/photos/url": {
             "get": {
-                "description": "根据文件Token列表批量获取截图的临时下载URL。返回的URL有效期为24小时，用于前端展示或下载图片。",
+                "description": "根据文件Token列表批量获取截图的临时下载URL，用于前端展示或下载图片。",
                 "consumes": [
                     "application/json"
                 ],
@@ -460,7 +460,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。用于展示FAQ列表和跟踪问题解决进度。",
+                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -539,7 +539,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "管理员或用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。支持批量更新操作。",
+                "description": "用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。",
                 "consumes": [
                     "application/json"
                 ],
