@@ -434,8 +434,9 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, erro
 		})
 	}
 
-	if len(files) != len(fileTokens) {
-		return nil, errs.FileTokenInvalidError(errors.New("存在无效 file token"))
+	if len(files) == 0 {
+		s.log.Error("GetPhotoUrl fileTokens is all invalid")
+		return nil, errs.FileTokenInvalidError(errors.New("file token 全部无效"))
 	}
 
 	return files, nil
