@@ -13,7 +13,7 @@ import (
 
 var ProviderSet = wire.NewSet(NewClient)
 
-// Client 不再暴露client,而是使用接口，方便mock
+//go:generate mockgen -destination=./mock/client_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/pkg/lark Client
 type Client interface {
 	CreateAPP(ctx context.Context, req *larkbitable.CreateAppReq, options ...larkcore.RequestOptionFunc) (*larkbitable.CreateAppResp, error)
 	CopyAPP(ctx context.Context, req *larkbitable.CopyAppReq, options ...larkcore.RequestOptionFunc) (*larkbitable.CopyAppResp, error)
@@ -53,11 +53,6 @@ func (c *ClientImpl) CreateAppTableRecord(ctx context.Context, req *larkbitable.
 // GetAppTableRecord 获取多维表格记录
 func (c *ClientImpl) GetAppTableRecord(ctx context.Context, req *larkbitable.SearchAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.SearchAppTableRecordResp, error) {
 	return c.c.Bitable.V1.AppTableRecord.Search(ctx, req, options...)
-}
-
-// GetAppTableRecordByID 通过ID获取多维表格记录
-func (c *ClientImpl) GetAppTableRecordByID(ctx context.Context, req *larkbitable.BatchGetAppTableRecordReq, options ...larkcore.RequestOptionFunc) (*larkbitable.BatchGetAppTableRecordResp, error) {
-	return c.c.Bitable.V1.AppTableRecord.BatchGet(ctx, req, options...)
 }
 
 // GetPhotoUrl 获取图片链接

@@ -22,6 +22,7 @@ const (
 	FAQResolutionExistCode                               // FAQ 解决状态已存在
 	FAQResolutionCountGetErrorCode                       // FAQ 解决状态计数获取失败
 	FAQResolutionChangeLimitExceededCode                 // FAQ 解决状态修改次数达到上限
+	LarkMessagePartialFailureCode                        // 飞书消息部分发送失败
 )
 
 var (
@@ -57,5 +58,8 @@ var (
 	}
 	FAQResolutionChangeLimitExceededError = func(err error) error {
 		return errorx.New(http.StatusTooManyRequests, FAQResolutionChangeLimitExceededCode, "FAQ 解决状态修改次数达到上限", err)
+	}
+	LarkMessagePartialFailureError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, LarkMessagePartialFailureCode, "飞书消息部分发送失败", err)
 	}
 )

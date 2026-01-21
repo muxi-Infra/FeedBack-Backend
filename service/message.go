@@ -3,6 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
@@ -13,6 +17,12 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 )
 
+var (
+	wg       sync.WaitGroup
+	errCount atomic.Int32
+)
+
+//go:generate mockgen -destination=./mock/message_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service MessageService
 type MessageService interface {
 	SendFeedbackNotification(tableName, content, url string) error
 }
@@ -53,34 +63,64 @@ func (m MessageServiceImpl) SendFeedbackNotification(tableName, content, url str
 		return errs.SerializationError(err)
 	}
 
-	// TODO
-	for i := 0; i < len(m.lc.ReceiveIDs); i++ {
-		req := larkim.NewCreateMessageReqBuilder().
-			ReceiveIdType(m.lc.ReceiveIDs[i].Type).
-			Body(larkim.NewCreateMessageReqBodyBuilder().
-				ReceiveId(m.lc.ReceiveIDs[i].ID).
-				MsgType(`interactive`).
-				Content(string(messageBytes)).
-				Build()).
-			Build()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-		resp, err := m.c.SendNotice(context.Background(), req)
-		// 处理错误
-		if err != nil {
-			m.log.Error("SendLarkMessage 调用失败",
-				logger.String("error", err.Error()),
-			)
-			return errs.LarkRequestError(err)
-		}
+	sem := make(chan struct{}, 5)
+	for _, r := range m.lc.ReceiveIDs {
+		r := r // 避免闭包问题
+		wg.Add(1)
 
-		// 服务端错误处理
-		if !resp.Success() {
-			m.log.Error("SendLarkMessage Lark 接口错误",
-				logger.String("request_id", resp.RequestId()),
-				logger.String("error", larkcore.Prettify(resp.CodeError)),
-			)
-			return errs.LarkResponseError(err)
-		}
+		go func() {
+			defer wg.Done()
+
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				m.log.Warn("SendLarkMessage canceled by context",
+					logger.String("receive_id", r.ID),
+				)
+				return
+			}
+
+			req := larkim.NewCreateMessageReqBuilder().
+				ReceiveIdType(r.Type).
+				Body(larkim.NewCreateMessageReqBodyBuilder().
+					ReceiveId(r.ID).
+					MsgType("interactive").
+					Content(string(messageBytes)).
+					Build()).
+				Build()
+
+			resp, err := m.c.SendNotice(ctx, req)
+			// 处理错误
+			if err != nil {
+				errCount.Add(1)
+				m.log.Error("SendLarkMessage failed",
+					logger.String("receive_id", r.ID),
+					logger.String("error", err.Error()),
+				)
+				return
+			}
+
+			// 服务端错误处理
+			if !resp.Success() {
+				errCount.Add(1)
+				m.log.Error("Lark API error",
+					logger.String("receive_id", r.ID),
+					logger.String("request_id", resp.RequestId()),
+					logger.String("error", larkcore.Prettify(resp.CodeError)),
+				)
+				return
+			}
+		}()
 	}
+
+	wg.Wait()
+	if errCount.Load() > 0 {
+		return errs.LarkMessagePartialFailureError(fmt.Errorf("send message failed: %v", errCount.Load()))
+	}
+
 	return nil
 }

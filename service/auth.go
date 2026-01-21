@@ -21,6 +21,7 @@ import (
 
 const RefreshInterval = time.Hour + 35*time.Minute
 
+//go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
 type AuthService interface {
 	RefreshTableConfig() ([]Table, error)
 	GetTableConfig(tableIdentity *string) (Table, error)
