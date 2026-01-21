@@ -21,6 +21,7 @@ type GetFAQProblemTableRecordResp struct {
 	Total   int                     `json:"total"`
 }
 
+// GetPhotoUrlResp 获取图片URL返回参数
 type GetPhotoUrlResp struct {
-	File []domain.File `json:"file"`
+	Files []domain.File `json:"files"`
 }

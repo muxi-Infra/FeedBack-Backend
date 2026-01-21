@@ -281,17 +281,14 @@ func (s *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.Us
 		return response.Response{}, err
 	}
 
-	resp := response.GetPhotoUrlResp{
-		File: make([]domain.File, 0),
-	}
-	if len(photoUrlResult) > 0 {
-		resp.File = photoUrlResult
+	photoUrlResponse := response.GetPhotoUrlResp{
+		Files: photoUrlResult,
 	}
 
 	return response.Response{
 		Code:    0,
 		Message: "Success",
-		Data:    resp,
+		Data:    photoUrlResponse,
 	}, nil
 }
 

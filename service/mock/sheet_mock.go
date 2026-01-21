@@ -8,7 +8,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	domain "github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
@@ -66,10 +65,10 @@ func (mr *MockSheetServiceMockRecorder) GetFAQProblemTableRecord(arg0, arg1, arg
 }
 
 // GetPhotoUrl mocks base method.
-func (m *MockSheetService) GetPhotoUrl(arg0 []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
+func (m *MockSheetService) GetPhotoUrl(arg0 []string) ([]domain.File, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetPhotoUrl", arg0)
-	ret0, _ := ret[0].(*larkdrive.BatchGetTmpDownloadUrlMediaResp)
+	ret0, _ := ret[0].([]domain.File)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
