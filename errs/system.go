@@ -11,9 +11,11 @@ import (
 */
 
 const (
-	InternalServerErrorCode  = 100000 + iota // 服务内部错误
-	SerializationErrorCode                   // 序列化错误
-	DeserializationErrorCode                 // 反序列化错误
+	InternalServerErrorCode      = 100000 + iota // 服务内部错误
+	SerializationErrorCode                       // 序列化错误
+	DeserializationErrorCode                     // 反序列化错误
+	HTTPRequestCreationErrorCode                 // 创建 HTTP 请求失败
+	HTTPResponseReadErrorCode                    // 读取 HTTP 返回结果失败
 )
 
 var (
@@ -25,5 +27,11 @@ var (
 	}
 	DeserializationError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, DeserializationErrorCode, "反序列化错误", err)
+	}
+	HTTPRequestCreationError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, HTTPRequestCreationErrorCode, "创建 HTTP 请求失败", err)
+	}
+	HTTPResponseReadError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, HTTPResponseReadErrorCode, "读取 HTTP 返回结果失败", err)
 	}
 )

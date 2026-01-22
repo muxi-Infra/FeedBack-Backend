@@ -10,3 +10,10 @@ type LarkMessageData struct {
 	TemplateVersionName string                 `json:"template_version_name"`
 	TemplateVariable    map[string]interface{} `json:"template_variable"`
 }
+
+type CCNUBoxFeedMessage struct {
+	Content   string `json:"content"`
+	StudentID string `json:"student_id"`
+	Title     string `json:"title"`
+	Type      string `json:"type"`
+}

@@ -1,9 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,12 +29,14 @@ var (
 //go:generate mockgen -destination=./mock/message_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service MessageService
 type MessageService interface {
 	SendFeedbackNotification(tableName, content, url string) error
+	SendCCNUBoxNotification(studentID string) error
 }
 
 type MessageServiceImpl struct {
 	c   lark.Client
 	log logger.Logger
 	lc  *config.LarkMessage
+	cc  *config.CCNUBoxMessage
 }
 
 func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage) MessageService {
@@ -125,7 +131,67 @@ func (m MessageServiceImpl) SendFeedbackNotification(tableName, content, url str
 	return nil
 }
 
-func (m MessageServiceImpl) SendCCNUBoxNotification(content, url string) error {
-	//TODO implement me
-	panic("implement me")
+func (m MessageServiceImpl) SendCCNUBoxNotification(studentID string) error {
+	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(m.cc.BasicUser+":"+m.cc.BasicPassword))
+	message := domain.CCNUBoxFeedMessage{
+		Content:   "您的问题已经处理完成，点击查看详情",
+		StudentID: studentID,
+		Title:     "反馈处理完成提醒",
+		Type:      "feed_back",
+	}
+
+	// 编码请求体
+	jsonData, err := json.Marshal(message)
+	if err != nil {
+		m.log.Error("marshal request body failed",
+			logger.String("student_id", studentID),
+			logger.String("error", err.Error()),
+		)
+		return errs.SerializationError(fmt.Errorf("编码请求体失败: %w", err))
+	}
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", m.cc.BaseURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		m.log.Error("create http request failed",
+			logger.String("student_id", studentID),
+			logger.String("error", err.Error()),
+		)
+		return errs.HTTPRequestCreationError(fmt.Errorf("创建请求失败: %w", err))
+	}
+	// 设置请求头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", auth)
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		m.log.Error("send request failed",
+			logger.String("student_id", studentID),
+			logger.String("error", err.Error()),
+		)
+		return errs.CCNUBoxRequestError(fmt.Errorf("发送请求失败: %w", err))
+	}
+	defer resp.Body.Close()
+
+	// 读取响应
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		m.log.Error("read response failed",
+			logger.String("student_id", studentID),
+			logger.String("error", err.Error()),
+		)
+		return errs.HTTPResponseReadError(fmt.Errorf("读取响应失败: %w", err))
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		m.log.Error("ccnubox response not ok",
+			logger.String("student_id", studentID),
+			logger.String("status", fmt.Sprintf("%d", resp.StatusCode)),
+			logger.String("body", string(body)),
+		)
+		return errs.CCNUBoxResponseError(fmt.Errorf("请求返回异常: %d : %s", resp.StatusCode, string(body)))
+	}
+
+	return nil
 }
