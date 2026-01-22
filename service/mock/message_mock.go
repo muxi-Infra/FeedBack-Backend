@@ -33,6 +33,20 @@ func (m *MockMessageService) EXPECT() *MockMessageServiceMockRecorder {
 	return m.recorder
 }
 
+// SendCCNUBoxNotification mocks base method.
+func (m *MockMessageService) SendCCNUBoxNotification(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendCCNUBoxNotification", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendCCNUBoxNotification indicates an expected call of SendCCNUBoxNotification.
+func (mr *MockMessageServiceMockRecorder) SendCCNUBoxNotification(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendCCNUBoxNotification", reflect.TypeOf((*MockMessageService)(nil).SendCCNUBoxNotification), arg0)
+}
+
 // SendFeedbackNotification mocks base method.
 func (m *MockMessageService) SendFeedbackNotification(arg0, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
