@@ -18,10 +18,12 @@ type Sheet struct {
 }
 
 func NewSheet(s service.SheetService, m service.MessageService) *Sheet {
-	return &Sheet{
+	sheet := &Sheet{
 		s: s,
 		m: m,
 	}
+
+	return sheet
 }
 
 // CreateTableRecord 创建多维表格记录
@@ -78,7 +80,7 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 		if err != nil || url == nil {
 			return
 		}
-		err = s.m.SendFeedbackNotification(*tc.TableName, content, *url)
+		err = s.m.SendLarkNotification(*tc.TableName, content, *url)
 		if err != nil {
 			return
 		}

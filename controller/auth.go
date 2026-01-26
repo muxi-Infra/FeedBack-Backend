@@ -44,7 +44,7 @@ func (o Auth) GetTableToken(c *gin.Context, req request.GenerateTableTokenReq) (
 		return response.Response{}, err
 	}
 
-	token, err := o.jwtHandler.SetJWTToken(tableCfg.Identity, tableCfg.Name, tableCfg.TableToken, tableCfg.TableID, tableCfg.ViewID)
+	token, err := o.jwtHandler.SetJWTToken(*tableCfg.TableIdentity, *tableCfg.TableName, *tableCfg.TableToken, *tableCfg.TableID, *tableCfg.ViewID)
 	if err != nil {
 		return response.Response{}, errs.TokenGeneratedError(err)
 	}

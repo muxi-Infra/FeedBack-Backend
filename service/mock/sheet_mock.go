@@ -122,3 +122,17 @@ func (mr *MockSheetServiceMockRecorder) UpdateFAQResolutionRecord(arg0, arg1 int
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFAQResolutionRecord", reflect.TypeOf((*MockSheetService)(nil).UpdateFAQResolutionRecord), arg0, arg1)
 }
+
+// UpdateRecordProgress mocks base method.
+func (m *MockSheetService) UpdateRecordProgress(arg0 *string, arg1 *domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateRecordProgress", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateRecordProgress indicates an expected call of UpdateRecordProgress.
+func (mr *MockSheetServiceMockRecorder) UpdateRecordProgress(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecordProgress", reflect.TypeOf((*MockSheetService)(nil).UpdateRecordProgress), arg0, arg1)
+}

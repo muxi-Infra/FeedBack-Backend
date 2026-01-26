@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	domain "github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
 // MockMessageService is a mock of MessageService interface.
@@ -33,8 +34,23 @@ func (m *MockMessageService) EXPECT() *MockMessageServiceMockRecorder {
 	return m.recorder
 }
 
+// GetCCNUBoxPendingNotifications mocks base method.
+func (m *MockMessageService) GetCCNUBoxPendingNotifications(arg0 *domain.TableConfig) ([]domain.NotificationRecipient, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCCNUBoxPendingNotifications", arg0)
+	ret0, _ := ret[0].([]domain.NotificationRecipient)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCCNUBoxPendingNotifications indicates an expected call of GetCCNUBoxPendingNotifications.
+func (mr *MockMessageServiceMockRecorder) GetCCNUBoxPendingNotifications(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCCNUBoxPendingNotifications", reflect.TypeOf((*MockMessageService)(nil).GetCCNUBoxPendingNotifications), arg0)
+}
+
 // SendCCNUBoxNotification mocks base method.
-func (m *MockMessageService) SendCCNUBoxNotification(arg0 string) error {
+func (m *MockMessageService) SendCCNUBoxNotification(arg0 *string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendCCNUBoxNotification", arg0)
 	ret0, _ := ret[0].(error)
@@ -47,16 +63,30 @@ func (mr *MockMessageServiceMockRecorder) SendCCNUBoxNotification(arg0 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendCCNUBoxNotification", reflect.TypeOf((*MockMessageService)(nil).SendCCNUBoxNotification), arg0)
 }
 
-// SendFeedbackNotification mocks base method.
-func (m *MockMessageService) SendFeedbackNotification(arg0, arg1, arg2 string) error {
+// SendLarkNotification mocks base method.
+func (m *MockMessageService) SendLarkNotification(arg0, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendFeedbackNotification", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "SendLarkNotification", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SendFeedbackNotification indicates an expected call of SendFeedbackNotification.
-func (mr *MockMessageServiceMockRecorder) SendFeedbackNotification(arg0, arg1, arg2 interface{}) *gomock.Call {
+// SendLarkNotification indicates an expected call of SendLarkNotification.
+func (mr *MockMessageServiceMockRecorder) SendLarkNotification(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendFeedbackNotification", reflect.TypeOf((*MockMessageService)(nil).SendFeedbackNotification), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendLarkNotification", reflect.TypeOf((*MockMessageService)(nil).SendLarkNotification), arg0, arg1, arg2)
+}
+
+// TriggerNotification mocks base method.
+func (m *MockMessageService) TriggerNotification(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TriggerNotification", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TriggerNotification indicates an expected call of TriggerNotification.
+func (mr *MockMessageServiceMockRecorder) TriggerNotification(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerNotification", reflect.TypeOf((*MockMessageService)(nil).TriggerNotification), arg0)
 }

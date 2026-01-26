@@ -75,6 +75,14 @@ definitions:
     required:
     - table_identify
     type: object
+  request.TriggerNotificationReq:
+    properties:
+      table_identify:
+        description: 反馈表格 Identify，反馈表的唯一标识
+        type: string
+    required:
+    - table_identify
+    type: object
   response.CreatTableRecordResp:
     properties:
       record_id:
@@ -297,6 +305,37 @@ paths:
       summary: 系统健康检查
       tags:
       - Health
+  /api/v1/message/trigger:
+    post:
+      consumes:
+      - application/json
+      description: 将 `table_identify` 写入通知通道以触发下游消费
+      operationId: trigger-notification
+      parameters:
+      - description: 触发通知请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/request.TriggerNotificationReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 触发成功
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 手动触发通知
+      tags:
+      - Message
   /api/v1/openapi:
     get:
       description: 接口直接返回 docs/openapi3.yaml yaml格式的原始内容，使用BasicAuth进行验证

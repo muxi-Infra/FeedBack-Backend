@@ -76,7 +76,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 					AnyTimes()
 
 				mockMessageSvc.EXPECT().
-					SendFeedbackNotification(gomock.Any(), gomock.Any(), gomock.Any()).
+					SendLarkNotification(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).
 					AnyTimes()
 			},

@@ -18,11 +18,12 @@ type TableField struct {
 }
 
 type TableConfig struct {
-	TableIdentity *string
-	TableName     *string
-	TableToken    *string
-	TableID       *string
-	ViewID        *string
+	TableIdentity *string `json:"identity"`
+	TableName     *string `json:"table_name"`
+	TableToken    *string `json:"table_token"`
+	TableID       *string `json:"table_id"`
+	ViewID        *string `json:"view_id"`
+	Notice        bool    `json:"notice"`
 }
 
 // FAQTableRecords 定义多维表格记录及其解决状态的集合

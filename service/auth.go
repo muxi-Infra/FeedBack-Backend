@@ -13,23 +13,26 @@ import (
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
 )
 
-const RefreshInterval = time.Hour + 35*time.Minute
+const (
+	TenantRefreshInterval = time.Hour + 35*time.Minute
+	NoticeRefreshInterval = 4 * time.Hour
+)
 
 //go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
 type AuthService interface {
-	RefreshTableConfig() ([]Table, error)
-	GetTableConfig(tableIdentity *string) (Table, error)
+	RefreshTableConfig() ([]domain.TableConfig, error)
+	GetTableConfig(tableIdentity *string) (domain.TableConfig, error)
 	GetTenantToken() string
 }
 
 type AuthServiceImpl struct {
-	tableCfg     map[string]Table
 	tenantToken  string // 上传资源（如：图片等）使用
 	baseTableCfg *config.BaseTable
 	clientCfg    *config.ClientConfig
@@ -38,17 +41,8 @@ type AuthServiceImpl struct {
 	log          logger.Logger
 }
 
-type Table struct {
-	Identity   string
-	Name       string
-	TableToken string
-	TableID    string
-	ViewID     string
-}
-
 func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c lark.Client, log logger.Logger) AuthService {
 	s := &AuthServiceImpl{
-		tableCfg:     make(map[string]Table),
 		tenantToken:  "",
 		baseTableCfg: baseCfg,
 		clientCfg:    clientCfg,
@@ -63,11 +57,12 @@ func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c
 		)
 	}
 	s.startTenantTokenRefresher()
+	s.startNotifiableTableScanner()
 
 	return s
 }
 
-func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
+func (t *AuthServiceImpl) RefreshTableConfig() ([]domain.TableConfig, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(t.baseTableCfg.TableToken).
@@ -76,7 +71,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 		PageSize(50). // 分页大小，先给 50， 应该用不到这么多
 		Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
 			ViewId(t.baseTableCfg.ViewID).
-			FieldNames([]string{`table_identity`, `table_name`, `table_token`, `table_id`, `view_id`}).
+			FieldNames([]string{`table_identity`, `table_name`, `table_token`, `table_id`, `view_id`, `notice`}).
 			Build()).
 		Build()
 
@@ -101,85 +96,64 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]Table, error) {
 		return nil, errs.LarkResponseError(err)
 	}
 
-	var tables []Table
+	var tables []domain.TableConfig
 	for _, item := range resp.Data.Items {
-		var table Table
+		var table domain.TableConfig
 		if item.Fields != nil {
-			extract := func(key string) string {
-				val, ok := item.Fields[key]
-				if !ok || val == nil {
-					return ""
-				}
+			fields := simplifyFields(item.Fields)
 
-				switch v := val.(type) {
-				case string:
-					return v
-				case []interface{}:
-					if len(v) == 0 {
-						return ""
-					}
-					elem := v[0]
-					if s, ok := elem.(map[string]interface{}); ok {
-						if txt, ok := s["text"]; ok {
-							if ss, ok := txt.(string); ok {
-								return ss
-							}
-						}
-						return ""
-					}
-					return ""
-				case map[string]interface{}:
-					// 尝试获取 text 字段
-					if txt, ok := v["text"]; ok {
-						if s, ok := txt.(string); ok {
-							return s
-						}
-					}
-					return ""
-				default:
-					return fmt.Sprintf("%v", v)
-				}
+			if v, ok := fields["table_identity"].(string); ok {
+				table.TableIdentity = &v
 			}
-
-			table.Identity = extract("table_identity")
-			table.Name = extract("table_name")
-			table.TableToken = extract("table_token")
-			table.TableID = extract("table_id")
-			table.ViewID = extract("view_id")
+			if v, ok := fields["table_name"].(string); ok {
+				table.TableName = &v
+			}
+			if v, ok := fields["table_token"].(string); ok {
+				table.TableToken = &v
+			}
+			if v, ok := fields["table_id"].(string); ok {
+				table.TableID = &v
+			}
+			if v, ok := fields["view_id"].(string); ok {
+				table.ViewID = &v
+			}
+			if v, ok := fields["notice"].(string); ok {
+				table.Notice = v == "yes"
+			}
 		}
 
-		if table.Identity != "" {
+		if *table.TableIdentity != "" {
 			tables = append(tables, table)
 		}
 	}
 
 	// 同步更新配置（在临界区内替换 map，避免并发读写风险）
-	newTables := make(map[string]Table)
+	newTables := make(map[string]domain.TableConfig)
 	for _, table := range tables {
-		if table.Identity != "" {
-			newTables[table.Identity] = table
+		if *table.TableIdentity != "" {
+			newTables[*table.TableIdentity] = table
 		}
 	}
 
 	t.mutex.Lock()
-	t.tableCfg = newTables
+	tableCfg = newTables
 	t.mutex.Unlock()
 
 	return tables, nil
 }
 
-func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (Table, error) {
+func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (domain.TableConfig, error) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
 	// 防止传入 nil 指针引起 panic
 	if tableIdentity == nil {
-		return Table{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
+		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
 	}
 
-	table, exists := t.tableCfg[*tableIdentity]
+	table, exists := tableCfg[*tableIdentity]
 	if !exists {
-		return Table{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
+		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
 	}
 	return table, nil
 }
@@ -261,7 +235,7 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 	}
 
 	// 后台定时刷新
-	ticker := time.NewTicker(RefreshInterval)
+	ticker := time.NewTicker(TenantRefreshInterval)
 
 	go func() {
 		defer ticker.Stop()
@@ -274,6 +248,40 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 						"定时刷新租户 Token 失败",
 						logger.String("error", err.Error()),
 					)
+				}
+			}
+		}
+	}()
+}
+
+func (t *AuthServiceImpl) startNotifiableTableScanner() {
+	ticker := time.NewTicker(NoticeRefreshInterval)
+
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				t.mutex.RLock()
+				defer t.mutex.RUnlock()
+
+				for tableID, table := range tableCfg {
+					if !table.Notice {
+						continue
+					}
+
+					select {
+					case noticeCh <- table:
+						t.log.Info("notifiable table queued",
+							logger.String("table_id", tableID),
+						)
+					default:
+						// ⚠️ channel 满了，直接丢，避免阻塞
+						t.log.Warn("notice channel full, skip table",
+							logger.String("table_id", tableID),
+						)
+					}
 				}
 			}
 		}

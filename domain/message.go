@@ -17,3 +17,8 @@ type CCNUBoxFeedMessage struct {
 	Title     string `json:"title"`
 	Type      string `json:"type"`
 }
+
+type NotificationRecipient struct {
+	StudentID string `json:"student_id"`
+	RecordID  string `json:"record_id"`
+}

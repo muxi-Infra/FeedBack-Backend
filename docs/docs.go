@@ -206,6 +206,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/message/trigger": {
+            "post": {
+                "description": "将 ` + "`" + `table_identify` + "`" + ` 写入通知通道以触发下游消费",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Message"
+                ],
+                "summary": "手动触发通知",
+                "operationId": "trigger-notification",
+                "parameters": [
+                    {
+                        "description": "触发通知请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.TriggerNotificationReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "触发成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/openapi": {
             "get": {
                 "security": [
@@ -689,6 +736,18 @@ const docTemplate = `{
             }
         },
         "request.GenerateTableTokenReq": {
+            "type": "object",
+            "required": [
+                "table_identify"
+            ],
+            "properties": {
+                "table_identify": {
+                    "description": "反馈表格 Identify，反馈表的唯一标识",
+                    "type": "string"
+                }
+            }
+        },
+        "request.TriggerNotificationReq": {
             "type": "object",
             "required": [
                 "table_identify"

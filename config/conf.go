@@ -256,6 +256,7 @@ func NewLarkMessageConfig() *LarkMessage {
 }
 
 type CCNUBoxMessage struct {
+	TableIdentify string `yaml:"tableIdentify" json:"tableIdentify"`
 	BasicUser     string `yaml:"basicUser" json:"basicUser"`
 	BasicPassword string `yaml:"basicPassword" json:"basicPassword"`
 	BaseURL       string `yaml:"baseURL" json:"baseURL"`
@@ -267,8 +268,8 @@ func NewCCNUBoxMessageConfig() *CCNUBoxMessage {
 	if err != nil {
 		panic(fmt.Sprintf("无法解析 ccnuBoxMessage 配置: %v", err))
 	}
-	if ccnuBoxMessage.BasicUser == "" || ccnuBoxMessage.BasicPassword == "" || ccnuBoxMessage.BaseURL == "" {
-		panic("ccnuBoxMessage 配置无效: basicUser, basicPassword, 和 baseURL 不能为空")
+	if ccnuBoxMessage.TableIdentify == "" || ccnuBoxMessage.BasicUser == "" || ccnuBoxMessage.BasicPassword == "" || ccnuBoxMessage.BaseURL == "" {
+		panic("ccnuBoxMessage 配置无效: tableIdentify, basicUser, basicPassword, 和 baseURL 不能为空")
 	}
 	return ccnuBoxMessage
 }

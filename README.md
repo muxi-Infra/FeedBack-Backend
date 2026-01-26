@@ -32,13 +32,3 @@ FeedBack-Backend 是一个基于 Go 的后端服务，用于收集和管理来�
 - 错误码必须为 6 位（例如：100001）。
 
 详细错误码请参考 [错误码文档](https://github.com/muxi-Infra/FeedBack-Backend/blob/main/errs/README.md)。
-
----
-
-## 🛠️ TODO
-
-1. 优化错误处理与日志记录逻辑。
-2. 生成 log 追踪 id。
-3. 增加重试机制
-4. 优化接口速度：mysql 与 飞书（并发） 双写
-5. 飞书接口重新封装
