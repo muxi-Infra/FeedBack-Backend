@@ -9,8 +9,8 @@ import (
 )
 
 type FAQResolutionDAO interface {
-	GetResolutionByUserAndRecord(userID, recordID *string) (*model.FAQResolution, error)
-	ListResolutionsByUser(userID *string) ([]model.FAQResolution, error)
+	GetResolutionByUserAndRecord(userID, tableIdentify, recordID *string) (*model.FAQResolution, error)
+	ListResolutionsByUser(userID, tableIdentify *string) ([]model.FAQResolution, error)
 	CreateOrUpsertFAQResolution(input *model.FAQResolution) error
 }
 
@@ -25,14 +25,14 @@ func NewFAQResolutionDAO(gorm *gorm.DB) FAQResolutionDAO {
 }
 
 // GetResolutionByUserAndRecord 获取特定用户和记录的FAQ解决状态（单条记录）
-func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, recordID *string) (*model.FAQResolution, error) {
+func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, recordID *string) (*model.FAQResolution, error) {
 	if userID == nil || recordID == nil {
 		return nil, errors.New("user_id or record_id is nil")
 	}
 
 	var res model.FAQResolution
 	err := f.db.
-		Where("user_id = ? AND record_id = ?", userID, recordID).
+		Where("user_id = ? AND table_identify = ? AND record_id = ?", userID, tableIdentify, recordID).
 		Take(&res).Error
 
 	// 如果没有找到记录，返回 nil 而不是错误
@@ -45,14 +45,14 @@ func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, recordID *string
 }
 
 // ListResolutionsByUser 获取用户的所有FAQ解决状态（多条记录）
-func (f *faqResolutionDAO) ListResolutionsByUser(userID *string) ([]model.FAQResolution, error) {
+func (f *faqResolutionDAO) ListResolutionsByUser(userID, tableIdentify *string) ([]model.FAQResolution, error) {
 	if userID == nil {
 		return nil, errors.New("user_id is nil")
 	}
 
 	var list []model.FAQResolution
 	err := f.db.
-		Where("user_id = ?", userID).
+		Where("user_id = ? AND table_identify = ?", userID, tableIdentify).
 		Find(&list).Error // 没有数据时 err = nil, list = []
 
 	return list, err
@@ -68,6 +68,7 @@ func (f *faqResolutionDAO) CreateOrUpsertFAQResolution(m *model.FAQResolution) e
 	err := f.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "user_id"},
+			{Name: "table_identify"},
 			{Name: "record_id"},
 		},
 		DoUpdates: clause.Assignments(map[string]interface{}{
