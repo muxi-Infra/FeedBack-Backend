@@ -207,7 +207,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 			return nil
 		}
 
-		list, err := s.faqDAO.ListResolutionsByUser(studentID)
+		list, err := s.faqDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
 		if err != nil {
 			s.log.Error("GetFAQProblemTableRecord faqDAO.ListResolutionsByUser err",
 				logger.String("error", err.Error()))
@@ -292,7 +292,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 
 func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
 	// 1. 查询用户是否已经对该 FAQ 做过选择
-	existingRecord, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, resolution.RecordID)
+	existingRecord, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord faqDAO.GetResolutionByUserAndRecord err",
 			logger.String("error", err.Error()))
@@ -380,10 +380,11 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 
 	// 更新或插入数据库记录
 	m := &model.FAQResolution{
-		RecordID:   resolution.RecordID,
-		UserID:     resolution.UserID,
-		IsResolved: resolution.IsResolved,
-		Frequency:  &newFrequency,
+		UserID:        resolution.UserID,
+		TableIdentify: tableConfig.TableIdentity,
+		RecordID:      resolution.RecordID,
+		IsResolved:    resolution.IsResolved,
+		Frequency:     &newFrequency,
 	}
 	err = s.faqDAO.CreateOrUpsertFAQResolution(m)
 	if err != nil {
