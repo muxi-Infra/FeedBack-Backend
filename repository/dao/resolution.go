@@ -26,8 +26,8 @@ func NewFAQResolutionDAO(gorm *gorm.DB) FAQResolutionDAO {
 
 // GetResolutionByUserAndRecord 获取特定用户和记录的FAQ解决状态（单条记录）
 func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, recordID *string) (*model.FAQResolution, error) {
-	if userID == nil || recordID == nil {
-		return nil, errors.New("user_id or record_id is nil")
+	if userID == nil || tableIdentify == nil || recordID == nil {
+		return nil, errors.New("user_id or table_identify or record_id is nil")
 	}
 
 	var res model.FAQResolution
@@ -46,8 +46,8 @@ func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, r
 
 // ListResolutionsByUser 获取用户的所有FAQ解决状态（多条记录）
 func (f *faqResolutionDAO) ListResolutionsByUser(userID, tableIdentify *string) ([]model.FAQResolution, error) {
-	if userID == nil {
-		return nil, errors.New("user_id is nil")
+	if userID == nil || tableIdentify == nil {
+		return nil, errors.New("user_id or table_identify is nil")
 	}
 
 	var list []model.FAQResolution
