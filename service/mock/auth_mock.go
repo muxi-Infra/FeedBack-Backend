@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	service "github.com/muxi-Infra/FeedBack-Backend/service"
+	domain "github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
 // MockAuthService is a mock of AuthService interface.
@@ -35,10 +35,10 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 }
 
 // GetTableConfig mocks base method.
-func (m *MockAuthService) GetTableConfig(arg0 *string) (service.Table, error) {
+func (m *MockAuthService) GetTableConfig(arg0 *string) (domain.TableConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTableConfig", arg0)
-	ret0, _ := ret[0].(service.Table)
+	ret0, _ := ret[0].(domain.TableConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,10 +64,10 @@ func (mr *MockAuthServiceMockRecorder) GetTenantToken() *gomock.Call {
 }
 
 // RefreshTableConfig mocks base method.
-func (m *MockAuthService) RefreshTableConfig() ([]service.Table, error) {
+func (m *MockAuthService) RefreshTableConfig() ([]domain.TableConfig, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RefreshTableConfig")
-	ret0, _ := ret[0].([]service.Table)
+	ret0, _ := ret[0].([]domain.TableConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -8,8 +8,8 @@ type TableRecords struct {
 }
 
 type TableRecord struct {
-	RecordID *string
-	Record   map[string]any
+	RecordID *string        `json:"record_id"`
+	Record   map[string]any `json:"record"`
 }
 
 type TableField struct {
@@ -18,11 +18,12 @@ type TableField struct {
 }
 
 type TableConfig struct {
-	TableIdentity *string
-	TableName     *string
-	TableToken    *string
-	TableID       *string
-	ViewID        *string
+	TableIdentity *string `json:"identity"`
+	TableName     *string `json:"table_name"`
+	TableToken    *string `json:"table_token"`
+	TableID       *string `json:"table_id"`
+	ViewID        *string `json:"view_id"`
+	Notice        bool    `json:"notice"`
 }
 
 // FAQTableRecords 定义多维表格记录及其解决状态的集合
@@ -33,9 +34,9 @@ type FAQTableRecords struct {
 
 // FAQTableRecord 定义多维表格记录及其解决状态
 type FAQTableRecord struct {
-	RecordID   *string
-	Record     map[string]any
-	IsResolved *string
+	RecordID   *string        `json:"record_id"`
+	Record     map[string]any `json:"record"`
+	IsResolved *string        `json:"is_resolved"`
 }
 
 // FAQResolution 用于处理 FAQ 记录的解决状态变更
@@ -45,4 +46,9 @@ type FAQResolution struct {
 	RecordID            *string
 	UserID              *string
 	IsResolved          *bool
+}
+
+type File struct {
+	FileToken      *string `json:"file_token"`
+	TmpDownloadURL *string `json:"tmp_download_url"`
 }

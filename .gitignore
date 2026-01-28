@@ -34,6 +34,7 @@ go.work.sum
 *_test.go
 /.idea
 /.vscode
+config/config-prod.yaml
 config/config.yaml
 config/config-dev.yaml
 /data/configCache

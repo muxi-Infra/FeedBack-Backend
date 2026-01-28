@@ -21,20 +21,31 @@
 - `InternalServerErrorCode = 100000` - 服务内部错误 - HTTP 500
 - `SerializationErrorCode = 100001` - 序列化错误 - HTTP 500
 - `DeserializationErrorCode = 100002` - 反序列化错误 - HTTP 500
-- `QueueOperationErrorCode = 100003` - 队列任务操作错误 - HTTP 500
+- `HTTPRequestCreationErrorCode = 100003` - 创建 HTTP 请求失败 - HTTP 500
+- `HTTPResponseReadErrorCode = 100004` - 读取 HTTP 返回结果失败 - HTTP 500
 
 ### 业务（20xxxx）
 - `TokenGeneratedErrorCode = 200000` - Token 生成失败 - HTTP 500
 - `TableIdentifyNotFoundCode = 200001` - 表格标识未找到 - HTTP 404
 - `TableIdentifierInvalidCode = 200002` - 表格标识无效 - HTTP 500
-- `FAQResolutionChangeErrorCode = 200003` - FAQ 解决状态更新失败 - HTTP 500
-- `FAQResolutionFindErrorCode = 200004` - FAQ 解决状态查询失败 - HTTP 500
-- `FAQResolutionExistCode = 200005` - FAQ 解决状态已存在 - HTTP 500
-- `FAQResolutionCountGetErrorCode = 200006` - FAQ 解决状态计数获取失败 - HTTP 500
+- `CreateRecordEmptyContentCode = 200003` - 新增表格记录反馈内容为空 - HTTP 400
+- `CreateRecordEmptyStudentIDCodeCode = 200004` - 新增表格记录学号为空 - HTTP 400
+- `CreateRecordInvalidStudentIDCode = 200005` - 新增表格记录学号不合法 - HTTP 400
+- `FAQResolutionChangeErrorCode = 200006` - FAQ 解决状态更新失败 - HTTP 500
+- `FAQResolutionFindErrorCode = 200007` - FAQ 解决状态查询失败 - HTTP 500
+- `FAQResolutionExistCode = 200008` - FAQ 解决状态已存在 - HTTP 500
+- `FAQResolutionCountGetErrorCode = 200009` - FAQ 解决状态计数获取失败 - HTTP 500
+- `FAQResolutionChangeLimitExceededCode = 200010` - FAQ 解决状态修改次数达到上限 - HTTP 429
+- `FileTokenInvalidErrorCode = 200011` - 文件 Token 无效 - HTTP 400
+- `LarkMessagePartialFailureCode = 200012` - 飞书消息部分发送失败 - HTTP 500
+- `AppNotificationChannelFullErrorCode = 200013` - 应用通知通道已满 - HTTP 500
+- `TableNotificationNotConfiguredErrorCode = 200014` - 表格通知未配置错误 - HTTP 500
 
 ### 第三方服务（30xxxx）
-- `FeishuRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500
-- `FeishuResponseErrorCode = 300001` - 飞书服务返回错误 - HTTP 500
+- `LarkRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500
+- `LarkResponseErrorCode = 300001` - 飞书服务返回错误 - HTTP 500
+- `CCNUBoxRequestErrorCode = 300002` - 华师匣子请求接口失败 - HTTP 500
+- `CCNUBoxResponseErrorCode = 300003` - 华师匣子服务返回错误 - HTTP 500
 
 > 说明：上表为当前源码中定义的完整错误码（截止到当前提交）。若源码发生变更，请以源码为准并同步更新本文件。
 
