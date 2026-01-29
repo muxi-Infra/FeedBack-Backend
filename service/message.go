@@ -55,7 +55,6 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 			table := <-noticeCh
 			switch *table.TableIdentity {
 			case "ccnubox":
-				fmt.Println("ccnu")
 				recipients, err := m.GetCCNUBoxPendingNotifications(&table)
 				if err != nil {
 					m.log.Error("get ccnubox pending notifications failed",

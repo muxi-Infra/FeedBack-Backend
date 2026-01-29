@@ -264,8 +264,6 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 			select {
 			case <-ticker.C:
 				t.mutex.RLock()
-				defer t.mutex.RUnlock()
-
 				for tableID, table := range tableCfg {
 					if !table.Notice {
 						continue
@@ -283,6 +281,7 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 						)
 					}
 				}
+				t.mutex.RUnlock()
 			}
 		}
 	}()

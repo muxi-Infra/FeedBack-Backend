@@ -53,7 +53,6 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 	go func() {
 		for {
 			msg := <-progressCh
-			fmt.Println(msg)
 			err := s.UpdateRecordProgress(&msg.RecordID, &msg.TableConfig)
 			if err != nil {
 				s.log.Error("UpdateRecordProgress 异步更新记录进度失败",
