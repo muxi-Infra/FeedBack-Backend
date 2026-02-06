@@ -28,7 +28,7 @@ const (
 type SheetService interface {
 	CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
-	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error)
+	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
@@ -172,7 +172,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 	return res, nil
 }
 
-func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
 	// 创建请求对象
 	req := larkbitable.NewBatchGetAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -192,7 +192,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 		s.log.Error("GetTableRecordReqByID 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.LarkRequestError(err)
+		return nil, nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -201,10 +201,10 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.LarkResponseError(err)
+		return nil, nil, errs.LarkResponseError(err)
 	}
 
-	return resp.Data.Records[0].SharedUrl, nil
+	return simplifyFields(resp.Data.Records[0].Fields), resp.Data.Records[0].SharedUrl, nil
 }
 
 func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {

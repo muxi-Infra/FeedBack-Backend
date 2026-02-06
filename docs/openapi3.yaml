@@ -227,6 +227,55 @@ paths:
       summary: 获取截图临时URL
       tags:
         - Sheet
+  /api/v1/sheet/record:
+    get:
+      description: 根据 record_id 获取单条用户反馈记录的详细内容，返回记录字段的键值对。请求中需包含合法的 table_identify，用于校验权限。
+      operationId: get-table-record-by-id
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+        - description: 记录 ID
+          in: query
+          name: record_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: table_identify
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功返回查询结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/response.GetTableRecordByRecordIdResp"
+                    type: object
+        "400":
+          description: 请求参数错误或飞书接口调用失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: 按 RecordID 查询历史反馈记录
+      tags:
+        - Sheet
   /api/v1/sheet/records:
     get:
       description: 根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。
@@ -352,19 +401,9 @@ paths:
           required: true
           schema:
             type: string
-        - description: 需要查询的字段名
+        - description: 记录 ID
           in: query
-          name: record_names
-          required: true
-          style: form
-          explode: false
-          schema:
-            type: array
-            items:
-              type: string
-        - description: 学号，用于标记用户身份
-          in: query
-          name: student_id
+          name: record_id
           required: true
           schema:
             type: string
@@ -375,7 +414,7 @@ paths:
             type: string
       responses:
         "200":
-          description: 成功返回查询结果
+          description: 成功返回单条记录的字段键值对
           content:
             application/json:
               schema:
@@ -383,7 +422,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GetFAQProblemTableRecordResp"
+                        $ref: "#/components/schemas/response.GetTableRecordByRecordIdResp"
                     type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -443,16 +482,6 @@ servers:
   - url: //localhost:8080
 components:
   schemas:
-    domain.FAQTableRecord:
-      properties:
-        is_resolved:
-          type: string
-        record:
-          additionalProperties: {}
-          type: object
-        record_id:
-          type: string
-      type: object
     domain.TableRecord:
       properties:
         record:
@@ -541,14 +570,11 @@ components:
         access_token:
           type: string
       type: object
-    response.GetFAQProblemTableRecordResp:
+    response.GetTableRecordByRecordIdResp:
       properties:
-        records:
-          items:
-            $ref: "#/components/schemas/domain.FAQTableRecord"
-          type: array
-        total:
-          type: integer
+        record:
+          additionalProperties: {}
+          type: object
       type: object
     response.GetTableRecordResp:
       properties:

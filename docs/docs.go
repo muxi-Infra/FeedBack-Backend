@@ -347,6 +347,76 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/sheet/record": {
+            "get": {
+                "description": "根据 record_id 获取单条用户反馈记录的详细内容，返回记录字段的键值对。请求中需包含合法的 table_identify，用于校验权限。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "按 RecordID 查询历史反馈记录",
+                "operationId": "get-table-record-by-id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "记录 ID",
+                        "name": "record_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/sheet/records": {
             "get": {
                 "description": "根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。",
@@ -528,20 +598,9 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "需要查询的字段名",
-                        "name": "record_names",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
                         "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
+                        "description": "记录 ID",
+                        "name": "record_id",
                         "in": "query",
                         "required": true
                     },
@@ -554,7 +613,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回查询结果",
+                        "description": "成功返回单条记录的字段键值对",
                         "schema": {
                             "allOf": [
                                 {
@@ -564,7 +623,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GetFAQProblemTableRecordResp"
+                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
                                         }
                                     }
                                 }
@@ -640,21 +699,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "domain.FAQTableRecord": {
-            "type": "object",
-            "properties": {
-                "is_resolved": {
-                    "type": "string"
-                },
-                "record": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "record_id": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.TableRecord": {
             "type": "object",
             "properties": {
@@ -783,17 +827,12 @@ const docTemplate = `{
                 }
             }
         },
-        "response.GetFAQProblemTableRecordResp": {
+        "response.GetTableRecordByRecordIdResp": {
             "type": "object",
             "properties": {
-                "records": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.FAQTableRecord"
-                    }
-                },
-                "total": {
-                    "type": "integer"
+                "record": {
+                    "type": "object",
+                    "additionalProperties": {}
                 }
             }
         },

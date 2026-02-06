@@ -76,7 +76,7 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 	// TODO 后续想改成 kafka 异步处理
 	go func(recordID, content string, tc domain.TableConfig) {
 		// 发送消息通知
-		url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
+		_, url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
 		if err != nil || url == nil {
 			return
 		}
@@ -162,6 +162,55 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 	}, nil
 }
 
+// GetTableRecordReqByRecordID 根据记录 ID 查询用户历史反馈记录
+//
+//	@Summary		按 RecordID 查询历史反馈记录
+//	@Description	根据 record_id 获取单条用户反馈记录的详细内容，返回记录字段的键值对。请求中需包含合法的 table_identify，用于校验权限。
+//	@Tags			Sheet
+//	@ID				get-table-record-by-id
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string															true	"Bearer Token"
+//	@Param			request			query		request.GetTableRecordByRecordIDReq								true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response{data=response.GetTableRecordByRecordIdResp}	"成功返回查询结果"
+//	@Failure		400				{object}	response.Response												"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response												"服务器内部错误"
+//	@Router			/api/v1/sheet/record [get]
+func (s *Sheet) GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error) {
+	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
+	if err != nil {
+		return response.Response{}, err
+	}
+
+	// 组装参数
+	tableConfig := domain.TableConfig{
+		TableIdentity: &uc.TableIdentity,
+		TableName:     &uc.TableName,
+		TableToken:    &uc.TableToken,
+		TableID:       &uc.TableId,
+		ViewID:        &uc.ViewId,
+	}
+
+	serviceResult, _, err := s.s.GetTableRecordReqByRecordID(r.RecordID, &tableConfig)
+	if err != nil {
+		return response.Response{}, err
+	}
+
+	resp := response.GetTableRecordByRecordIdResp{
+		Record: make(map[string]any),
+	}
+
+	if serviceResult != nil {
+		resp.Record = serviceResult
+	}
+
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data:    resp,
+	}, nil
+}
+
 // GetFAQResolutionRecord 获取常见问题及解决状态
 //
 //	@Summary		查询FAQ问题记录
@@ -171,8 +220,8 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string															true	"Bearer Token"
-//	@Param			request			query		request.GetFAQProblemTableRecordReg								true	"查询记录请求参数"
-//	@Success		200				{object}	response.Response{data=response.GetFAQProblemTableRecordResp}	"成功返回查询结果"
+//	@Param			request			query		request.GetTableRecordByRecordIDReq								true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Success		200				{object}	response.Response{data=response.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response												"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response												"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [get]

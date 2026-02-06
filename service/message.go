@@ -32,7 +32,7 @@ type MessageService interface {
 	SendLarkNotification(tableName, content, url string) error
 	TriggerNotification(tableIdentify string) error
 	GetCCNUBoxPendingNotifications(tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error)
-	SendCCNUBoxNotification(studentID *string) error
+	SendCCNUBoxNotification(studentID, recordID *string) error
 }
 
 type MessageServiceImpl struct {
@@ -63,7 +63,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 					continue
 				}
 				for _, recipient := range recipients {
-					err = m.SendCCNUBoxNotification(&recipient.StudentID)
+					err = m.SendCCNUBoxNotification(&recipient.StudentID, &recipient.RecordID)
 					if err != nil {
 						m.log.Error("send ccnubox notification failed",
 							logger.String("student_id", recipient.StudentID),
@@ -259,13 +259,14 @@ func (m MessageServiceImpl) GetCCNUBoxPendingNotifications(tableConfig *domain.T
 	return recipients, nil
 }
 
-func (m MessageServiceImpl) SendCCNUBoxNotification(studentID *string) error {
+func (m MessageServiceImpl) SendCCNUBoxNotification(studentID, recordID *string) error {
 	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(m.cc.BasicUser+":"+m.cc.BasicPassword))
 	message := domain.CCNUBoxFeedMessage{
 		Content:   "您的问题已经处理完成，点击查看详情",
 		StudentID: *studentID,
 		Title:     "反馈处理完成提醒",
 		Type:      "feed_back",
+		URL:       *recordID,
 	}
 
 	// 编码请求体

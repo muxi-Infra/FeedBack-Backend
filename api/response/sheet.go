@@ -15,6 +15,11 @@ type GetTableRecordResp struct {
 	Total     int                  `json:"total"`
 }
 
+// GetTableRecordByRecordIdResp 获取表格记录返回参数（通过记录 ID 获取）
+type GetTableRecordByRecordIdResp struct {
+	Record map[string]any `json:"record"`
+}
+
 // GetFAQProblemTableRecordResp 获取常见问题记录返回参数
 type GetFAQProblemTableRecordResp struct {
 	Records []domain.FAQTableRecord `json:"records"`

@@ -19,6 +19,12 @@ type GetTableRecordReq struct {
 	PageToken     *string  `form:"page_token" binding:"omitempty"`  // 分页参数,第一次不需要
 }
 
+// GetTableRecordByRecordIDReq 获取表格记录请求参数（通过记录 ID 获取）
+type GetTableRecordByRecordIDReq struct {
+	TableIdentify *string `form:"table_identify" binding:"required"`
+	RecordID      *string `form:"record_id" binding:"required"` // 记录 ID
+}
+
 // GetFAQProblemTableRecordReg 获取常见问题记录请求参数
 // 这个接口直接获取全部常见问题
 // 筛选由前端完成，对应字段在前端过滤
