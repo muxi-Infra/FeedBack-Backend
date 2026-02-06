@@ -95,12 +95,13 @@ func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByKey(arg0, arg1, arg2,
 }
 
 // GetTableRecordReqByRecordID mocks base method.
-func (m *MockSheetService) GetTableRecordReqByRecordID(arg0 *string, arg1 *domain.TableConfig) (*string, error) {
+func (m *MockSheetService) GetTableRecordReqByRecordID(arg0 *string, arg1 *domain.TableConfig) (map[string]interface{}, *string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTableRecordReqByRecordID", arg0, arg1)
-	ret0, _ := ret[0].(*string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(map[string]interface{})
+	ret1, _ := ret[1].(*string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // GetTableRecordReqByRecordID indicates an expected call of GetTableRecordReqByRecordID.

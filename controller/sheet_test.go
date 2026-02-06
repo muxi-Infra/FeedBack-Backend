@@ -72,7 +72,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 				// Mock the goroutine calls
 				mockSheetSvc.EXPECT().
 					GetTableRecordReqByRecordID(gomock.Any(), gomock.Any()).
-					Return(stringPtr("http://mock-url.com"), nil).
+					Return(map[string]any{}, stringPtr("http://mock-url.com"), nil).
 					AnyTimes()
 
 				mockMessageSvc.EXPECT().
