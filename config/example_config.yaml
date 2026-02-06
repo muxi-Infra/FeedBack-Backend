@@ -14,30 +14,32 @@ middleware:
   allowedOrigins:
     - "*"                                      # 允许跨域访问的域名
 
-# 基础表格信息（用于存储元数据）
+# 基础表格信息，改表格用于储存其他表格的各种基础信息
 baseTable:
   tableToken: "basxxxxxxxxxxxxxxxxxxxxxxxx"    # 飞书表格 Token
   tableId: "tblxxxxxxxxxxxxxxxx"               # 表格 ID
   viewId: "vewxxxxxxxxxxxx"                    # 视图 ID
 
-# 发送通知的内容
-content:
-  type: "template"                             # 消息类型
-  data:
-    template_id: "AAxxxxxxxxxxxxx"             # 飞书卡片模板 ID
+# 飞书通知
+larkMessage:
+  templateID: "xxxxxxxxxxxxx"  # 卡片模版 id
+  receiveIDs:                  # 要发送的群组或人
+    - type: "chat_id"
+      id: "oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    - type: "open_id"
+      id: "ou_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-# 消息接收者配置
-receive_ids:
-  - type: "chat_id"                            # 接收者类型
-    id: "oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # 聊天会话 ID
+CCNUBoxMessage:
+  tableIdentify: "ccnubox"
+  basicUser: "xxxx"
+  basicPassword: "xxxxxxxxxxx"
+  baseURL: "https://xxx.xxxx.xxx/xxxx"
 
-# Redis 配置
 redis:
   addr: "127.0.0.1:6379"                       # Redis 地址
   password: "your-redis-password"              # Redis 密码
   db: 1                                         # 数据库编号
 
-# MySQL 配置
 mysql:
   addr: "localhost:3306"                       # MySQL 地址
   dbname: "your_database"                      # 数据库名
@@ -45,7 +47,6 @@ mysql:
   password: "your-mysql-password"              # 密码
   logfile: "logs/mysql.log"                    # MySQL 日志路径
 
-# 日志配置
 log:
   file: "logs/app.log"                         # 应用日志路径
   maxSize: 5                                   # 单个文件最大大小（MB）
@@ -59,7 +60,6 @@ limiter:
   fillInterval: 1                              # 补充间隔（秒）
   quantum: 100                                 # 每次补充数量
 
-# 基础认证配置
 basicAuth:
   - username: "admin"                          # 管理员用户名
     password: "your-admin-password"            # 管理员密码

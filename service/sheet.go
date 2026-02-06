@@ -28,10 +28,11 @@ const (
 type SheetService interface {
 	CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
-	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error)
+	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
-	GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error)
+	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
+	UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error
 }
 
 type SheetServiceImpl struct {
@@ -42,12 +43,28 @@ type SheetServiceImpl struct {
 }
 
 func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
-	return &SheetServiceImpl{
+	s := &SheetServiceImpl{
 		c:      c,
 		log:    log,
 		faqDAO: faqDAO,
 		cache:  cache,
 	}
+
+	go func() {
+		for {
+			msg := <-progressCh
+			err := s.UpdateRecordProgress(&msg.RecordID, &msg.TableConfig)
+			if err != nil {
+				s.log.Error("UpdateRecordProgress 异步更新记录进度失败",
+					logger.String("error", err.Error()),
+					logger.String("record_id", msg.RecordID),
+					logger.String("table_identity", *msg.TableConfig.TableIdentity),
+				)
+			}
+		}
+	}()
+
+	return s
 }
 
 func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
@@ -155,7 +172,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 	return res, nil
 }
 
-func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (*string, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
 	// 创建请求对象
 	req := larkbitable.NewBatchGetAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -175,7 +192,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 		s.log.Error("GetTableRecordReqByID 调用失败",
 			logger.String("error", err.Error()),
 		)
-		return nil, errs.LarkRequestError(err)
+		return nil, nil, errs.LarkRequestError(err)
 	}
 
 	// 服务端错误处理
@@ -184,10 +201,10 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.LarkResponseError(err)
+		return nil, nil, errs.LarkResponseError(err)
 	}
 
-	return resp.Data.Records[0].SharedUrl, nil
+	return simplifyFields(resp.Data.Records[0].Fields), resp.Data.Records[0].SharedUrl, nil
 }
 
 func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {
@@ -395,7 +412,12 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	return nil
 }
 
-func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGetTmpDownloadUrlMediaResp, error) {
+func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, error) {
+	if len(fileTokens) == 0 {
+		s.log.Error("GetPhotoUrl fileTokens is empty")
+		return nil, errs.FileTokenInvalidError(errors.New("file token 为空"))
+	}
+
 	// 创建请求对象
 	req := larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().
 		FileTokens(fileTokens).
@@ -419,67 +441,57 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) (*larkdrive.BatchGet
 			logger.String("request_id", resp.RequestId()),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return resp, errs.LarkResponseError(err)
+		return nil, errs.LarkResponseError(err)
 	}
 
-	return resp, nil
+	var files []domain.File
+	for _, item := range resp.Data.TmpDownloadUrls {
+		files = append(files, domain.File{
+			FileToken:      item.FileToken,
+			TmpDownloadURL: item.TmpDownloadUrl,
+		})
+	}
+
+	if len(files) == 0 {
+		s.log.Error("GetPhotoUrl fileTokens is all invalid")
+		return nil, errs.FileTokenInvalidError(errors.New("file token 全部无效"))
+	}
+
+	return files, nil
 }
 
-func simplifyFields(fields map[string]any) map[string]any {
-	result := make(map[string]any, len(fields))
+func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error {
+	req := larkbitable.NewUpdateAppTableRecordReqBuilder().
+		AppToken(*tableConfig.TableToken).
+		TableId(*tableConfig.TableID).
+		RecordId(*recordID).
+		AppTableRecord(larkbitable.NewAppTableRecordBuilder().
+			Fields(map[string]interface{}{`进度`: `已完成`}).
+			Build()).
+		Build()
 
-	for key, val := range fields {
-		switch v := val.(type) {
+	// 发起请求
+	ctx := context.Background()
+	resp, err := s.c.UpdateRecord(ctx, req)
 
-		// 情况 1：[]any
-		case []any:
-			// 空数组
-			if len(v) == 0 {
-				result[key] = v
-				continue
-			}
-
-			var fileTokens []string
-			var text *string
-			for _, item := range v {
-				m, ok := item.(map[string]any)
-				if !ok {
-					break
-				}
-
-				// 文本字段
-				if t, ok := m["text"].(string); ok {
-					text = &t
-					break
-				}
-
-				// 附件 / 图片字段（只要 file_token）
-				if token, ok := m["file_token"].(string); ok {
-					fileTokens = append(fileTokens, token)
-					continue
-				}
-			}
-
-			if text != nil {
-				result[key] = *text
-			} else if len(fileTokens) > 0 {
-				result[key] = fileTokens
-			} else {
-				result[key] = v // 兜底
-			}
-
-		// 情况 2：已经是基础类型
-		case string, float64, bool, int64, int:
-			result[key] = v
-
-		// 情况 3：其他未知结构
-		// 尽量不要走到这一步，如果走到，即使增加情况处理
-		default:
-			result[key] = v
-		}
+	// 处理错误
+	if err != nil {
+		s.log.Error("UpdateRecordProgress 调用失败",
+			logger.String("error", err.Error()),
+		)
+		return errs.LarkRequestError(err)
 	}
 
-	return result
+	// 服务端错误处理
+	if !resp.Success() {
+		s.log.Error("UpdateRecordProgress Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
+		return errs.LarkResponseError(err)
+	}
+
+	return nil
 }
 
 func stringIsResolved(isResolved *bool) *string {

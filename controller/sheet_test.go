@@ -13,7 +13,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/golang/mock/gomock"
-	larkdrive "github.com/larksuite/oapi-sdk-go/v3/service/drive/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,11 +72,11 @@ func TestCreateAppTableRecord(t *testing.T) {
 				// Mock the goroutine calls
 				mockSheetSvc.EXPECT().
 					GetTableRecordReqByRecordID(gomock.Any(), gomock.Any()).
-					Return(stringPtr("http://mock-url.com"), nil).
+					Return(map[string]any{}, stringPtr("http://mock-url.com"), nil).
 					AnyTimes()
 
 				mockMessageSvc.EXPECT().
-					SendFeedbackNotification(gomock.Any(), gomock.Any(), gomock.Any()).
+					SendLarkNotification(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).
 					AnyTimes()
 			},
@@ -157,7 +156,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 				tc.setupMocks(mockSheetSvc, mockMessageSvc)
 			}
 
-			result, err := sheet.CreatTableRecord(&gin.Context{}, tc.req, tc.uc)
+			result, err := sheet.CreateTableRecord(&gin.Context{}, tc.req, tc.uc)
 
 			if tc.expectedError {
 				assert.Error(t, err)
@@ -307,18 +306,14 @@ func TestGetPhotoUrl(t *testing.T) {
 			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
 				mockSheetSvc.EXPECT().
 					GetPhotoUrl(gomock.Any()).
-					Return(&larkdrive.BatchGetTmpDownloadUrlMediaResp{
-						Data: &larkdrive.BatchGetTmpDownloadUrlMediaRespData{
-							TmpDownloadUrls: []*larkdrive.TmpDownloadUrl{
-								{
-									FileToken:      stringPtr("token1"),
-									TmpDownloadUrl: stringPtr("https://example.com/token1"),
-								},
-								{
-									FileToken:      stringPtr("token2"),
-									TmpDownloadUrl: stringPtr("https://example.com/token2"),
-								},
-							},
+					Return([]domain.File{
+						{
+							FileToken:      stringPtr("token1"),
+							TmpDownloadURL: stringPtr("https://example.com/token1"),
+						},
+						{
+							FileToken:      stringPtr("token2"),
+							TmpDownloadURL: stringPtr("https://example.com/token2"),
 						},
 					}, nil)
 			},

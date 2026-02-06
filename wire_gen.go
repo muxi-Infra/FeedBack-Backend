@@ -50,12 +50,14 @@ func InitApp() (*App, error) {
 	faqResolutionStateCache := cache.NewFAQResolutionStateCache(client)
 	sheetService := service.NewSheetService(client2, loggerLogger, faqResolutionDAO, faqResolutionStateCache)
 	larkMessage := config.NewLarkMessageConfig()
-	messageService := service.NewMessageService(client2, loggerLogger, larkMessage)
+	ccnuBoxMessage := config.NewCCNUBoxMessageConfig()
+	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage)
 	sheet := controller.NewSheet(sheetService, messageService)
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
 	auth := controller.NewAuth(jwt, authService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swag, sheet, auth)
+	message := controller.NewMessage(messageService)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swag, sheet, auth, message)
 	app := &App{
 		r: engine,
 	}
