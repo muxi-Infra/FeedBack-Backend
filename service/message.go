@@ -265,8 +265,7 @@ func (m MessageServiceImpl) SendCCNUBoxNotification(studentID, recordID *string)
 		Content:   "您的问题已经处理完成，点击查看详情",
 		StudentID: *studentID,
 		Title:     "反馈处理完成提醒",
-		Type:      "feed_back",
-		URL:       *recordID,
+		RecordID:  *recordID,
 	}
 
 	// 编码请求体
