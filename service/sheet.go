@@ -241,6 +241,13 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 		return nil, nil, errs.LarkResponseError(err)
 	}
 
+	if len(resp.Data.Records) == 0 {
+		s.log.Error("GetTableRecordReqByID no record found",
+			logger.String("record_id", *recordID),
+		)
+		return nil, nil, errs.TableRecordNotFoundError(errors.New("未找到记录"))
+	}
+
 	return simplifyFields(resp.Data.Records[0].Fields), resp.Data.Records[0].SharedUrl, nil
 }
 

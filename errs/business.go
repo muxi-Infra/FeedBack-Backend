@@ -26,6 +26,7 @@ const (
 	LarkMessagePartialFailureCode                           // 飞书消息部分发送失败
 	AppNotificationChannelFullErrorCode                     // 应用通知通道已满
 	TableNotificationNotConfiguredErrorCode                 // 表格通知未配置错误
+	TableRecordNotFoundCode                                 // 表格记录未找到
 )
 
 var (
@@ -73,5 +74,8 @@ var (
 	}
 	TableNotificationNotConfiguredError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, TableNotificationNotConfiguredErrorCode, "表格通知未配置错误", err)
+	}
+	TableRecordNotFoundError = func(err error) error {
+		return errorx.New(http.StatusNotFound, TableRecordNotFoundCode, "表格记录未找到", err)
 	}
 )
