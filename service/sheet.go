@@ -36,18 +36,20 @@ type SheetService interface {
 }
 
 type SheetServiceImpl struct {
-	c      lark.Client
-	log    logger.Logger
-	faqDAO dao.FAQResolutionDAO
-	cache  cache.FAQResolutionStateCache
+	c        lark.Client
+	log      logger.Logger
+	faqDAO   dao.FAQResolutionDAO
+	sheetDao dao.SheetDAO
+	cache    cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
+func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, sheetDAO dao.SheetDAO, cache cache.FAQResolutionStateCache) SheetService {
 	s := &SheetServiceImpl{
-		c:      c,
-		log:    log,
-		faqDAO: faqDAO,
-		cache:  cache,
+		c:        c,
+		log:      log,
+		faqDAO:   faqDAO,
+		sheetDao: sheetDAO,
+		cache:    cache,
 	}
 
 	go func() {
@@ -98,6 +100,41 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 		)
 		return nil, errs.LarkResponseError(err)
 	}
+
+	go func() {
+		rec := record.Record
+		studentID, _ := rec["学号"].(string)
+
+		// 截图：[]map[string]string → []string(file_token)
+		var images []string
+		if files, ok := rec["截图"].([]map[string]string); ok {
+			images = make([]string, 0, len(files))
+			for _, f := range files {
+				if token, ok := f["file_token"]; ok {
+					images = append(images, token)
+				}
+			}
+		}
+
+		rec["截图"] = images
+
+		m := &model.Sheet{
+			TableIdentify: tableConfig.TableIdentity,
+			RecordID:      resp.Data.Record.RecordId,
+			StudentID:     &studentID,
+			Record:        rec,
+		}
+
+		err := s.sheetDao.CreateSheetRecord(m)
+		if err != nil {
+			//TODO 失败启动全局同步
+			s.log.Error("CreateRecord 保存记录到数据库失败",
+				logger.String("error", err.Error()),
+				logger.String("record_id", *resp.Data.Record.RecordId),
+				logger.String("student_id", studentID),
+			)
+		}
+	}()
 
 	return resp.Data.Record.RecordId, nil
 }

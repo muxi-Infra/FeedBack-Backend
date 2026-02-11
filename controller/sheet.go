@@ -2,6 +2,7 @@ package controller
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/api/request"
@@ -382,6 +383,10 @@ func buildCreateTableRecord(r request.CreatTableRecordReg) (*domain.TableRecord,
 	if r.ContactInfo != nil {
 		totalRecord["联系方式（QQ/邮箱）"] = *r.ContactInfo
 	}
+
+	// 设置默认字段值，不依赖于飞书的默认值以及前端的传入
+	totalRecord["进度"] = "待处理"
+	totalRecord["提交时间"] = time.Now().UnixMilli()
 
 	record := &domain.TableRecord{
 		Record: totalRecord,
