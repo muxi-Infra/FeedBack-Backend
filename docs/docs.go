@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/api/v1/auth/table-config/refresh": {
             "get": {
-                "description": "刷新并返回目前支持索引的表格的公开配置",
+                "description": "刷新并重新加载系统中所有支持的表格配置信息，返回当前可用的表格列表及其基本信息。通常用于配置更新后的缓存刷新。",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,7 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "刷新表格 token 配置接口",
+                "summary": "刷新表格配置缓存",
                 "operationId": "refresh-table-config",
                 "responses": {
                     "200": {
@@ -47,7 +47,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/table-config/token": {
             "post": {
-                "description": "获取 table token 接口",
+                "description": "根据表格标识符生成JWT访问令牌，用于后续的表格数据操作。该令牌包含表格配置信息和访问权限。",
                 "consumes": [
                     "application/json"
                 ],
@@ -57,7 +57,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "获取 table token 接口",
+                "summary": "获取表格访问令牌",
                 "operationId": "get-table-token",
                 "parameters": [
                     {
@@ -74,7 +74,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回 JWT 令牌",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GenerateTableTokenResp"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -94,7 +106,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/tenant/token": {
             "post": {
-                "description": "获取 tenant token 接口，用于上传图片等",
+                "description": "获取飞书应用的租户访问令牌，主要用于文件上传、图片处理等需要应用级权限的操作。该令牌具有较高的访问权限。",
                 "consumes": [
                     "application/json"
                 ],
@@ -104,13 +116,25 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "获取 tenant token 接口",
+                "summary": "获取租户访问令牌",
                 "operationId": "get-tenant-token",
                 "responses": {
                     "200": {
                         "description": "成功返回 JWT 令牌",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GenerateTenantToken"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -130,7 +154,7 @@ const docTemplate = `{
         },
         "/api/v1/health": {
             "get": {
-                "description": "健康检查，返回当前服务占用的资源等信息",
+                "description": "检查系统运行状态，返回服务健康信息、资源使用情况等监控数据。用于负载均衡器健康检查和系统监控。",
                 "consumes": [
                     "application/json"
                 ],
@@ -140,11 +164,11 @@ const docTemplate = `{
                 "tags": [
                     "Health"
                 ],
-                "summary": "健康检查，返回当前服务占用的资源等信息",
+                "summary": "系统健康检查",
                 "operationId": "health-check",
                 "responses": {
                     "200": {
-                        "description": "成功返回健康检查结果",
+                        "description": "系统运行正常，返回健康检查详情",
                         "schema": {
                             "allOf": [
                                 {
@@ -162,7 +186,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "服务器内部错误",
+                        "description": "系统异常或部分服务不可用",
                         "schema": {
                             "allOf": [
                                 {
@@ -177,6 +201,53 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/message/trigger": {
+            "post": {
+                "description": "将 ` + "`" + `table_identify` + "`" + ` 写入通知通道以触发下游消费",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Message"
+                ],
+                "summary": "手动触发通知",
+                "operationId": "trigger-notification",
+                "parameters": [
+                    {
+                        "description": "触发通知请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/request.TriggerNotificationReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "触发成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -222,7 +293,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/photos/url": {
             "get": {
-                "description": "根据文件Token获取截图的临时下载URL，URL有效期为24小时",
+                "description": "根据文件Token列表批量获取截图的临时下载URL，用于前端展示或下载图片。",
                 "consumes": [
                     "application/json"
                 ],
@@ -276,9 +347,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/sheet/records": {
+        "/api/v1/sheet/record": {
             "get": {
-                "description": "根据指定条件查询多维表格中的记录数据",
+                "description": "根据 record_id 获取单条用户反馈记录的详细内容，返回记录字段的键值对。请求中需包含合法的 table_identify，用于校验权限。",
                 "consumes": [
                     "application/json"
                 ],
@@ -288,7 +359,77 @@ const docTemplate = `{
                 "tags": [
                     "Sheet"
                 ],
-                "summary": "获取多维表格记录",
+                "summary": "按 RecordID 查询历史反馈记录",
+                "operationId": "get-table-record-by-id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "记录 ID",
+                        "name": "record_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sheet/records": {
+            "get": {
+                "description": "根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sheet"
+                ],
+                "summary": "查询历史反馈记录",
                 "operationId": "get-table-record",
                 "parameters": [
                     {
@@ -340,7 +481,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回查询结果",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GetTableRecordResp"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -358,7 +511,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "向指定的多维表格应用中添加记录数据",
+                "description": "向指定的多维表格应用中添加用户反馈记录，支持文本内容、截图附件和联系方式。创建成功后会异步发送通知消息。",
                 "consumes": [
                     "application/json"
                 ],
@@ -368,7 +521,7 @@ const docTemplate = `{
                 "tags": [
                     "Sheet"
                 ],
-                "summary": "创建多维表格记录",
+                "summary": "创建反馈记录",
                 "operationId": "create-table-record",
                 "parameters": [
                     {
@@ -392,7 +545,19 @@ const docTemplate = `{
                     "200": {
                         "description": "成功返回创建记录结果",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.CreatTableRecordResp"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -412,7 +577,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/records/faq": {
             "get": {
-                "description": "根据指定条件查询多维表格中的记录数据",
+                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -422,7 +587,7 @@ const docTemplate = `{
                 "tags": [
                     "Sheet"
                 ],
-                "summary": "获取常见问题记录",
+                "summary": "查询FAQ问题记录",
                 "operationId": "get-faq-resolution-record",
                 "parameters": [
                     {
@@ -433,20 +598,9 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "description": "需要查询的字段名",
-                        "name": "record_names",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
                         "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
+                        "description": "记录 ID",
+                        "name": "record_id",
                         "in": "query",
                         "required": true
                     },
@@ -459,9 +613,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回查询结果",
+                        "description": "成功返回单条记录的字段键值对",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -479,7 +645,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "更新FAQ解决方案的 已解决/未解决 状态",
+                "description": "用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。",
                 "consumes": [
                     "application/json"
                 ],
@@ -489,7 +655,7 @@ const docTemplate = `{
                 "tags": [
                     "Sheet"
                 ],
-                "summary": "更新FAQ解决方案的 已解决/未解决 状态",
+                "summary": "标记FAQ问题解决状态",
                 "operationId": "update-faq-resolution",
                 "parameters": [
                     {
@@ -533,6 +699,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.TableRecord": {
+            "type": "object",
+            "properties": {
+                "record": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "record_id": {
+                    "type": "string"
+                }
+            }
+        },
         "request.CreatTableRecordReg": {
             "type": "object",
             "required": [
@@ -610,6 +788,71 @@ const docTemplate = `{
                 "table_identify": {
                     "description": "反馈表格 Identify，反馈表的唯一标识",
                     "type": "string"
+                }
+            }
+        },
+        "request.TriggerNotificationReq": {
+            "type": "object",
+            "required": [
+                "table_identify"
+            ],
+            "properties": {
+                "table_identify": {
+                    "description": "反馈表格 Identify，反馈表的唯一标识",
+                    "type": "string"
+                }
+            }
+        },
+        "response.CreatTableRecordResp": {
+            "type": "object",
+            "properties": {
+                "record_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.GenerateTableTokenResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.GenerateTenantToken": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.GetTableRecordByRecordIdResp": {
+            "type": "object",
+            "properties": {
+                "record": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "response.GetTableRecordResp": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "page_token": {
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TableRecord"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },

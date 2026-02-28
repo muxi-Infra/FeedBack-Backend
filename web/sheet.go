@@ -10,8 +10,9 @@ import (
 )
 
 type SheetHandler interface {
-	CreatTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
+	CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
 	GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
+	GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error)
 	GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
 	UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error)
 	GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error)
@@ -20,8 +21,9 @@ type SheetHandler interface {
 func RegisterSheetHandler(r *gin.RouterGroup, sh SheetHandler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/sheet")
 	{
-		c.POST("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.CreatTableRecord))
+		c.POST("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateTableRecord))
 		c.GET("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByKey))
+		c.GET("/record", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByRecordID))
 		c.GET("/records/faq", authMiddleware, ginx.WrapClaimsAndReq(sh.GetFAQResolutionRecord))
 		c.POST("records/faq", authMiddleware, ginx.WrapClaimsAndReq(sh.UpdateFAQResolutionRecord))
 		c.GET("/photos/url", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
