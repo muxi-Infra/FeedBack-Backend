@@ -1,4 +1,4 @@
-package response
+package v1
 
 // HealthCheckResponse 健康检查接口的响应结构体
 type HealthCheckResponse struct {

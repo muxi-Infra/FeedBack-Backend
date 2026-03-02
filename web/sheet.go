@@ -1,24 +1,12 @@
 package web
 
 import (
-	"github.com/muxi-Infra/FeedBack-Backend/api/request"
-	"github.com/muxi-Infra/FeedBack-Backend/api/response"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
-
 	"github.com/gin-gonic/gin"
+	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 )
 
-type SheetHandler interface {
-	CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
-	GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
-	GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error)
-	GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
-	UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error)
-	GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error)
-}
-
-func RegisterSheetHandler(r *gin.RouterGroup, sh SheetHandler, authMiddleware gin.HandlerFunc) {
+func RegisterSheetHandler(r *gin.RouterGroup, sh controller.SheetV1Handler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/sheet")
 	{
 		c.POST("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.CreateTableRecord))

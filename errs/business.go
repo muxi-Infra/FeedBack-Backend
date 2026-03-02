@@ -15,7 +15,7 @@ const (
 	TableIdentifyNotFoundCode                               // 表格标识未找到
 	TableIdentifierInvalidCode                              // 表格标识无效
 	CreateRecordEmptyContentCode                            // 新增表格记录反馈内容为空
-	CreateRecordEmptyStudentIDCodeCode                      // 新增表格记录学号为空
+	CreateRecordEmptyStudentIDCode                          // 新增表格记录学号为空
 	CreateRecordInvalidStudentIDCode                        // 新增表格记录学号不合法
 	FAQResolutionChangeErrorCode                            // FAQ 解决状态更新失败
 	FAQResolutionFindErrorCode                              // FAQ 解决状态查询失败
@@ -27,6 +27,9 @@ const (
 	AppNotificationChannelFullErrorCode                     // 应用通知通道已满
 	TableNotificationNotConfiguredErrorCode                 // 表格通知未配置错误
 	TableRecordNotFoundCode                                 // 表格记录未找到
+	PageTokenInvalidCode                                    // 分页 Token 无效
+	APIDeprecatedCode                                       // API 已废弃
+	CreateRecordDBErrorCode                                 // 创建表格记录数据库错误
 )
 
 var (
@@ -43,7 +46,7 @@ var (
 		return errorx.New(http.StatusBadRequest, CreateRecordEmptyContentCode, "新增表格记录反馈内容为空", err)
 	}
 	CreateRecordEmptyStudentIDError = func(err error) error {
-		return errorx.New(http.StatusBadRequest, CreateRecordEmptyStudentIDCodeCode, "新增表格记录学号为空", err)
+		return errorx.New(http.StatusBadRequest, CreateRecordEmptyStudentIDCode, "新增表格记录学号为空", err)
 	}
 	CreateRecordInvalidStudentIDError = func(err error) error {
 		return errorx.New(http.StatusBadRequest, CreateRecordInvalidStudentIDCode, "新增表格记录学号不合法", err)
@@ -77,5 +80,14 @@ var (
 	}
 	TableRecordNotFoundError = func(err error) error {
 		return errorx.New(http.StatusNotFound, TableRecordNotFoundCode, "表格记录未找到", err)
+	}
+	PageTokenInvalidError = func(err error) error {
+		return errorx.New(http.StatusBadRequest, PageTokenInvalidCode, "分页 Token 无效", err)
+	}
+	APIDeprecatedError = func(err error) error {
+		return errorx.New(http.StatusGone, APIDeprecatedCode, "API 已废弃", err)
+	}
+	CreateRecordDBError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, CreateRecordDBErrorCode, "创建表格记录数据库错误", err)
 	}
 )

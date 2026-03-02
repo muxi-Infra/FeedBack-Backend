@@ -9,7 +9,7 @@ import (
 
 // CustomError 自定义错误类型
 type CustomError struct {
-	HttpCode int    `json:"http_code"` // http错误
+	HttpCode int    `json:"http_code"` // http 错误码
 	Code     int    `json:"code"`      // 具体错误码
 	Msg      string `json:"message"`   // 暴露给前端的错误信息
 	Err      error  `json:"-"`         // 具体错误原因（内部，不暴露）

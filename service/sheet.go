@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,8 +28,10 @@ const (
 
 //go:generate mockgen -destination=./mock/sheet_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service SheetService
 type SheetService interface {
-	CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
+	CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
+	CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
@@ -36,18 +40,20 @@ type SheetService interface {
 }
 
 type SheetServiceImpl struct {
-	c      lark.Client
-	log    logger.Logger
-	faqDAO dao.FAQResolutionDAO
-	cache  cache.FAQResolutionStateCache
+	c        lark.Client
+	log      logger.Logger
+	faqDAO   dao.FAQResolutionDAO
+	sheetDao dao.SheetDAO
+	cache    cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, cache cache.FAQResolutionStateCache) SheetService {
+func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, sheetDAO dao.SheetDAO, cache cache.FAQResolutionStateCache) SheetService {
 	s := &SheetServiceImpl{
-		c:      c,
-		log:    log,
-		faqDAO: faqDAO,
-		cache:  cache,
+		c:        c,
+		log:      log,
+		faqDAO:   faqDAO,
+		sheetDao: sheetDAO,
+		cache:    cache,
 	}
 
 	go func() {
@@ -67,7 +73,7 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 	return s
 }
 
-func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
+func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -100,6 +106,28 @@ func (s *SheetServiceImpl) CreateRecord(record *domain.TableRecord, tableConfig 
 	}
 
 	return resp.Data.Record.RecordId, nil
+}
+
+func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
+	m := &model.Sheet{
+		TableIdentify: tableConfig.TableIdentity,
+		RecordID:      recordID,
+		UserID:        nil,
+		Record:        recordData,
+		ShareUrl:      shareUrl,
+		IsSynced:      false,
+	}
+
+	err := s.sheetDao.CreateSheetRecord(m)
+	if err != nil {
+		s.log.Error("CreateDBRecord 保存记录到数据库失败",
+			logger.String("error", err.Error()),
+			logger.String("record_id", *recordID),
+		)
+		return errs.CreateRecordDBError(err)
+	}
+
+	return nil
 }
 
 func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
@@ -166,10 +194,53 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 		Records:   records,
 		HasMore:   resp.Data.HasMore,
 		PageToken: resp.Data.PageToken,
-		Total:     resp.Data.Total,
 	}
 
 	return res, nil
+}
+
+// GetTableRecordReqByUser 根据用户查询表格记录，支持分页
+func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
+	lastId := new(uint64)
+	if pageToken != nil && *pageToken != "" {
+		ld, err := decodePageToken(*pageToken)
+		if err != nil {
+			return nil, errs.PageTokenInvalidError(err)
+		}
+		lastId = ld
+	}
+
+	dbRecords, hasMore, err := s.sheetDao.GetSheetRecordByUser(*tableConfig.TableIdentity, *userID, lastId, limitSize)
+	if err != nil {
+		s.log.Error("GetTableRecordReqByUser 数据库查询失败",
+			logger.String("error", err.Error()),
+			logger.String("student_id", *userID),
+		)
+		return nil, err
+	}
+
+	ans := make([]domain.TableRecord, 0, len(dbRecords))
+	for _, r := range dbRecords {
+		ans = append(ans, domain.TableRecord{
+			RecordID: r.RecordID,
+			Record:   r.Record,
+		})
+	}
+
+	// 生成 nextPageToken
+	var nextToken *string
+	if hasMore && len(dbRecords) > 0 {
+		last := dbRecords[len(dbRecords)-1].ID
+		token, _ := encodePageToken(last)
+		nextToken = &token
+	}
+
+	// 组装返回值
+	return &domain.TableRecords{
+		Records:   ans,
+		HasMore:   &hasMore,
+		PageToken: nextToken,
+	}, nil
 }
 
 func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
@@ -514,4 +585,32 @@ func stringIsResolved(isResolved *bool) *string {
 	}
 
 	return &status
+}
+
+func encodePageToken(id uint64) (string, error) {
+	token := domain.PageToken{
+		LastID: id,
+	}
+
+	b, err := json.Marshal(token)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
+func decodePageToken(token string) (*uint64, error) {
+	// TODO 后续加上放篡改
+	b, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return nil, err
+	}
+
+	var pt domain.PageToken
+	if err := json.Unmarshal(b, &pt); err != nil {
+		return nil, err
+	}
+
+	return &pt.LastID, nil
 }

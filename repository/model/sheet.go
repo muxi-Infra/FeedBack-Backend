@@ -4,18 +4,21 @@ import (
 	"time"
 )
 
-// FAQResolution 定义与数据库映射的结构体
-type FAQResolution struct {
-	ID            uint64  `gorm:"primaryKey;autoIncrement"`
-	UserID        *string `gorm:"column:user_id;not null;type:varchar(64);index:idx_user_id;index:idx_user_table;uniqueIndex:uk_user_record"`
-	TableIdentify *string `gorm:"column:table_identify;not null;type:varchar(64);index:idx_user_table;uniqueIndex:uk_user_record"`
-	RecordID      *string `gorm:"column:record_id;not null;type:varchar(64);uniqueIndex:uk_user_record"`
-	IsResolved    *bool   `gorm:"column:is_resolved"`
-	Frequency     *int    `gorm:"column:frequency"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+type Sheet struct {
+	ID            uint64  `gorm:"primaryKey;autoIncrement;index:idx_user_table_id,priority:3"`
+	TableIdentify *string `gorm:"column:table_identify;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:1;index:idx_table_sync,priority:1;index:idx_user_table_id,priority:1;"`
+	RecordID      *string `gorm:"column:record_id;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:3;index:idx_table_sync,priority:3"`
+	UserID        *string `gorm:"column:user_id;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:2;index:idx_user_table_id,priority:2"`
+
+	Record   map[string]any `gorm:"column:record;not null;type:json;serializer:json"`
+	ShareUrl *string        `gorm:"column:share_url;type:varchar(255);"`
+
+	IsSynced bool `gorm:"column:is_synced;not null;default:false;index:idx_table_sync,priority:2"`
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-func (FAQResolution) TableName() string {
-	return "faq_resolution"
+func (Sheet) TableName() string {
+	return "sheet"
 }

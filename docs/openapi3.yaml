@@ -32,7 +32,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/request.GenerateTableTokenReq"
+              $ref: "#/components/schemas/v1.GenerateTableTokenReq"
         description: 获取Token请求参数
         required: true
       responses:
@@ -45,7 +45,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GenerateTableTokenResp"
+                        $ref: "#/components/schemas/v1.GenerateTableTokenResp"
                     type: object
         "400":
           description: 请求参数错误
@@ -76,7 +76,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GenerateTenantToken"
+                        $ref: "#/components/schemas/v1.GenerateTenantToken"
                     type: object
         "400":
           description: 请求参数错误
@@ -107,7 +107,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.HealthCheckResponse"
+                        $ref: "#/components/schemas/v1.HealthCheckResponse"
                     type: object
         "500":
           description: 系统异常或部分服务不可用
@@ -131,7 +131,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/request.TriggerNotificationReq"
+              $ref: "#/components/schemas/v1.TriggerNotificationReq"
         description: 触发通知请求参数
         required: true
       responses:
@@ -259,7 +259,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GetTableRecordByRecordIdResp"
+                        $ref: "#/components/schemas/v1.GetTableRecordByRecordIdResp"
                     type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -329,7 +329,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GetTableRecordResp"
+                        $ref: "#/components/schemas/v1.GetTableRecordResp"
                     type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -360,7 +360,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/request.CreatTableRecordReg"
+              $ref: "#/components/schemas/v1.CreatTableRecordReg"
         description: 新增记录请求参数
         required: true
       responses:
@@ -373,7 +373,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.CreatTableRecordResp"
+                        $ref: "#/components/schemas/v1.CreatTableRecordResp"
                     type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -422,7 +422,7 @@ paths:
                   - $ref: "#/components/schemas/response.Response"
                   - properties:
                       data:
-                        $ref: "#/components/schemas/response.GetTableRecordByRecordIdResp"
+                        $ref: "#/components/schemas/v1.GetTableRecordByRecordIdResp"
                     type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -453,7 +453,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/request.FAQResolutionUpdateReq"
+              $ref: "#/components/schemas/v1.FAQResolutionUpdateReq"
         description: 更新FAQ解决状态请求参数
         required: true
       responses:
@@ -478,6 +478,64 @@ paths:
       summary: 标记FAQ问题解决状态
       tags:
         - Sheet
+  /api/v2/sheet/records:
+    get:
+      description: 根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
+      operationId: get-table-record-by-user
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit_size
+          schema:
+            type: integer
+        - description: 分页参数,第一次不需要
+          in: query
+          name: page_token
+          schema:
+            type: string
+        - description: 学号，用于标记用户身份
+          in: query
+          name: student_id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: table_identify
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 成功返回查询结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v2.GetTableRecordResp"
+                    type: object
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: 查询用户历史反馈记录
+      tags:
+        - SheetV2
 servers:
   - url: //localhost:8080
 components:
@@ -490,7 +548,15 @@ components:
         record_id:
           type: string
       type: object
-    request.CreatTableRecordReg:
+    response.Response:
+      properties:
+        code:
+          type: integer
+        data: {}
+        msg:
+          type: string
+      type: object
+    v1.CreatTableRecordReg:
       properties:
         contact_info:
           description: 联系方式，可选
@@ -517,7 +583,12 @@ components:
         - student_id
         - table_identify
       type: object
-    request.FAQResolutionUpdateReq:
+    v1.CreatTableRecordResp:
+      properties:
+        record_id:
+          type: string
+      type: object
+    v1.FAQResolutionUpdateReq:
       properties:
         is_resolved:
           type: boolean
@@ -539,7 +610,7 @@ components:
         - unresolved_field_name
         - user_id
       type: object
-    request.GenerateTableTokenReq:
+    v1.GenerateTableTokenReq:
       properties:
         table_identify:
           description: 反馈表格 Identify，反馈表的唯一标识
@@ -547,36 +618,23 @@ components:
       required:
         - table_identify
       type: object
-    request.TriggerNotificationReq:
-      properties:
-        table_identify:
-          description: 反馈表格 Identify，反馈表的唯一标识
-          type: string
-      required:
-        - table_identify
-      type: object
-    response.CreatTableRecordResp:
-      properties:
-        record_id:
-          type: string
-      type: object
-    response.GenerateTableTokenResp:
+    v1.GenerateTableTokenResp:
       properties:
         access_token:
           type: string
       type: object
-    response.GenerateTenantToken:
+    v1.GenerateTenantToken:
       properties:
         access_token:
           type: string
       type: object
-    response.GetTableRecordByRecordIdResp:
+    v1.GetTableRecordByRecordIdResp:
       properties:
         record:
           additionalProperties: {}
           type: object
       type: object
-    response.GetTableRecordResp:
+    v1.GetTableRecordResp:
       properties:
         has_more:
           type: boolean
@@ -589,11 +647,11 @@ components:
         total:
           type: integer
       type: object
-    response.HealthCheckResponse:
+    v1.HealthCheckResponse:
       properties:
         process:
           allOf:
-            - $ref: "#/components/schemas/response.ProcessStats"
+            - $ref: "#/components/schemas/v1.ProcessStats"
           description: Process 当前进程的运行状态
         response_ms:
           description: ResponseMs 响应耗时，单位毫秒
@@ -603,10 +661,10 @@ components:
           type: string
         system:
           allOf:
-            - $ref: "#/components/schemas/response.SystemStats"
+            - $ref: "#/components/schemas/v1.SystemStats"
           description: System 系统资源使用情况
       type: object
-    response.ProcessStats:
+    v1.ProcessStats:
       properties:
         cpu_percent:
           description: CPUPercent 进程 CPU 使用率（%）
@@ -621,15 +679,7 @@ components:
           description: MemoryRSSMB 进程常驻内存（MB）
           type: string
       type: object
-    response.Response:
-      properties:
-        code:
-          type: integer
-        data: {}
-        msg:
-          type: string
-      type: object
-    response.SystemStats:
+    v1.SystemStats:
       properties:
         cpu_percent:
           description: CPUPercent CPU 使用率（%）
@@ -652,4 +702,23 @@ components:
         memory_used:
           description: MemoryUsedMB 已使用内存（MB）
           type: string
+      type: object
+    v1.TriggerNotificationReq:
+      properties:
+        table_identify:
+          description: 反馈表格 Identify，反馈表的唯一标识
+          type: string
+      required:
+        - table_identify
+      type: object
+    v2.GetTableRecordResp:
+      properties:
+        has_more:
+          type: boolean
+        page_token:
+          type: string
+        records:
+          items:
+            $ref: "#/components/schemas/domain.TableRecord"
+          type: array
       type: object
