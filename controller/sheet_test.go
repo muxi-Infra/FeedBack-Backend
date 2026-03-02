@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 
-	"github.com/muxi-Infra/FeedBack-Backend/api/request"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	ServiceMock "github.com/muxi-Infra/FeedBack-Backend/service/mock"
 
@@ -16,13 +16,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// 创建一个 mock 的 Sheet 对象
-func NewMockSheet(crtl *gomock.Controller) (*Sheet, *ServiceMock.MockSheetService, *ServiceMock.MockMessageService) {
+// 创建一个 mock 的 SheetV1 对象
+func NewMockSheet(crtl *gomock.Controller) (*SheetV1, *ServiceMock.MockSheetService, *ServiceMock.MockMessageService) {
 	// 接口 mock
 	mockSheetService := ServiceMock.NewMockSheetService(crtl)
 	mockMessageService := ServiceMock.NewMockMessageService(crtl)
 
-	return &Sheet{
+	return &SheetV1{
 		s: mockSheetService,
 		m: mockMessageService,
 	}, mockSheetService, mockMessageService
@@ -43,7 +43,7 @@ var uc = ijwt.UserClaims{
 func TestCreateAppTableRecord(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.CreatTableRecordReg
+		req           v1.CreatTableRecordReg
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
@@ -53,7 +53,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "create record success",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr("测试反馈内容"),
@@ -66,8 +66,14 @@ func TestCreateAppTableRecord(t *testing.T) {
 			uc: uc,
 			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {
 				mockSheetSvc.EXPECT().
-					CreateRecord(gomock.Any(), gomock.Any()).
+					CreateLarkRecord(gomock.Any(), gomock.Any()).
 					Return(stringPtr("mock-record-id"), nil)
+
+				// Allow CreateDBRecord called by background goroutine
+				mockSheetSvc.EXPECT().
+					CreateDBRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(nil).
+					AnyTimes()
 
 				// Mock the goroutine calls
 				mockSheetSvc.EXPECT().
@@ -85,7 +91,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		},
 		{
 			name: "create record with missing student id",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     nil,
 				Content:       stringPtr("测试反馈内容"),
@@ -97,7 +103,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		},
 		{
 			name: "create record with invalid student id length",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     stringPtr("123"),
 				Content:       stringPtr("测试反馈内容"),
@@ -109,7 +115,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		},
 		{
 			name: "create record with missing content",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     stringPtr("2021001234"),
 				Content:       nil,
@@ -121,7 +127,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		},
 		{
 			name: "create record with empty content",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr(""),
@@ -133,7 +139,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 		},
 		{
 			name: "create record with table identify mismatch",
-			req: request.CreatTableRecordReg{
+			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("wrong-table-identity"),
 				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr("测试反馈内容"),
@@ -174,7 +180,7 @@ func TestCreateAppTableRecord(t *testing.T) {
 func TestGetTableRecordReqByKey(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.GetTableRecordReq
+		req           v1.GetTableRecordReq
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
@@ -184,7 +190,7 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "get record success",
-			req: request.GetTableRecordReq{
+			req: v1.GetTableRecordReq{
 				TableIdentify: stringPtr("mock-table-identity"),
 				KeyFieldName:  stringPtr("mock-name"),
 				KeyFieldValue: stringPtr("mock-value"),
@@ -232,7 +238,7 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 func TestGetFAQResolutionRecord(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.GetFAQProblemTableRecordReg
+		req           v1.GetFAQProblemTableRecordReg
 		uc            ijwt.UserClaims
 		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
@@ -242,7 +248,7 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "get FAQ record success",
-			req: request.GetFAQProblemTableRecordReg{
+			req: v1.GetFAQProblemTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
 				StudentID:     stringPtr("mock-student-id"),
 				RecordNames:   []string{"mock-name-1"},
@@ -291,7 +297,7 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 func TestGetPhotoUrl(t *testing.T) {
 	type testCase struct {
 		name          string
-		req           request.GetPhotoUrlReq
+		req           v1.GetPhotoUrlReq
 		setupMocks    func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService)
 		expectedCode  int
 		expectedError bool
@@ -300,7 +306,7 @@ func TestGetPhotoUrl(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "get photo url success",
-			req: request.GetPhotoUrlReq{
+			req: v1.GetPhotoUrlReq{
 				FileTokens: []string{"token1", "token2"},
 			},
 			setupMocks: func(mockSheetSvc *ServiceMock.MockSheetService, mockMessageSvc *ServiceMock.MockMessageService) {

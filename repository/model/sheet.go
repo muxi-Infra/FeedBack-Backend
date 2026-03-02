@@ -5,17 +5,15 @@ import (
 )
 
 type Sheet struct {
-	ID            uint64  `gorm:"primaryKey;autoIncrement"`
-	TableIdentify *string `gorm:"column:table_identify;not null;type:varchar(32);index:idx_user_record,priority:1"`
-	RecordID      *string `gorm:"column:record_id;not null;type:varchar(32);index:idx_user_record,priority:3"`
-	StudentID     *string `gorm:"column:student_id;not null;type:varchar(32);index:idx_user_record,priority:2"`
+	ID            uint64  `gorm:"primaryKey;autoIncrement;index:idx_user_table_id,priority:3"`
+	TableIdentify *string `gorm:"column:table_identify;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:1;index:idx_table_sync,priority:1;index:idx_user_table_id,priority:1;"`
+	RecordID      *string `gorm:"column:record_id;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:3;index:idx_table_sync,priority:3"`
+	UserID        *string `gorm:"column:user_id;not null;type:varchar(32);uniqueIndex:idx_user_record,priority:2;index:idx_user_table_id,priority:2"`
 
-	Record map[string]any `gorm:"column:record;not null;serializer:json"`
+	Record   map[string]any `gorm:"column:record;not null;type:json;serializer:json"`
+	ShareUrl *string        `gorm:"column:share_url;type:varchar(255);"`
 
-	//Content     *string        `gorm:"column:content;not null;type:text"`
-	//Images      []string       `gorm:"column:images;type:json"`
-	//ContactInfo *string        `gorm:"column:contact_info;type:varchar(255)"`
-	//ExtraRecord map[string]any `gorm:"column:extra_record;type:json"`
+	IsSynced bool `gorm:"column:is_synced;not null;default:false;index:idx_table_sync,priority:2"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

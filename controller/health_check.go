@@ -5,6 +5,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 
 	"github.com/gin-gonic/gin"
+	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 )
 
 // HealthCheck 系统健康检查
@@ -15,11 +16,18 @@ import (
 //	@ID				health-check
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	response.Response{data=response.HealthCheckResponse}	"系统运行正常，返回健康检查详情"
-//	@Failure		500	{object}	response.Response{data=string}							"系统异常或部分服务不可用"
+//	@Success		200	{object}	response.Response{data=respV1.HealthCheckResponse}	"系统运行正常，返回健康检查详情"
+//	@Failure		500	{object}	response.Response{data=string}						"系统异常或部分服务不可用"
 //	@Router			/api/v1/health [get]
 func HealthCheck(c *gin.Context) (response.Response, error) {
-	resp := service.HealthCheck()
+	serviceResult := service.HealthCheck()
+
+	resp := respV1.HealthCheckResponse{
+		Status:     serviceResult.Status,
+		ResponseMs: serviceResult.ResponseMs,
+		System:     serviceResult.System,
+		Process:    serviceResult.Process,
+	}
 
 	return response.Response{
 		Code:    0,

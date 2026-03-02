@@ -66,7 +66,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.GenerateTableTokenReq"
+                            "$ref": "#/definitions/v1.GenerateTableTokenReq"
                         }
                     }
                 ],
@@ -82,7 +82,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GenerateTableTokenResp"
+                                            "$ref": "#/definitions/v1.GenerateTableTokenResp"
                                         }
                                     }
                                 }
@@ -130,7 +130,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GenerateTenantToken"
+                                            "$ref": "#/definitions/v1.GenerateTenantToken"
                                         }
                                     }
                                 }
@@ -178,7 +178,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.HealthCheckResponse"
+                                            "$ref": "#/definitions/v1.HealthCheckResponse"
                                         }
                                     }
                                 }
@@ -227,7 +227,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.TriggerNotificationReq"
+                            "$ref": "#/definitions/v1.TriggerNotificationReq"
                         }
                     }
                 ],
@@ -395,7 +395,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
+                                            "$ref": "#/definitions/v1.GetTableRecordByRecordIdResp"
                                         }
                                     }
                                 }
@@ -489,7 +489,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GetTableRecordResp"
+                                            "$ref": "#/definitions/v1.GetTableRecordResp"
                                         }
                                     }
                                 }
@@ -537,7 +537,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.CreatTableRecordReg"
+                            "$ref": "#/definitions/v1.CreatTableRecordReg"
                         }
                     }
                 ],
@@ -553,7 +553,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.CreatTableRecordResp"
+                                            "$ref": "#/definitions/v1.CreatTableRecordResp"
                                         }
                                     }
                                 }
@@ -623,7 +623,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/response.GetTableRecordByRecordIdResp"
+                                            "$ref": "#/definitions/v1.GetTableRecordByRecordIdResp"
                                         }
                                     }
                                 }
@@ -671,7 +671,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.FAQResolutionUpdateReq"
+                            "$ref": "#/definitions/v1.FAQResolutionUpdateReq"
                         }
                     }
                 ],
@@ -684,6 +684,87 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/sheet/records": {
+            "get": {
+                "description": "根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "查询用户历史反馈记录",
+                "operationId": "get-table-record-by-user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "name": "limit_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "分页参数,第一次不需要",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "学号，用于标记用户身份",
+                        "name": "student_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回查询结果",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v2.GetTableRecordResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -711,7 +792,19 @@ const docTemplate = `{
                 }
             }
         },
-        "request.CreatTableRecordReg": {
+        "response.Response": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.CreatTableRecordReg": {
             "type": "object",
             "required": [
                 "content",
@@ -748,7 +841,15 @@ const docTemplate = `{
                 }
             }
         },
-        "request.FAQResolutionUpdateReq": {
+        "v1.CreatTableRecordResp": {
+            "type": "object",
+            "properties": {
+                "record_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.FAQResolutionUpdateReq": {
             "type": "object",
             "required": [
                 "is_resolved",
@@ -779,7 +880,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.GenerateTableTokenReq": {
+        "v1.GenerateTableTokenReq": {
             "type": "object",
             "required": [
                 "table_identify"
@@ -791,27 +892,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.TriggerNotificationReq": {
-            "type": "object",
-            "required": [
-                "table_identify"
-            ],
-            "properties": {
-                "table_identify": {
-                    "description": "反馈表格 Identify，反馈表的唯一标识",
-                    "type": "string"
-                }
-            }
-        },
-        "response.CreatTableRecordResp": {
-            "type": "object",
-            "properties": {
-                "record_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "response.GenerateTableTokenResp": {
+        "v1.GenerateTableTokenResp": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -819,7 +900,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.GenerateTenantToken": {
+        "v1.GenerateTenantToken": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -827,7 +908,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.GetTableRecordByRecordIdResp": {
+        "v1.GetTableRecordByRecordIdResp": {
             "type": "object",
             "properties": {
                 "record": {
@@ -836,7 +917,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.GetTableRecordResp": {
+        "v1.GetTableRecordResp": {
             "type": "object",
             "properties": {
                 "has_more": {
@@ -856,14 +937,14 @@ const docTemplate = `{
                 }
             }
         },
-        "response.HealthCheckResponse": {
+        "v1.HealthCheckResponse": {
             "type": "object",
             "properties": {
                 "process": {
                     "description": "Process 当前进程的运行状态",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/response.ProcessStats"
+                            "$ref": "#/definitions/v1.ProcessStats"
                         }
                     ]
                 },
@@ -879,13 +960,13 @@ const docTemplate = `{
                     "description": "System 系统资源使用情况",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/response.SystemStats"
+                            "$ref": "#/definitions/v1.SystemStats"
                         }
                     ]
                 }
             }
         },
-        "response.ProcessStats": {
+        "v1.ProcessStats": {
             "type": "object",
             "properties": {
                 "cpu_percent": {
@@ -906,19 +987,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "response.SystemStats": {
+        "v1.SystemStats": {
             "type": "object",
             "properties": {
                 "cpu_percent": {
@@ -948,6 +1017,35 @@ const docTemplate = `{
                 "memory_used": {
                     "description": "MemoryUsedMB 已使用内存（MB）",
                     "type": "string"
+                }
+            }
+        },
+        "v1.TriggerNotificationReq": {
+            "type": "object",
+            "required": [
+                "table_identify"
+            ],
+            "properties": {
+                "table_identify": {
+                    "description": "反馈表格 Identify，反馈表的唯一标识",
+                    "type": "string"
+                }
+            }
+        },
+        "v2.GetTableRecordResp": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "page_token": {
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TableRecord"
+                    }
                 }
             }
         }

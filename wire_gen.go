@@ -40,7 +40,7 @@ func InitApp() (*App, error) {
 	redisConfig := config.NewRedisConfig()
 	client := ioc.InitRedis(redisConfig)
 	limitMiddleware := middleware.NewLimitMiddleware(limiterConfig, client)
-	swag := controller.NewSwag()
+	swagHandler := controller.NewSwag()
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
 	client2 := lark.NewClient(larkClient)
@@ -53,12 +53,13 @@ func InitApp() (*App, error) {
 	larkMessage := config.NewLarkMessageConfig()
 	ccnuBoxMessage := config.NewCCNUBoxMessageConfig()
 	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage)
-	sheet := controller.NewSheet(sheetService, messageService)
+	sheetV1Handler := controller.NewSheet(sheetService, messageService)
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
-	auth := controller.NewAuth(jwt, authService)
-	message := controller.NewMessage(messageService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swag, sheet, auth, message)
+	authHandler := controller.NewAuth(jwt, authService)
+	messageHandler := controller.NewMessage(messageService)
+	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler)
 	app := &App{
 		r: engine,
 	}

@@ -5,21 +5,31 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	reqV1 "github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 )
 
-type Sheet struct {
+type SheetV1Handler interface {
+	CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
+	GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error)
+	GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error)
+	GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error)
+	UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error)
+	GetPhotoUrl(c *gin.Context, r reqV1.GetPhotoUrlReq, uc ijwt.UserClaims) (res response.Response, err error)
+}
+
+type SheetV1 struct {
 	s service.SheetService
 	m service.MessageService
 }
 
-func NewSheet(s service.SheetService, m service.MessageService) *Sheet {
-	sheet := &Sheet{
+func NewSheet(s service.SheetService, m service.MessageService) SheetV1Handler {
+	sheet := &SheetV1{
 		s: s,
 		m: m,
 	}
@@ -35,13 +45,13 @@ func NewSheet(s service.SheetService, m service.MessageService) *Sheet {
 //	@ID				create-table-record
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string													true	"Bearer Token"
-//	@Param			request			body		request.CreatTableRecordReg								true	"新增记录请求参数"
-//	@Success		200				{object}	response.Response{data=response.CreatTableRecordResp}	"成功返回创建记录结果"
-//	@Failure		400				{object}	response.Response										"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response										"服务器内部错误"
+//	@Param			Authorization	header		string												true	"Bearer Token"
+//	@Param			request			body		reqV1.CreatTableRecordReg							true	"新增记录请求参数"
+//	@Success		200				{object}	response.Response{data=respV1.CreatTableRecordResp}	"成功返回创建记录结果"
+//	@Failure		400				{object}	response.Response									"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [post]
-func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -52,6 +62,12 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 	if err != nil {
 		return response.Response{}, err
 	}
+
+	// 添加默认字段值，不依赖于飞书的默认值以及前端的传入
+	t := time.Now()
+	record.Record["进度"] = "待处理"
+	record.Record["提交时间"] = t.UnixMilli()
+
 	tableConfig := domain.TableConfig{
 		TableIdentity: &uc.TableIdentity,
 		TableName:     &uc.TableName,
@@ -61,7 +77,7 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 	}
 
 	// 发起请求
-	createdRecordID, err := s.s.CreateRecord(record, &tableConfig)
+	createdRecordID, err := s.s.CreateLarkRecord(record, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -77,7 +93,7 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 	// TODO 后续想改成 kafka 异步处理
 	go func(recordID, content string, tc domain.TableConfig) {
 		// 发送消息通知
-		_, url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
+		recordDate, url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
 		if err != nil || url == nil {
 			return
 		}
@@ -85,9 +101,13 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 		if err != nil {
 			return
 		}
+		err = s.s.CreateDBRecord(&recordID, url, recordDate, tc)
+		if err != nil {
+			return
+		}
 	}(*createdRecordID, *r.Content, tableConfig)
 
-	resp := response.CreatTableRecordResp{
+	resp := respV1.CreatTableRecordResp{
 		RecordID: *createdRecordID,
 	}
 
@@ -107,12 +127,12 @@ func (s *Sheet) CreateTableRecord(c *gin.Context, r request.CreatTableRecordReg,
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string												true	"Bearer Token"
-//	@Param			request			query		request.GetTableRecordReq							true	"查询记录请求参数"
-//	@Success		200				{object}	response.Response{data=response.GetTableRecordResp}	"成功返回查询结果"
+//	@Param			request			query		reqV1.GetTableRecordReq								true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response{data=respV1.GetTableRecordResp}	"成功返回查询结果"
 //	@Failure		400				{object}	response.Response									"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [get]
-func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -136,11 +156,10 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 		return response.Response{}, err
 	}
 
-	resp := response.GetTableRecordResp{
+	resp := respV1.GetTableRecordResp{
 		Records:   make([]domain.TableRecord, 0),
 		HasMore:   false,
 		PageToken: "",
-		Total:     0,
 	}
 
 	if serviceResult.Records != nil {
@@ -151,9 +170,6 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 	}
 	if serviceResult.HasMore != nil {
 		resp.HasMore = *serviceResult.HasMore
-	}
-	if serviceResult.Total != nil {
-		resp.Total = *serviceResult.Total
 	}
 
 	return response.Response{
@@ -171,13 +187,13 @@ func (s *Sheet) GetTableRecordReqByKey(c *gin.Context, r request.GetTableRecordR
 //	@ID				get-table-record-by-id
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string															true	"Bearer Token"
-//	@Param			request			query		request.GetTableRecordByRecordIDReq								true	"查询记录请求参数"
-//	@Success		200				{object}	response.Response{data=response.GetTableRecordByRecordIdResp}	"成功返回查询结果"
-//	@Failure		400				{object}	response.Response												"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response												"服务器内部错误"
+//	@Param			Authorization	header		string														true	"Bearer Token"
+//	@Param			request			query		reqV1.GetTableRecordByRecordIDReq							true	"查询记录请求参数"
+//	@Success		200				{object}	response.Response{data=respV1.GetTableRecordByRecordIdResp}	"成功返回查询结果"
+//	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/record [get]
-func (s *Sheet) GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error) {
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -197,7 +213,7 @@ func (s *Sheet) GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRe
 		return response.Response{}, err
 	}
 
-	resp := response.GetTableRecordByRecordIdResp{
+	resp := respV1.GetTableRecordByRecordIdResp{
 		Record: make(map[string]any),
 	}
 
@@ -220,13 +236,13 @@ func (s *Sheet) GetTableRecordReqByRecordID(c *gin.Context, r request.GetTableRe
 //	@ID				get-faq-resolution-record
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string															true	"Bearer Token"
-//	@Param			request			query		request.GetTableRecordByRecordIDReq								true	"查询记录请求参数，包含 record_id 和 table_identify"
-//	@Success		200				{object}	response.Response{data=response.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
-//	@Failure		400				{object}	response.Response												"请求参数错误或飞书接口调用失败"
-//	@Failure		500				{object}	response.Response												"服务器内部错误"
+//	@Param			Authorization	header		string														true	"Bearer Token"
+//	@Param			request			query		reqV1.GetTableRecordByRecordIDReq							true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Success		200				{object}	response.Response{data=respV1.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
+//	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
+//	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [get]
-func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -246,7 +262,7 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 		return response.Response{}, err
 	}
 
-	resp := response.GetFAQProblemTableRecordResp{
+	resp := respV1.GetFAQProblemTableRecordResp{
 		Records: make([]domain.FAQTableRecord, 0),
 		Total:   0,
 	}
@@ -274,12 +290,12 @@ func (s *Sheet) GetFAQResolutionRecord(c *gin.Context, r request.GetFAQProblemTa
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"
-//	@Param			request			body		request.FAQResolutionUpdateReq	true	"更新FAQ解决状态请求参数"
+//	@Param			request			body		reqV1.FAQResolutionUpdateReq	true	"更新FAQ解决状态请求参数"
 //	@Success		200				{object}	response.Response				"成功更新FAQ解决状态"
 //	@Failure		400				{object}	response.Response				"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [post]
-func (s *Sheet) UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -322,18 +338,18 @@ func (s *Sheet) UpdateFAQResolutionRecord(c *gin.Context, r request.FAQResolutio
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string					true	"Bearer Token"
-//	@Param			request			query		request.GetPhotoUrlReq	true	"获取截图URL请求参数"
+//	@Param			request			query		reqV1.GetPhotoUrlReq	true	"获取截图URL请求参数"
 //	@Success		200				{object}	response.Response		"成功返回临时URL信息"
 //	@Failure		400				{object}	response.Response		"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v1/sheet/photos/url [get]
-func (s *Sheet) GetPhotoUrl(c *gin.Context, r request.GetPhotoUrlReq, uc ijwt.UserClaims) (response.Response, error) {
+func (s *SheetV1) GetPhotoUrl(c *gin.Context, r reqV1.GetPhotoUrlReq, uc ijwt.UserClaims) (response.Response, error) {
 	photoUrlResult, err := s.s.GetPhotoUrl(r.FileTokens)
 	if err != nil {
 		return response.Response{}, err
 	}
 
-	photoUrlResponse := response.GetPhotoUrlResp{
+	photoUrlResponse := respV1.GetPhotoUrlResp{
 		Files: photoUrlResult,
 	}
 
@@ -352,7 +368,7 @@ func validateTableIdentify(a, b string) error {
 }
 
 // buildCreateTableRecord 组装以及校验创建记录的参数
-func buildCreateTableRecord(r request.CreatTableRecordReg) (*domain.TableRecord, error) {
+func buildCreateTableRecord(r reqV1.CreatTableRecordReg) (*domain.TableRecord, error) {
 	// 拷贝 ExtraRecord，避免修改调用方原始 map
 	totalRecord := make(map[string]any, len(r.ExtraRecord)+4)
 	for k, v := range r.ExtraRecord {
@@ -383,10 +399,6 @@ func buildCreateTableRecord(r request.CreatTableRecordReg) (*domain.TableRecord,
 	if r.ContactInfo != nil {
 		totalRecord["联系方式（QQ/邮箱）"] = *r.ContactInfo
 	}
-
-	// 设置默认字段值，不依赖于飞书的默认值以及前端的传入
-	totalRecord["进度"] = "待处理"
-	totalRecord["提交时间"] = time.Now().UnixMilli()
 
 	record := &domain.TableRecord{
 		Record: totalRecord,

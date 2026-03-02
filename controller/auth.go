@@ -1,15 +1,21 @@
 package controller
 
 import (
-	"github.com/muxi-Infra/FeedBack-Backend/api/request"
+	"github.com/gin-gonic/gin"
+	reqV1 "github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
-
-	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/singleflight"
 )
+
+type AuthHandler interface {
+	GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error)
+	RefreshTableConfig(c *gin.Context) (response.Response, error)
+	GetTenantToken(c *gin.Context) (response.Response, error)
+}
 
 type Auth struct {
 	jwtHandler *ijwt.JWT
@@ -17,7 +23,7 @@ type Auth struct {
 	s          service.AuthService
 }
 
-func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) *Auth {
+func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 	return &Auth{
 		jwtHandler: jwtHandler,
 		group:      &singleflight.Group{},
@@ -33,12 +39,12 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) *Auth {
 //	@ID				get-table-token
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		request.GenerateTableTokenReq							true	"获取Token请求参数"
-//	@Success		200		{object}	response.Response{data=response.GenerateTableTokenResp}	"成功返回 JWT 令牌"
+//	@Param			request	body		reqV1.GenerateTableTokenReq								true	"获取Token请求参数"
+//	@Success		200		{object}	response.Response{data=respV1.GenerateTableTokenResp}	"成功返回 JWT 令牌"
 //	@Failure		400		{object}	response.Response										"请求参数错误"
 //	@Failure		500		{object}	response.Response										"服务器内部错误"
 //	@Router			/api/v1/auth/table-config/token [post]
-func (o Auth) GetTableToken(c *gin.Context, req request.GenerateTableTokenReq) (response.Response, error) {
+func (o Auth) GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error) {
 	tableCfg, err := o.s.GetTableConfig(&req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err
@@ -51,7 +57,7 @@ func (o Auth) GetTableToken(c *gin.Context, req request.GenerateTableTokenReq) (
 
 	c.Header("Authorization", token)
 
-	resp := response.GenerateTableTokenResp{
+	resp := respV1.GenerateTableTokenResp{
 		AccessToken: token,
 	}
 
@@ -94,14 +100,14 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 //	@ID				get-tenant-token
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	response.Response{data=response.GenerateTenantToken}	"成功返回 JWT 令牌"
-//	@Failure		400	{object}	response.Response										"请求参数错误"
-//	@Failure		500	{object}	response.Response										"服务器内部错误"
+//	@Success		200	{object}	response.Response{data=respV1.GenerateTenantToken}	"成功返回 JWT 令牌"
+//	@Failure		400	{object}	response.Response									"请求参数错误"
+//	@Failure		500	{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/auth/tenant/token [post]
 func (o Auth) GetTenantToken(c *gin.Context) (response.Response, error) {
 	token := o.s.GetTenantToken()
 
-	resp := response.GenerateTenantToken{
+	resp := respV1.GenerateTenantToken{
 		AccessToken: token,
 	}
 

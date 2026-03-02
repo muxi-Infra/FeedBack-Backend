@@ -15,8 +15,9 @@ var ProviderSet = wire.NewSet(
 
 var (
 	tableCfg   map[string]domain.TableConfig
-	noticeCh   chan domain.TableConfig
-	progressCh chan ProgressMsg
+	noticeCh   chan domain.TableConfig // 通知通道，传递需要发送通知的表格配置
+	progressCh chan ProgressMsg        // 进度通道，传递需要更新处理进度的记录信息
+	syncCh     chan domain.TableConfig // 同步通道，控制数据库与飞书数据的同步
 	once       sync.Once
 )
 
@@ -31,6 +32,7 @@ func init() {
 		tableCfg = make(map[string]domain.TableConfig)
 		noticeCh = make(chan domain.TableConfig, 10)
 		progressCh = make(chan ProgressMsg, 100)
+		syncCh = make(chan domain.TableConfig, 10)
 	})
 }
 

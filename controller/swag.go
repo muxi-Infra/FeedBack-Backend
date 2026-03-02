@@ -8,11 +8,15 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/docs"
 )
 
+type SwagHandler interface {
+	GetOpenApi3(c *gin.Context) (response.Response, error)
+}
+
 type Swag struct {
 	openapi string
 }
 
-func NewSwag() *Swag {
+func NewSwag() SwagHandler {
 	return &Swag{
 		openapi: docs.OpenAPI,
 	}
