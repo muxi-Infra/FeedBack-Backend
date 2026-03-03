@@ -23,6 +23,7 @@ import (
 const (
 	TenantRefreshInterval = time.Hour + 35*time.Minute
 	NoticeRefreshInterval = 4 * time.Hour
+	SyncRefreshInterval   = 4 * time.Hour
 )
 
 //go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
@@ -257,6 +258,7 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 func (t *AuthServiceImpl) startNotifiableTableScanner() {
 	ticker := time.NewTicker(NoticeRefreshInterval)
 
+	// 生产者，定时扫描需要发送通知的表，并将其放入 noticeCh 中
 	go func() {
 		defer ticker.Stop()
 
@@ -279,6 +281,38 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 						t.log.Warn("notice channel full, skip table",
 							logger.String("table_id", tableID),
 						)
+					}
+				}
+				t.mutex.RUnlock()
+			}
+		}
+	}()
+}
+
+func (t *AuthServiceImpl) startSyncTableScanner() {
+	ticker := time.NewTicker(SyncRefreshInterval)
+
+	// 生产者，定时扫描需要同步的表，并将其放入 syncTableCh 中
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				t.mutex.RLock()
+				for tableID, table := range tableCfg {
+					if !table.Notice {
+						continue
+					}
+
+					select {
+					case syncTableCh <- table:
+						t.log.Info("sync table queued",
+							logger.String("table_id", tableID))
+					default:
+						// ⚠️ channel 满了，直接丢，避免阻塞
+						t.log.Warn("sync table channel full, skip table",
+							logger.String("table_id", tableID))
 					}
 				}
 				t.mutex.RUnlock()

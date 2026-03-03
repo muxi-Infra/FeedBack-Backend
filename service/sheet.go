@@ -24,19 +24,24 @@ const (
 	StatusNotSelected = "未选择"
 	StatusResolved    = "已解决"
 	StatusUnresolved  = "未解决"
+	queueBatchSize    = 100
+	pageSize          = 100 // 数据库分页大小
 )
 
 //go:generate mockgen -destination=./mock/sheet_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service SheetService
 type SheetService interface {
 	CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
 	CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
+	UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
-	UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error
+	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
 }
 
 type SheetServiceImpl struct {
@@ -56,6 +61,7 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 		cache:    cache,
 	}
 
+	// 消费者，异步更新飞书表格记录进度
 	go func() {
 		for {
 			msg := <-progressCh
@@ -66,6 +72,31 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 					logger.String("record_id", msg.RecordID),
 					logger.String("table_identity", *msg.TableConfig.TableIdentity),
 				)
+			}
+		}
+	}()
+
+	// 消费者，异步同步未同步的记录到数据库
+	go func() {
+		for {
+			select {
+			case msg := <-syncCh:
+				err := s.SyncLarkRecords(msg.RecordIDs, msg.TableConfig)
+				if err != nil {
+					s.log.Error("SyncLarkRecords 同步记录到飞书表格失败",
+						logger.String("error", err.Error()),
+						logger.String("table_identity", *msg.TableConfig.TableIdentity),
+					)
+				}
+			case table := <-syncTableCh:
+				_, _, _, err := s.SyncUnsyncedTableRecords(&table)
+				if err != nil {
+					s.log.Error("SyncUnsyncedTableRecords 同步未同步记录到飞书表格失败",
+						logger.String("error", err.Error()),
+						logger.String("table_identity", *table.TableIdentity),
+					)
+				}
+
 			}
 		}
 	}()
@@ -109,10 +140,18 @@ func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableCon
 }
 
 func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
+	studentID, ok := recordData["学号"].(string)
+	if !ok {
+		s.log.Error("SyncLarkRecords 学号字段类型断言失败",
+			logger.String("record_id", *recordID),
+		)
+		return errs.CreateRecordDBError(errors.New("学号字段类型断言失败"))
+	}
+
 	m := &model.Sheet{
 		TableIdentify: tableConfig.TableIdentity,
 		RecordID:      recordID,
-		UserID:        nil,
+		UserID:        &studentID,
 		Record:        recordData,
 		ShareUrl:      shareUrl,
 		IsSynced:      false,
@@ -125,6 +164,42 @@ func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData
 			logger.String("record_id", *recordID),
 		)
 		return errs.CreateRecordDBError(err)
+	}
+
+	return nil
+}
+
+func (s *SheetServiceImpl) UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
+	studentID, ok := recordData["学号"].(string)
+	if !ok {
+		s.log.Error("SyncLarkRecords 学号字段类型断言失败",
+			logger.String("record_id", *recordID),
+		)
+		return errs.UpdateRecordDBError(errors.New("学号字段类型断言失败"))
+	}
+
+	synced := false
+	finish, ok := recordData["进度"].(string)
+	if ok && finish == "已完成" {
+		synced = true
+	}
+
+	m := &model.Sheet{
+		TableIdentify: tableConfig.TableIdentity,
+		RecordID:      recordID,
+		UserID:        &studentID,
+		Record:        recordData,
+		ShareUrl:      shareUrl,
+		IsSynced:      synced,
+	}
+
+	err := s.sheetDao.CreateOrUpdateSheetRecord(m)
+	if err != nil {
+		s.log.Error("CreateOrUpdateSheetRecord 保存记录到数据库失败",
+			logger.String("error", err.Error()),
+			logger.String("record_id", *recordID),
+		)
+		return errs.UpdateRecordDBError(err)
 	}
 
 	return nil
@@ -567,6 +642,243 @@ func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *d
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
 		return errs.LarkResponseError(err)
+	}
+
+	return nil
+}
+
+// SyncUnsyncedTableRecords 同步未同步的记录到飞书表格，返回成功同步的 recordID 列表
+func (s *SheetServiceImpl) SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+	// 获取未同步 recordID 列表
+	recordIDs, err := s.sheetDao.GetUnsyncedRecordsByTable(*tableConfig.TableIdentity)
+	if err != nil {
+		return nil, 0, false, errs.GetUnsyncedRecordsByTableError(err)
+	}
+
+	if len(recordIDs) == 0 {
+		return []string{}, 0, false, nil
+	}
+
+	// 过滤空 ID
+	filtered := make([]string, 0, len(recordIDs))
+	for _, rid := range recordIDs {
+		if rid != "" {
+			filtered = append(filtered, rid)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return []string{}, 0, false, nil
+	}
+
+	// 拆分入队
+	totalEnqueued := 0
+	queueFull := false
+
+	for i := 0; i < len(filtered); i += queueBatchSize {
+		end := i + queueBatchSize
+		if end > len(filtered) {
+			end = len(filtered)
+		}
+
+		subBatch := filtered[i:end]
+
+		msg := SyncMsg{
+			RecordIDs:   subBatch,
+			TableConfig: *tableConfig,
+		}
+
+		select {
+		case syncCh <- msg:
+			totalEnqueued += len(subBatch)
+		default:
+			queueFull = true
+			// 返回已经成功入队的部分
+			return filtered[:totalEnqueued], totalEnqueued, true, nil
+		}
+	}
+
+	return filtered, len(filtered), queueFull, nil
+}
+
+func (s *SheetServiceImpl) ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+	var lastID *uint64
+
+	enqueuedIDs := make([]string, 0)
+	queueFull := false
+
+loop:
+	for {
+		records, hasMore, err := s.sheetDao.GetSheetRecordByUser(*tableConfig.TableIdentity, *studentID, lastID, pageSize)
+		if err != nil {
+			return nil, 0, false, err
+		}
+
+		if len(records) == 0 {
+			break
+		}
+		// 聚合当前页 recordIDs
+		batchIDs := make([]string, 0, len(records))
+		for _, r := range records {
+			if r.RecordID != nil && *r.RecordID != "" {
+				batchIDs = append(batchIDs, *r.RecordID)
+			}
+		}
+
+		if len(batchIDs) > 0 {
+			msg := SyncMsg{
+				RecordIDs:   batchIDs,
+				TableConfig: *tableConfig,
+			}
+
+			select {
+			case syncCh <- msg:
+				enqueuedIDs = append(enqueuedIDs, batchIDs...)
+			default:
+				queueFull = true
+				break loop
+			}
+		}
+
+		// 更新游标（因为 DESC）
+		lastID = &records[len(records)-1].ID
+
+		if !hasMore {
+			break
+		}
+	}
+
+	return enqueuedIDs, len(enqueuedIDs), queueFull, nil
+}
+
+func (s *SheetServiceImpl) ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+	var allRecordIDs []string
+	pageToken := new(string)
+
+	for {
+		reqBuilder := larkbitable.NewSearchAppTableRecordReqBuilder().
+			AppToken(*tableConfig.TableToken).
+			TableId(*tableConfig.TableID).
+			PageSize(500) // 建议用飞书允许的最大值
+
+		if pageToken != nil {
+			reqBuilder.PageToken(*pageToken)
+		}
+
+		req := reqBuilder.
+			Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+				ViewId(*tableConfig.ViewID).
+				AutomaticFields(false).
+				Build()).
+			Build()
+
+		ctx := context.Background()
+		resp, err := s.c.GetAppTableRecord(ctx, req)
+		if err != nil {
+			s.log.Error("ForceSyncTableRecords 调用失败",
+				logger.String("error", err.Error()),
+			)
+			return nil, 0, false, errs.LarkRequestError(err)
+		}
+
+		if !resp.Success() {
+			s.log.Error("ForceSyncTableRecords Lark 接口错误",
+				logger.String("request_id", resp.RequestId()),
+				logger.String("error", larkcore.Prettify(resp.CodeError)),
+			)
+			return nil, 0, false, errs.LarkResponseError(err)
+		}
+
+		// 只提取 RecordID
+		for _, r := range resp.Data.Items {
+			allRecordIDs = append(allRecordIDs, *r.RecordId)
+		}
+
+		if !*resp.Data.HasMore {
+			break
+		}
+
+		pageToken = resp.Data.PageToken
+	}
+
+	// 分批入队
+	totalEnqueued := 0
+	queueFull := false
+
+	for i := 0; i < len(allRecordIDs); i += queueBatchSize {
+		end := i + queueBatchSize
+		if end > len(allRecordIDs) {
+			end = len(allRecordIDs)
+		}
+
+		subBatch := allRecordIDs[i:end]
+
+		msg := SyncMsg{
+			RecordIDs:   subBatch,
+			TableConfig: *tableConfig,
+		}
+
+		select {
+		case syncCh <- msg:
+			totalEnqueued += len(subBatch)
+
+		default:
+			queueFull = true
+			return allRecordIDs[:totalEnqueued], totalEnqueued, true, nil
+		}
+	}
+
+	return allRecordIDs, totalEnqueued, queueFull, nil
+}
+
+func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domain.TableConfig) error {
+	// 创建请求对象
+	req := larkbitable.NewBatchGetAppTableRecordReqBuilder().
+		AppToken(*tableConfig.TableToken).
+		TableId(*tableConfig.TableID).
+		Body(larkbitable.NewBatchGetAppTableRecordReqBodyBuilder().
+			RecordIds(recordIDs).
+			WithSharedUrl(true).
+			Build()).
+		Build()
+
+	// 发起请求
+	ctx := context.Background()
+	resp, err := s.c.GetRecordByRecordId(ctx, req)
+
+	// 处理错误
+	if err != nil {
+		s.log.Error("GetTableRecordReqByID 调用失败",
+			logger.String("error", err.Error()),
+		)
+		return errs.LarkRequestError(err)
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		s.log.Error("GetTableRecordReqByID Lark 接口错误",
+			logger.String("request_id", resp.RequestId()),
+			logger.String("error", larkcore.Prettify(resp.CodeError)),
+		)
+		return errs.LarkResponseError(err)
+	}
+
+	if len(resp.Data.Records) == 0 {
+		s.log.Error("GetTableRecordReqByID no record found")
+		return errs.TableRecordNotFoundError(errors.New("未找到记录"))
+	}
+
+	for _, r := range resp.Data.Records {
+		recordData := simplifyFields(r.Fields)
+
+		err := s.UpdateDBRecord(r.RecordId, r.SharedUrl, recordData, tableConfig)
+		if err != nil {
+			s.log.Error("SyncLarkRecords 更新数据库记录失败",
+				logger.String("error", err.Error()),
+				logger.String("record_id", *r.RecordId),
+			)
+			// 同步失败不返回错误，继续同步其他记录，最终通过定时任务再次尝试同步未同步的记录
+		}
 	}
 
 	return nil

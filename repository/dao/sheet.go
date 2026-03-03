@@ -16,11 +16,11 @@ const (
 type SheetDAO interface {
 	CreateSheetRecord(m *model.Sheet) error
 	CreateOrUpdateSheetRecord(m *model.Sheet) error
-	UpdateRecordShareURL(tableIdentify, userID, recordID, shareURL string) error
 	CountSheetRecordByUser(tableIdentify, userID string) (uint64, error)
 	GetSheetRecordByUser(tableIdentify, userID string, lastID *uint64, limit int) ([]*model.Sheet, bool, error)
 	GetSheetRecordByRecordID(tableIdentify, userID, recordID string) (*model.Sheet, error)
 	ResetIsSyncedByUser(tableIdentify, userID string) error
+	GetUnsyncedRecordsByTable(tableIdentify string) ([]string, error)
 }
 
 type sheetDAO struct {
@@ -186,4 +186,20 @@ func (s *sheetDAO) ResetIsSyncedByUser(tableIdentify, userID string) error {
 		Model(&model.Sheet{}).
 		Where("table_identify = ? AND user_id = ?", tableIdentify, userID).
 		Update("is_synced", 0).Error
+}
+
+// GetUnsyncedRecordsByTable 获取指定表格下所有未同步的记录ID列表（不区分用户）
+func (s *sheetDAO) GetUnsyncedRecordsByTable(tableIdentify string) ([]string, error) {
+	var recordIDs []string
+
+	err := s.db.
+		Model(&model.Sheet{}).
+		Where("table_identify = ? AND is_synced = 0", tableIdentify).
+		Pluck("record_id", &recordIDs).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return recordIDs, nil
 }

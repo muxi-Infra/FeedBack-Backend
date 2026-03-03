@@ -30,6 +30,9 @@ const (
 	PageTokenInvalidCode                                    // 分页 Token 无效
 	APIDeprecatedCode                                       // API 已废弃
 	CreateRecordDBErrorCode                                 // 创建表格记录数据库错误
+	UpdateRecordDBErrorCode                                 // 更新表格记录数据库错误
+	GetUnsyncedRecordsByTableErrorCode                      // 根据表格标识获取未同步记录错误
+	CountSheetRecordByUserErrorCode                         // 根据用户统计表格记录错误
 )
 
 var (
@@ -89,5 +92,14 @@ var (
 	}
 	CreateRecordDBError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, CreateRecordDBErrorCode, "创建表格记录数据库错误", err)
+	}
+	UpdateRecordDBError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, UpdateRecordDBErrorCode, "更新表格记录数据库错误", err)
+	}
+	GetUnsyncedRecordsByTableError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, GetUnsyncedRecordsByTableErrorCode, "根据表格标识获取未同步记录错误", err)
+	}
+	CountSheetRecordByUserError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, CountSheetRecordByUserErrorCode, "根据用户统计表格记录错误", err)
 	}
 )
