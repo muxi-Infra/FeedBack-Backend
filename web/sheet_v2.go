@@ -11,6 +11,7 @@ func RegisterSheetHandlerV2(r *gin.RouterGroup, sh controller.SheetV2Handler, au
 	{
 		c.GET("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByUser))
 		c.POST("/sync", authMiddleware, ginx.WrapClaimsAndReq(sh.SyncUnsyncedTableRecords))
-		c.POST("/sync/force", authMiddleware, ginx.WrapClaimsAndReq(sh.ForceSyncUserTableRecords))
+		c.POST("sync/user", authMiddleware, ginx.WrapClaimsAndReq(sh.ForceSyncUserTableRecords))
+		c.POST("/sync/force", authMiddleware, ginx.WrapClaimsAndReq(sh.ForceSyncTableRecords))
 	}
 }

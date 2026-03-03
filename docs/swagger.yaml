@@ -171,6 +171,27 @@ definitions:
     required:
     - table_identify
     type: object
+  v2.ForceSyncTableRecordsReq:
+    properties:
+      table_identify:
+        type: string
+    required:
+    - table_identify
+    type: object
+  v2.ForceSyncTableRecordsResp:
+    properties:
+      queue_full:
+        description: 队列是否已满
+        type: boolean
+      record_ids:
+        description: 成功投递到队列的记录 ID
+        items:
+          type: string
+        type: array
+      total:
+        description: 本次尝试同步的总记录数
+        type: integer
+    type: object
   v2.ForceSyncUserTableRecordsReq:
     properties:
       student_id:
@@ -758,6 +779,47 @@ paths:
       tags:
       - SheetV2
   /api/v2/sheet/sync/force:
+    post:
+      consumes:
+      - application/json
+      description: 同步某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。慎用！！！
+      operationId: force-sync-table-records
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 强制同步请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.ForceSyncTableRecordsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 同步成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.ForceSyncTableRecordsResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 强制同步用户记录
+      tags:
+      - SheetV2
+  /api/v2/sheet/sync/user:
     post:
       consumes:
       - application/json

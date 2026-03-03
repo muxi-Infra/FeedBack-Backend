@@ -63,6 +63,23 @@ func (mr *MockSheetServiceMockRecorder) CreateLarkRecord(arg0, arg1 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLarkRecord", reflect.TypeOf((*MockSheetService)(nil).CreateLarkRecord), arg0, arg1)
 }
 
+// ForceSyncTableRecords mocks base method.
+func (m *MockSheetService) ForceSyncTableRecords(arg0 *domain.TableConfig) ([]string, int, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForceSyncTableRecords", arg0)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(bool)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// ForceSyncTableRecords indicates an expected call of ForceSyncTableRecords.
+func (mr *MockSheetServiceMockRecorder) ForceSyncTableRecords(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForceSyncTableRecords", reflect.TypeOf((*MockSheetService)(nil).ForceSyncTableRecords), arg0)
+}
+
 // ForceSyncUserTableRecords mocks base method.
 func (m *MockSheetService) ForceSyncUserTableRecords(arg0 *string, arg1 *domain.TableConfig) ([]string, int, bool, error) {
 	m.ctrl.T.Helper()
@@ -173,6 +190,20 @@ func (mr *MockSheetServiceMockRecorder) SyncUnsyncedTableRecords(arg0 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncUnsyncedTableRecords", reflect.TypeOf((*MockSheetService)(nil).SyncUnsyncedTableRecords), arg0)
 }
 
+// UpdateDBRecord mocks base method.
+func (m *MockSheetService) UpdateDBRecord(arg0, arg1 *string, arg2 map[string]interface{}, arg3 domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDBRecord", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDBRecord indicates an expected call of UpdateDBRecord.
+func (mr *MockSheetServiceMockRecorder) UpdateDBRecord(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDBRecord", reflect.TypeOf((*MockSheetService)(nil).UpdateDBRecord), arg0, arg1, arg2, arg3)
+}
+
 // UpdateFAQResolutionRecord mocks base method.
 func (m *MockSheetService) UpdateFAQResolutionRecord(arg0 *domain.FAQResolution, arg1 *domain.TableConfig) error {
 	m.ctrl.T.Helper()
@@ -185,18 +216,4 @@ func (m *MockSheetService) UpdateFAQResolutionRecord(arg0 *domain.FAQResolution,
 func (mr *MockSheetServiceMockRecorder) UpdateFAQResolutionRecord(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFAQResolutionRecord", reflect.TypeOf((*MockSheetService)(nil).UpdateFAQResolutionRecord), arg0, arg1)
-}
-
-// UpdateRecordProgress mocks base method.
-func (m *MockSheetService) UpdateRecordProgress(arg0 *string, arg1 *domain.TableConfig) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateRecordProgress", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateRecordProgress indicates an expected call of UpdateRecordProgress.
-func (mr *MockSheetServiceMockRecorder) UpdateRecordProgress(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateRecordProgress", reflect.TypeOf((*MockSheetService)(nil).UpdateRecordProgress), arg0, arg1)
 }

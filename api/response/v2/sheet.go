@@ -21,3 +21,9 @@ type ForceSyncUserTableRecordsResp struct {
 	QueueFull bool     `json:"queue_full"` // 队列是否已满
 	Total     int      `json:"total"`      // 本次尝试同步的总记录数
 }
+
+type ForceSyncTableRecordsResp struct {
+	RecordIDs []string `json:"record_ids"` // 成功投递到队列的记录 ID
+	QueueFull bool     `json:"queue_full"` // 队列是否已满
+	Total     int      `json:"total"`      // 本次尝试同步的总记录数
+}

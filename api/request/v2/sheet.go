@@ -19,3 +19,10 @@ type ForceSyncUserTableRecordsReq struct {
 	TableIdentify *string `json:"table_identify" binding:"required"`
 	StudentID     *string `json:"student_id" binding:"required"`
 }
+
+// ForceSyncTableRecordsReq 同步指定表格下所有记录请求参数
+// 强制同步（不区分是否已经同步过）
+// 慎用！！！
+type ForceSyncTableRecordsReq struct {
+	TableIdentify *string `json:"table_identify" binding:"required"`
+}
