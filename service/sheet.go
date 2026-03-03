@@ -37,6 +37,8 @@ type SheetService interface {
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
 	UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error
+	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
 }
 
 type SheetServiceImpl struct {
@@ -570,6 +572,94 @@ func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *d
 	}
 
 	return nil
+}
+
+// SyncUnsyncedTableRecords 同步未同步的记录到飞书表格，返回成功同步的 recordID 列表
+func (s *SheetServiceImpl) SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+	// 获取未同步 recordID 列表
+	recordIDs, err := s.sheetDao.GetUnsyncedRecordsByTable(*tableConfig.TableIdentity)
+	if err != nil {
+		return nil, 0, false, errs.GetUnsyncedRecordsByTableError(err)
+	}
+
+	if len(recordIDs) == 0 {
+		return []string{}, 0, false, nil
+	}
+
+	sentIDs := make([]string, 0, len(recordIDs))
+	queueFull := false
+
+	for _, rid := range recordIDs {
+		if rid == "" {
+			continue
+		}
+
+		msg := SyncMsg{
+			RecordID:    rid,
+			TableConfig: *tableConfig,
+		}
+
+		select {
+		case syncCh <- msg:
+			sentIDs = append(sentIDs, rid)
+		default:
+			queueFull = true
+			break
+		}
+
+		if queueFull {
+			break
+		}
+	}
+
+	return sentIDs, len(sentIDs), queueFull, nil
+}
+
+func (s *SheetServiceImpl) ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+	const batchSize = 100
+	var lastID *uint64
+	enqueuedIDs := make([]string, 0)
+	queueFull := false
+
+loop:
+	for {
+		records, hasMore, err := s.sheetDao.GetSheetRecordByUser(*tableConfig.TableIdentity, *studentID, lastID, batchSize)
+		if err != nil {
+			return nil, 0, false, err
+		}
+
+		if len(records) == 0 {
+			break
+		}
+
+		for _, r := range records {
+			if r.RecordID == nil {
+				continue
+			}
+
+			msg := SyncMsg{
+				RecordID:    *r.RecordID,
+				TableConfig: *tableConfig,
+			}
+
+			select {
+			case syncCh <- msg:
+				enqueuedIDs = append(enqueuedIDs, *r.RecordID)
+			default:
+				queueFull = true
+				break loop
+			}
+		}
+
+		// 更新游标（因为 DESC）
+		lastID = &records[len(records)-1].ID
+
+		if !hasMore {
+			break
+		}
+	}
+
+	return enqueuedIDs, len(enqueuedIDs), queueFull, nil
 }
 
 func stringIsResolved(isResolved *bool) *string {

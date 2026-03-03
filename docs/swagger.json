@@ -770,6 +770,138 @@
                     }
                 }
             }
+        },
+        "/api/v2/sheet/sync": {
+            "post": {
+                "description": "同步指定表格下 is_synced = false 的所有记录，用于后台增量同步。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "同步未同步记录",
+                "operationId": "sync-unsynced-table-records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "同步请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v2.SyncUnsyncedTableRecordsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "同步成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v2.SyncUnsyncedTableRecordsResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/sheet/sync/force": {
+            "post": {
+                "description": "同步指定用户在某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "强制同步用户记录",
+                "operationId": "force-sync-user-table-records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "强制同步请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v2.ForceSyncUserTableRecordsReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "同步成功",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v2.ForceSyncUserTableRecordsResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1025,6 +1157,41 @@
                 }
             }
         },
+        "v2.ForceSyncUserTableRecordsReq": {
+            "type": "object",
+            "required": [
+                "student_id",
+                "table_identify"
+            ],
+            "properties": {
+                "student_id": {
+                    "type": "string"
+                },
+                "table_identify": {
+                    "type": "string"
+                }
+            }
+        },
+        "v2.ForceSyncUserTableRecordsResp": {
+            "type": "object",
+            "properties": {
+                "queue_full": {
+                    "description": "队列是否已满",
+                    "type": "boolean"
+                },
+                "record_ids": {
+                    "description": "成功投递到队列的记录 ID",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total": {
+                    "description": "本次尝试同步的总记录数",
+                    "type": "integer"
+                }
+            }
+        },
         "v2.GetTableRecordResp": {
             "type": "object",
             "properties": {
@@ -1039,6 +1206,37 @@
                     "items": {
                         "$ref": "#/definitions/domain.TableRecord"
                     }
+                }
+            }
+        },
+        "v2.SyncUnsyncedTableRecordsReq": {
+            "type": "object",
+            "required": [
+                "table_identify"
+            ],
+            "properties": {
+                "table_identify": {
+                    "type": "string"
+                }
+            }
+        },
+        "v2.SyncUnsyncedTableRecordsResp": {
+            "type": "object",
+            "properties": {
+                "queue_full": {
+                    "description": "队列是否已满",
+                    "type": "boolean"
+                },
+                "record_ids": {
+                    "description": "成功投递到队列的记录 ID",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "total": {
+                    "description": "本次尝试同步的总记录数",
+                    "type": "integer"
                 }
             }
         }

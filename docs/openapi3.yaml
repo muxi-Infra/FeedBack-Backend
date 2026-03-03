@@ -536,6 +536,96 @@ paths:
       summary: 查询用户历史反馈记录
       tags:
         - SheetV2
+  /api/v2/sheet/sync:
+    post:
+      description: 同步指定表格下 is_synced = false 的所有记录，用于后台增量同步。
+      operationId: sync-unsynced-table-records
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/v2.SyncUnsyncedTableRecordsReq"
+        description: 同步请求参数
+        required: true
+      responses:
+        "200":
+          description: 同步成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v2.SyncUnsyncedTableRecordsResp"
+                    type: object
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: 同步未同步记录
+      tags:
+        - SheetV2
+  /api/v2/sheet/sync/force:
+    post:
+      description: 同步指定用户在某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。
+      operationId: force-sync-user-table-records
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/v2.ForceSyncUserTableRecordsReq"
+        description: 强制同步请求参数
+        required: true
+      responses:
+        "200":
+          description: 同步成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v2.ForceSyncUserTableRecordsResp"
+                    type: object
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: 强制同步用户记录
+      tags:
+        - SheetV2
 servers:
   - url: //localhost:8080
 components:
@@ -711,6 +801,30 @@ components:
       required:
         - table_identify
       type: object
+    v2.ForceSyncUserTableRecordsReq:
+      properties:
+        student_id:
+          type: string
+        table_identify:
+          type: string
+      required:
+        - student_id
+        - table_identify
+      type: object
+    v2.ForceSyncUserTableRecordsResp:
+      properties:
+        queue_full:
+          description: 队列是否已满
+          type: boolean
+        record_ids:
+          description: 成功投递到队列的记录 ID
+          items:
+            type: string
+          type: array
+        total:
+          description: 本次尝试同步的总记录数
+          type: integer
+      type: object
     v2.GetTableRecordResp:
       properties:
         has_more:
@@ -721,4 +835,25 @@ components:
           items:
             $ref: "#/components/schemas/domain.TableRecord"
           type: array
+      type: object
+    v2.SyncUnsyncedTableRecordsReq:
+      properties:
+        table_identify:
+          type: string
+      required:
+        - table_identify
+      type: object
+    v2.SyncUnsyncedTableRecordsResp:
+      properties:
+        queue_full:
+          description: 队列是否已满
+          type: boolean
+        record_ids:
+          description: 成功投递到队列的记录 ID
+          items:
+            type: string
+          type: array
+        total:
+          description: 本次尝试同步的总记录数
+          type: integer
       type: object
