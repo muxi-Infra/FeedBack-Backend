@@ -3,7 +3,9 @@
 package main
 
 import (
+	"github.com/google/wire"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
+	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
@@ -12,8 +14,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"github.com/muxi-Infra/FeedBack-Backend/web"
-
-	"github.com/google/wire"
 )
 
 func InitApp() (*App, error) {
@@ -32,7 +32,8 @@ func InitApp() (*App, error) {
 		middleware.NewLoggerMiddleware,
 		middleware.NewPrometheusMiddleware,
 		middleware.NewLimitMiddleware,
-		web.ProviderSet,
+		controller.ProviderSet,
+		web.NewGinEngine,
 	)
 	return &App{}, nil
 }

@@ -7,20 +7,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/wire"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-)
-
-var ProviderSet = wire.NewSet(
-	NewGinEngine,
-	controller.NewSwag,
-	wire.Bind(new(SwagHandler), new(*controller.Swag)),
-	controller.NewAuth,
-	wire.Bind(new(AuthHandler), new(*controller.Auth)),
-	controller.NewSheet,
-	wire.Bind(new(SheetHandler), new(*controller.Sheet)),
-	controller.NewMessage,
-	wire.Bind(new(MessageHandler), new(*controller.Message)),
 )
 
 func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
@@ -29,8 +16,10 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	logMiddleware *middleware.LoggerMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
-	swag SwagHandler,
-	sh SheetHandler, ah AuthHandler, mh MessageHandler) *gin.Engine {
+	swag controller.SwagHandler,
+	sh controller.SheetV1Handler, ah controller.AuthHandler, mh controller.MessageHandler,
+	shV2 controller.SheetV2Handler,
+) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
 
@@ -40,20 +29,25 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	r.Use(prometheusMiddleware.MiddlewareFunc()) // Prometheus 监控中间件
 	r.Use(limitMiddleware.Middleware())          // 限流中间件
 
-	api := r.Group("/api/v1")
+	apiV1 := r.Group("/api/v1")
 
 	// Swagger 文档使用 basic auth 保护
-	RegisterSwagHandler(api, swag, basicAuthMiddleware.MiddlewareFunc())
+	RegisterSwagHandler(apiV1, swag, basicAuthMiddleware.MiddlewareFunc())
 	// Prometheus metrics 使用 basic auth 保护
-	RegisterPrometheusHandler(api, prometheusMiddleware, basicAuthMiddleware)
+	RegisterPrometheusHandler(apiV1, prometheusMiddleware, basicAuthMiddleware)
 
 	// 健康检查
-	RegisterHealthCheckHandler(api)
+	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
-	RegisterAuthRouter(api, ah)
-	RegisterSheetHandler(api, sh, authMiddleware.MiddlewareFunc())
-	RegisterMessageRouter(api, mh)
+	RegisterAuthRouter(apiV1, ah)
+	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
+	RegisterMessageRouter(apiV1, mh)
+
+	// V2 版本的路由
+	apiV2 := r.Group("/api/v2")
+
+	RegisterSheetHandlerV2(apiV2, shV2, authMiddleware.MiddlewareFunc())
 
 	return r
 }

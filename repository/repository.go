@@ -12,6 +12,7 @@ var ProviderSet = wire.NewSet(DaoSet, CacheSet)
 
 var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
+	dao.NewSheetDAO,
 )
 
 var CacheSet = wire.NewSet(
@@ -19,5 +20,10 @@ var CacheSet = wire.NewSet(
 )
 
 func InitTables(db *gorm.DB) error {
-	return db.AutoMigrate(&model.FAQResolution{})
+	models := []any{
+		&model.FAQResolution{},
+		&model.Sheet{},
+	}
+
+	return db.AutoMigrate(models...)
 }

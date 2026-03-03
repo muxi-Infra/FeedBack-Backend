@@ -4,7 +4,6 @@ type TableRecords struct {
 	Records   []TableRecord
 	HasMore   *bool   // 是否有更多
 	PageToken *string // 分页参数
-	Total     *int    // 总记录数
 }
 
 type TableRecord struct {
@@ -51,4 +50,8 @@ type FAQResolution struct {
 type File struct {
 	FileToken      *string `json:"file_token"`
 	TmpDownloadURL *string `json:"tmp_download_url"`
+}
+
+type PageToken struct {
+	LastID uint64 `json:"last_id"`
 }

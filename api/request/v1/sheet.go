@@ -1,4 +1,4 @@
-package request
+package v1
 
 // CreatTableRecordReg 创建表格记录请求参数
 type CreatTableRecordReg struct {

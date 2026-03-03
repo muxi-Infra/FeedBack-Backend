@@ -50,6 +50,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 		cc:  cc,
 	}
 
+	// 消费者，监听通知通道，根据表格配置查询待通知的记录，并发送通知
 	go func() {
 		for {
 			table := <-noticeCh
@@ -75,6 +76,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 					tbl := table
 					msg := ProgressMsg{RecordID: rid, TableConfig: tbl}
 
+					// 发送进度更新消息到进度通道
 					go func(msg ProgressMsg) {
 						progressCh <- msg
 					}(msg)
@@ -265,8 +267,7 @@ func (m MessageServiceImpl) SendCCNUBoxNotification(studentID, recordID *string)
 		Content:   "您的问题已经处理完成，点击查看详情",
 		StudentID: *studentID,
 		Title:     "反馈处理完成提醒",
-		Type:      "feed_back",
-		URL:       *recordID,
+		RecordID:  *recordID,
 	}
 
 	// 编码请求体

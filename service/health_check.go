@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/muxi-Infra/FeedBack-Backend/api/response"
+	"github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -14,7 +14,7 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
-func HealthCheck() response.HealthCheckResponse {
+func HealthCheck() v1.HealthCheckResponse {
 	start := time.Now() // 记录开始时间
 
 	// 整机资源
@@ -50,10 +50,10 @@ func HealthCheck() response.HealthCheckResponse {
 	// 响应耗时
 	duration := time.Since(start).Milliseconds()
 
-	return response.HealthCheckResponse{
+	return v1.HealthCheckResponse{
 		Status:     "ok",
 		ResponseMs: fmt.Sprintf("%d ms", duration),
-		System: response.SystemStats{
+		System: v1.SystemStats{
 			CPUPercent:    fmt.Sprintf("%.2f%%", cpuPercent[0]),
 			MemoryTotalMB: fmt.Sprintf("%d MB", vmStat.Total/1024/1024),
 			MemoryUsedMB:  fmt.Sprintf("%d MB", vmStat.Used/1024/1024),
@@ -62,7 +62,7 @@ func HealthCheck() response.HealthCheckResponse {
 			DiskUsedGB:    fmt.Sprintf("%d GB", diskStat.Used/1024/1024/1024),
 			DiskPercent:   fmt.Sprintf("%.2f%%", diskStat.UsedPercent),
 		},
-		Process: response.ProcessStats{
+		Process: v1.ProcessStats{
 			CPUPercent:    fmt.Sprintf("%.2f%%", procCPU),
 			MemoryRSSMB:   fmt.Sprintf("%d MB", procMem.RSS/1024/1024),
 			Goroutines:    fmt.Sprintf("%d", runtime.NumGoroutine()),

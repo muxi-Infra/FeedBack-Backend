@@ -8,7 +8,15 @@ definitions:
       record_id:
         type: string
     type: object
-  request.CreatTableRecordReg:
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      msg:
+        type: string
+    type: object
+  v1.CreatTableRecordReg:
     properties:
       contact_info:
         description: 联系方式，可选
@@ -35,7 +43,12 @@ definitions:
     - student_id
     - table_identify
     type: object
-  request.FAQResolutionUpdateReq:
+  v1.CreatTableRecordResp:
+    properties:
+      record_id:
+        type: string
+    type: object
+  v1.FAQResolutionUpdateReq:
     properties:
       is_resolved:
         type: boolean
@@ -57,7 +70,7 @@ definitions:
     - unresolved_field_name
     - user_id
     type: object
-  request.GenerateTableTokenReq:
+  v1.GenerateTableTokenReq:
     properties:
       table_identify:
         description: 反馈表格 Identify，反馈表的唯一标识
@@ -65,36 +78,23 @@ definitions:
     required:
     - table_identify
     type: object
-  request.TriggerNotificationReq:
-    properties:
-      table_identify:
-        description: 反馈表格 Identify，反馈表的唯一标识
-        type: string
-    required:
-    - table_identify
-    type: object
-  response.CreatTableRecordResp:
-    properties:
-      record_id:
-        type: string
-    type: object
-  response.GenerateTableTokenResp:
+  v1.GenerateTableTokenResp:
     properties:
       access_token:
         type: string
     type: object
-  response.GenerateTenantToken:
+  v1.GenerateTenantToken:
     properties:
       access_token:
         type: string
     type: object
-  response.GetTableRecordByRecordIdResp:
+  v1.GetTableRecordByRecordIdResp:
     properties:
       record:
         additionalProperties: {}
         type: object
     type: object
-  response.GetTableRecordResp:
+  v1.GetTableRecordResp:
     properties:
       has_more:
         type: boolean
@@ -107,11 +107,11 @@ definitions:
       total:
         type: integer
     type: object
-  response.HealthCheckResponse:
+  v1.HealthCheckResponse:
     properties:
       process:
         allOf:
-        - $ref: '#/definitions/response.ProcessStats'
+        - $ref: '#/definitions/v1.ProcessStats'
         description: Process 当前进程的运行状态
       response_ms:
         description: ResponseMs 响应耗时，单位毫秒
@@ -121,10 +121,10 @@ definitions:
         type: string
       system:
         allOf:
-        - $ref: '#/definitions/response.SystemStats'
+        - $ref: '#/definitions/v1.SystemStats'
         description: System 系统资源使用情况
     type: object
-  response.ProcessStats:
+  v1.ProcessStats:
     properties:
       cpu_percent:
         description: CPUPercent 进程 CPU 使用率（%）
@@ -139,15 +139,7 @@ definitions:
         description: MemoryRSSMB 进程常驻内存（MB）
         type: string
     type: object
-  response.Response:
-    properties:
-      code:
-        type: integer
-      data: {}
-      msg:
-        type: string
-    type: object
-  response.SystemStats:
+  v1.SystemStats:
     properties:
       cpu_percent:
         description: CPUPercent CPU 使用率（%）
@@ -170,6 +162,91 @@ definitions:
       memory_used:
         description: MemoryUsedMB 已使用内存（MB）
         type: string
+    type: object
+  v1.TriggerNotificationReq:
+    properties:
+      table_identify:
+        description: 反馈表格 Identify，反馈表的唯一标识
+        type: string
+    required:
+    - table_identify
+    type: object
+  v2.ForceSyncTableRecordsReq:
+    properties:
+      table_identify:
+        type: string
+    required:
+    - table_identify
+    type: object
+  v2.ForceSyncTableRecordsResp:
+    properties:
+      queue_full:
+        description: 队列是否已满
+        type: boolean
+      record_ids:
+        description: 成功投递到队列的记录 ID
+        items:
+          type: string
+        type: array
+      total:
+        description: 本次尝试同步的总记录数
+        type: integer
+    type: object
+  v2.ForceSyncUserTableRecordsReq:
+    properties:
+      student_id:
+        type: string
+      table_identify:
+        type: string
+    required:
+    - student_id
+    - table_identify
+    type: object
+  v2.ForceSyncUserTableRecordsResp:
+    properties:
+      queue_full:
+        description: 队列是否已满
+        type: boolean
+      record_ids:
+        description: 成功投递到队列的记录 ID
+        items:
+          type: string
+        type: array
+      total:
+        description: 本次尝试同步的总记录数
+        type: integer
+    type: object
+  v2.GetTableRecordResp:
+    properties:
+      has_more:
+        type: boolean
+      page_token:
+        type: string
+      records:
+        items:
+          $ref: '#/definitions/domain.TableRecord'
+        type: array
+    type: object
+  v2.SyncUnsyncedTableRecordsReq:
+    properties:
+      table_identify:
+        type: string
+    required:
+    - table_identify
+    type: object
+  v2.SyncUnsyncedTableRecordsResp:
+    properties:
+      queue_full:
+        description: 队列是否已满
+        type: boolean
+      record_ids:
+        description: 成功投递到队列的记录 ID
+        items:
+          type: string
+        type: array
+      total:
+        description: 本次尝试同步的总记录数
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -209,7 +286,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.GenerateTableTokenReq'
+          $ref: '#/definitions/v1.GenerateTableTokenReq'
       produces:
       - application/json
       responses:
@@ -220,7 +297,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.GenerateTableTokenResp'
+                  $ref: '#/definitions/v1.GenerateTableTokenResp'
               type: object
         "400":
           description: 请求参数错误
@@ -249,7 +326,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.GenerateTenantToken'
+                  $ref: '#/definitions/v1.GenerateTenantToken'
               type: object
         "400":
           description: 请求参数错误
@@ -278,7 +355,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.HealthCheckResponse'
+                  $ref: '#/definitions/v1.HealthCheckResponse'
               type: object
         "500":
           description: 系统异常或部分服务不可用
@@ -304,7 +381,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.TriggerNotificationReq'
+          $ref: '#/definitions/v1.TriggerNotificationReq'
       produces:
       - application/json
       responses:
@@ -416,7 +493,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.GetTableRecordByRecordIdResp'
+                  $ref: '#/definitions/v1.GetTableRecordByRecordIdResp'
               type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -477,7 +554,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.GetTableRecordResp'
+                  $ref: '#/definitions/v1.GetTableRecordResp'
               type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -506,7 +583,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.CreatTableRecordReg'
+          $ref: '#/definitions/v1.CreatTableRecordReg'
       produces:
       - application/json
       responses:
@@ -517,7 +594,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.CreatTableRecordResp'
+                  $ref: '#/definitions/v1.CreatTableRecordResp'
               type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -561,7 +638,7 @@ paths:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/response.GetTableRecordByRecordIdResp'
+                  $ref: '#/definitions/v1.GetTableRecordByRecordIdResp'
               type: object
         "400":
           description: 请求参数错误或飞书接口调用失败
@@ -590,7 +667,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/request.FAQResolutionUpdateReq'
+          $ref: '#/definitions/v1.FAQResolutionUpdateReq'
       produces:
       - application/json
       responses:
@@ -609,4 +686,178 @@ paths:
       summary: 标记FAQ问题解决状态
       tags:
       - Sheet
+  /api/v2/sheet/records:
+    get:
+      consumes:
+      - application/json
+      description: 根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
+      operationId: get-table-record-by-user
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - in: query
+        name: limit_size
+        type: integer
+      - description: 分页参数,第一次不需要
+        in: query
+        name: page_token
+        type: string
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
+        required: true
+        type: string
+      - in: query
+        name: table_identify
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回查询结果
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.GetTableRecordResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 查询用户历史反馈记录
+      tags:
+      - SheetV2
+  /api/v2/sheet/sync:
+    post:
+      consumes:
+      - application/json
+      description: 同步指定表格下 is_synced = false 的所有记录，用于后台增量同步。
+      operationId: sync-unsynced-table-records
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 同步请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.SyncUnsyncedTableRecordsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 同步成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.SyncUnsyncedTableRecordsResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 同步未同步记录
+      tags:
+      - SheetV2
+  /api/v2/sheet/sync/force:
+    post:
+      consumes:
+      - application/json
+      description: 同步某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。慎用！！！
+      operationId: force-sync-table-records
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 强制同步请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.ForceSyncTableRecordsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 同步成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.ForceSyncTableRecordsResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 强制同步用户记录
+      tags:
+      - SheetV2
+  /api/v2/sheet/sync/user:
+    post:
+      consumes:
+      - application/json
+      description: 同步指定用户在某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。
+      operationId: force-sync-user-table-records
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 强制同步请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.ForceSyncUserTableRecordsReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 同步成功
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.ForceSyncUserTableRecordsResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 强制同步用户记录
+      tags:
+      - SheetV2
 swagger: "2.0"
