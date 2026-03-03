@@ -4,9 +4,9 @@
 本规范用于统一项目中错误码的定义与管理，保证可读性、可追溯性和向后兼容性。所有错误码为 6 位十进制数字，前两位表示错误分类，后四位为该分类下的顺序编号。
 
 ## 分类说明
-- `10xxxx` \- 系统 / 基础设施错误（例如数据库、缓存、网络等）
-- `20xxxx` \- 业务错误（例如校验失败、权限、业务规则等）
-- `30xxxx` \- 第三方服务错误（例如飞书、第三方 API）
+- `10xxxx` 	- 系统 / 基础设施错误（例如数据库、缓存、网络等）
+- `20xxxx` 	- 业务错误（例如校验失败、权限、业务规则等）
+- `30xxxx` 	- 第三方服务错误（例如飞书、第三方 API）
 
 ## 编号与定义要点
 - 错误码为 6 位整数字符串（例如：100000、200001）。
@@ -29,7 +29,7 @@
 - `TableIdentifyNotFoundCode = 200001` - 表格标识未找到 - HTTP 404
 - `TableIdentifierInvalidCode = 200002` - 表格标识无效 - HTTP 500
 - `CreateRecordEmptyContentCode = 200003` - 新增表格记录反馈内容为空 - HTTP 400
-- `CreateRecordEmptyStudentIDCodeCode = 200004` - 新增表格记录学号为空 - HTTP 400
+- `CreateRecordEmptyStudentIDCode = 200004` - 新增表格记录学号为空 - HTTP 400
 - `CreateRecordInvalidStudentIDCode = 200005` - 新增表格记录学号不合法 - HTTP 400
 - `FAQResolutionChangeErrorCode = 200006` - FAQ 解决状态更新失败 - HTTP 500
 - `FAQResolutionFindErrorCode = 200007` - FAQ 解决状态查询失败 - HTTP 500
@@ -40,6 +40,13 @@
 - `LarkMessagePartialFailureCode = 200012` - 飞书消息部分发送失败 - HTTP 500
 - `AppNotificationChannelFullErrorCode = 200013` - 应用通知通道已满 - HTTP 500
 - `TableNotificationNotConfiguredErrorCode = 200014` - 表格通知未配置错误 - HTTP 500
+- `TableRecordNotFoundCode = 200015` - 表格记录未找到 - HTTP 404
+- `PageTokenInvalidCode = 200016` - 分页 Token 无效 - HTTP 400
+- `APIDeprecatedCode = 200017` - API 已废弃 - HTTP 410
+- `CreateRecordDBErrorCode = 200018` - 创建表格记录数据库错误 - HTTP 500
+- `UpdateRecordDBErrorCode = 200019` - 更新表格记录数据库错误 - HTTP 500
+- `GetUnsyncedRecordsByTableErrorCode = 200020` - 根据表格标识获取未同步记录错误 - HTTP 500
+- `CountSheetRecordByUserErrorCode = 200021` - 根据用户统计表格记录错误 - HTTP 500
 
 ### 第三方服务（30xxxx）
 - `LarkRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500
@@ -57,4 +64,3 @@
 
 ## 变更与版本管理
 - 已发布错误码的含义或数值不得更改；如需替代，新增错误码并在文档中注明替代关系。
-
