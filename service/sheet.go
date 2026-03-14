@@ -61,21 +61,6 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 		cache:    cache,
 	}
 
-	// 消费者，异步更新飞书表格记录进度
-	go func() {
-		for {
-			msg := <-progressCh
-			err := s.UpdateRecordProgress(&msg.RecordID, &msg.TableConfig)
-			if err != nil {
-				s.log.Error("UpdateRecordProgress 异步更新记录进度失败",
-					logger.String("error", err.Error()),
-					logger.String("record_id", msg.RecordID),
-					logger.String("table_identity", *msg.TableConfig.TableIdentity),
-				)
-			}
-		}
-	}()
-
 	// 消费者，异步同步未同步的记录到数据库
 	go func() {
 		for {
@@ -613,6 +598,9 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, erro
 	return files, nil
 }
 
+// UpdateRecordProgress 异步更新飞书表格记录进度为已完成
+// 2026-03-14 下线这个功能
+// 更换为 message.MarkRecordNoticed 更新通知记录的状态为已完成
 func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error {
 	req := larkbitable.NewUpdateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).

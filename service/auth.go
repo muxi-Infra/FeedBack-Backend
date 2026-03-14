@@ -22,7 +22,7 @@ import (
 
 const (
 	TenantRefreshInterval = time.Hour + 35*time.Minute
-	NoticeRefreshInterval = 4 * time.Hour
+	NoticeRefreshInterval = 10 * time.Minute
 	SyncRefreshInterval   = 4 * time.Hour
 )
 
@@ -257,11 +257,9 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 
 func (t *AuthServiceImpl) startNotifiableTableScanner() {
 	ticker := time.NewTicker(NoticeRefreshInterval)
-
+	defer ticker.Stop()
 	// 生产者，定时扫描需要发送通知的表，并将其放入 noticeCh 中
 	go func() {
-		defer ticker.Stop()
-
 		for {
 			select {
 			case <-ticker.C:

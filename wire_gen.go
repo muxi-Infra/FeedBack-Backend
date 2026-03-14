@@ -52,7 +52,7 @@ func InitApp() (*App, error) {
 	sheetService := service.NewSheetService(client2, loggerLogger, faqResolutionDAO, sheetDAO, faqResolutionStateCache)
 	larkMessage := config.NewLarkMessageConfig()
 	ccnuBoxMessage := config.NewCCNUBoxMessageConfig()
-	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage)
+	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage, sheetDAO)
 	sheetV1Handler := controller.NewSheet(sheetService, messageService)
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)

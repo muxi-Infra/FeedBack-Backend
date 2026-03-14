@@ -33,6 +33,8 @@ const (
 	UpdateRecordDBErrorCode                                 // 更新表格记录数据库错误
 	GetUnsyncedRecordsByTableErrorCode                      // 根据表格标识获取未同步记录错误
 	CountSheetRecordByUserErrorCode                         // 根据用户统计表格记录错误
+	GetUnNoticedRecordByTableErrorCode                      // 根据表格标识获取未通知记录错误
+	MarkRecordNoticedErrorCode                              // 标记表格记录已通知错误
 )
 
 var (
@@ -101,5 +103,11 @@ var (
 	}
 	CountSheetRecordByUserError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, CountSheetRecordByUserErrorCode, "根据用户统计表格记录错误", err)
+	}
+	GetUnNoticedRecordByTableError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, GetUnNoticedRecordByTableErrorCode, "根据表格标识获取未通知记录错误", err)
+	}
+	MarkRecordNoticedError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, MarkRecordNoticedErrorCode, "标记表格记录已通知错误", err)
 	}
 )

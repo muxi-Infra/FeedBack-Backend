@@ -237,7 +237,7 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string														true	"Bearer Token"
-//	@Param			request			query		reqV1.GetTableRecordByRecordIDReq							true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Param			request			query		reqV1.GetFAQProblemTableRecordReg							true	"查询记录请求参数，包含 record_id 和 table_identify"
 //	@Success		200				{object}	response.Response{data=respV1.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response											"服务器内部错误"

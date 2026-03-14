@@ -598,9 +598,20 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "需要查询的字段名",
+                        "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
                         "type": "string",
-                        "description": "记录 ID",
-                        "name": "record_id",
+                        "description": "学号，用于标记用户身份",
+                        "name": "student_id",
                         "in": "query",
                         "required": true
                     },
@@ -856,7 +867,7 @@ const docTemplate = `{
                 "tags": [
                     "SheetV2"
                 ],
-                "summary": "强制同步用户记录",
+                "summary": "强制同步表格所有记录",
                 "operationId": "force-sync-table-records",
                 "parameters": [
                     {

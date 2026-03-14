@@ -619,9 +619,17 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 记录 ID
+      - collectionFormat: csv
+        description: 需要查询的字段名
         in: query
-        name: record_id
+        items:
+          type: string
+        name: record_names
+        required: true
+        type: array
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
         required: true
         type: string
       - in: query
@@ -816,7 +824,7 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 强制同步用户记录
+      summary: 强制同步表格所有记录
       tags:
       - SheetV2
   /api/v2/sheet/sync/user:

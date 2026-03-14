@@ -401,9 +401,19 @@ paths:
           required: true
           schema:
             type: string
-        - description: 记录 ID
+        - description: 需要查询的字段名
           in: query
-          name: record_id
+          name: record_names
+          required: true
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - description: 学号，用于标记用户身份
+          in: query
+          name: student_id
           required: true
           schema:
             type: string
@@ -623,7 +633,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: 强制同步用户记录
+      summary: 强制同步表格所有记录
       tags:
         - SheetV2
   /api/v2/sheet/sync/user:
