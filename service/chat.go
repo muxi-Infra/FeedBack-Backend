@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
@@ -11,41 +12,61 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
 )
 
-type AIService interface {
+type ChatService interface {
 	Query(ctx context.Context, query string) (string, error)
-	Insert(ctx context.Context) error
+	Insert(ctx context.Context, tableIdentify string) error
 }
 
-type AIServiceImpl struct {
-	agent  *react.Agent
-	log    logger.Logger
-	faqDAO dao.FAQResolutionDAO
-	esDAO  es.FAQESRepo
+type ChatServiceImpl struct {
+	agent    *react.Agent
+	log      logger.Logger
+	faqDAO   dao.FAQDAO
+	esDAO    es.FAQESRepo
+	embedder embedding.Embedder
 }
 
-func (s *AIServiceImpl) Insert(ctx context.Context) error {
-	user, err := s.faqDAO.ListResolutionsByUser()
+func (s *ChatServiceImpl) Insert(ctx context.Context, tableIdentify string) error {
+	records, err := s.faqDAO.GetFAQRecords(&tableIdentify)
 	if err != nil {
 		return err
 	}
+	var texts = make([]string, len(records))
+	for i := range records {
+		texts[i] = fmt.Sprintf("问题名称: %v\n解决方案:%v", records[i].Record["问题名称"], records[i].Record["解决方案"])
+	}
+	embedStrs, err := s.embedder.EmbedStrings(ctx, texts)
+	if err != nil {
+		return err
+	}
+
+	for i := range records {
+		err := s.esDAO.SaveWithVector(ctx, &records[i], embedStrs[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func NewAIService(
+func NewChatService(
 	agent *react.Agent,
 	log logger.Logger,
-	faqDAO dao.FAQResolutionDAO,
+	faqDAO dao.FAQDAO,
 	esDAO es.FAQESRepo,
-) AIService {
-	return &AIServiceImpl{
-		agent:  agent,
-		log:    log,
-		faqDAO: faqDAO,
-		esDAO:  esDAO,
+	embedder embedding.Embedder,
+) ChatService {
+	return &ChatServiceImpl{
+		agent:    agent,
+		log:      log,
+		faqDAO:   faqDAO,
+		esDAO:    esDAO,
+		embedder: embedder,
 	}
 }
 
 // Query 处理用户的提问
-func (s *AIServiceImpl) Query(ctx context.Context, query string) (string, error) {
+func (s *ChatServiceImpl) Query(ctx context.Context, query string) (string, error) {
 	// 1. 将字符串 Query 转化为 Agent 接受的 Message 格式
 	input := []*schema.Message{
 		schema.UserMessage(query),

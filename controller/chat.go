@@ -10,6 +10,7 @@ import (
 
 type ChatHandler interface {
 	Query(c *gin.Context, req reqV1.ChatQueryReq) (response.Response, error)
+	Insert(c *gin.Context, req reqV1.InsertReq) (response.Response, error)
 }
 
 type Chat struct {
@@ -51,5 +52,32 @@ func (a *Chat) Query(c *gin.Context, req reqV1.ChatQueryReq) (response.Response,
 		Code:    0,
 		Message: "Success",
 		Data:    resp,
+	}, nil
+}
+
+// Insert FAQ 数据入库（用于构建向量索引）
+//
+//	@Summary		插入 FAQ 数据
+//	@Description	将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）
+//	@Tags			Chat
+//	@ID				llm-insert
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		reqV1.InsertReq		true	"插入请求参数"
+//	@Success		200		{object}	response.Response	"插入成功"
+//	@Failure		400		{object}	response.Response	"请求参数错误"
+//	@Failure		500		{object}	response.Response	"服务器内部错误"
+//	@Router			/api/v1/llm/insert [post]
+func (a *Chat) Insert(c *gin.Context, req reqV1.InsertReq) (response.Response, error) {
+	// 调用 ChatService 执行 Agent 逻辑
+	err := a.s.Insert(c.Request.Context(), req.TableIdentify)
+	if err != nil {
+		// 这里可以直接返回错误，由 Gin 的中间件或上层统一处理 errs
+		return response.Response{}, err
+	}
+
+	return response.Response{
+		Code:    0,
+		Message: "Success",
 	}, nil
 }

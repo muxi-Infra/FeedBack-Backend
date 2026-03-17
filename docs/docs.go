@@ -206,6 +206,112 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/llm/insert": {
+            "post": {
+                "description": "将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "插入 FAQ 数据",
+                "operationId": "llm-insert",
+                "parameters": [
+                    {
+                        "description": "插入请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.InsertReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "插入成功",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/llm/query": {
+            "post": {
+                "description": "提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "AI 客服咨询",
+                "operationId": "llm-query",
+                "parameters": [
+                    {
+                        "description": "Chat 查询请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.ChatQueryReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回 Chat 答复",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ChatQueryResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/message/trigger": {
             "post": {
                 "description": "将 ` + "`" + `table_identify` + "`" + ` 写入通知通道以触发下游消费",
@@ -1198,6 +1304,27 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.ChatQueryReq": {
+            "type": "object",
+            "required": [
+                "query"
+            ],
+            "properties": {
+                "query": {
+                    "description": "用户的问题描述",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ChatQueryResp": {
+            "type": "object",
+            "properties": {
+                "answer": {
+                    "description": "回答的结果",
+                    "type": "string"
+                }
+            }
+        },
         "v1.CreatTableRecordReg": {
             "type": "object",
             "required": [
@@ -1357,6 +1484,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/v1.SystemStats"
                         }
                     ]
+                }
+            }
+        },
+        "v1.InsertReq": {
+            "type": "object",
+            "required": [
+                "tableIdentify"
+            ],
+            "properties": {
+                "tableIdentify": {
+                    "description": "用户的问题描述",
+                    "type": "string"
                 }
             }
         },
