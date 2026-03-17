@@ -35,6 +35,8 @@ const (
 	CountSheetRecordByUserErrorCode                         // 根据用户统计表格记录错误
 	GetUnNoticedRecordByTableErrorCode                      // 根据表格标识获取未通知记录错误
 	MarkRecordNoticedErrorCode                              // 标记表格记录已通知错误
+	GetFAQRecordByTableErrorCode                            // 根据表格标识获取 FAQ 记录错误
+	SyncFAQRecordPartialFailedCode                          // 同步 FAQ 记录部分失败
 )
 
 var (
@@ -109,5 +111,11 @@ var (
 	}
 	MarkRecordNoticedError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, MarkRecordNoticedErrorCode, "标记表格记录已通知错误", err)
+	}
+	GetFAQRecordByTableError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, GetFAQRecordByTableErrorCode, "根据表格标识获取 FAQ 记录错误", err)
+	}
+	SyncFAQRecordPartialFailedError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, SyncFAQRecordPartialFailedCode, "同步 FAQ 记录部分失败", err)
 	}
 )

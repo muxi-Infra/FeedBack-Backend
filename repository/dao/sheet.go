@@ -198,6 +198,7 @@ func (s *sheetDAO) GetUnNoticedRecordsByTable(tableIdentify string) ([]model.She
 
 	err := s.db.
 		Model(&model.Sheet{}).
+		Select([]string{"record_id", "user_id"}).
 		Where("table_identify = ? AND is_noticed = 0", tableIdentify).
 		Find(&records).Error
 

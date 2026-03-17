@@ -23,7 +23,6 @@ import (
 )
 
 var (
-	wg       sync.WaitGroup
 	errCount atomic.Int32
 )
 
@@ -128,7 +127,9 @@ func (m *MessageServiceImpl) SendLarkNotification(tableName, content, url string
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	var wg sync.WaitGroup
 	sem := make(chan struct{}, 5)
+
 	for _, r := range m.lc.ReceiveIDs {
 		r := r // 避免闭包问题
 		wg.Add(1)

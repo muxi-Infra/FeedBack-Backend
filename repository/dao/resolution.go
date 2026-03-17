@@ -36,7 +36,7 @@ func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, r
 		Take(&res).Error
 
 	// 如果没有找到记录，返回 nil 而不是错误
-	// 这里表示的是用户未选择该 FAQ 解决状态
+	// 这里表示的是用户未选择该 FAQRecord 解决状态
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
