@@ -19,7 +19,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	swag controller.SwagHandler,
 	sh controller.SheetV1Handler,
 	ah controller.AuthHandler,
-	aih controller.AIHandler,
+	ch controller.ChatHandler,
 	mh controller.MessageHandler,
 	shV2 controller.SheetV2Handler,
 ) *gin.Engine {
@@ -43,7 +43,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
-	RegisterAIRouter(apiV1, aih)
+	RegisterAIRouter(apiV1, ch)
 	RegisterAuthRouter(apiV1, ah)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
 	RegisterMessageRouter(apiV1, mh)

@@ -9,24 +9,24 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 )
 
-type AIService interface {
+type ChatService interface {
 	Query(ctx context.Context, query string) (string, error)
 }
 
-type AIServiceImpl struct {
+type ChatServiceImpl struct {
 	agent *react.Agent
 	log   logger.Logger
 }
 
-func NewAIService(agent *react.Agent, log logger.Logger) AIService {
-	return &AIServiceImpl{
+func NewChatService(agent *react.Agent, log logger.Logger) ChatService {
+	return &ChatServiceImpl{
 		agent: agent,
 		log:   log,
 	}
 }
 
 // Query 处理用户的提问
-func (s *AIServiceImpl) Query(ctx context.Context, query string) (string, error) {
+func (s *ChatServiceImpl) Query(ctx context.Context, query string) (string, error) {
 	// 1. 将字符串 Query 转化为 Agent 接受的 Message 格式
 	input := []*schema.Message{
 		schema.UserMessage(query),
