@@ -25,8 +25,8 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 
 	// 全局中间件
 	r.Use(corsMiddleware.MiddlewareFunc())       // 跨域中间件
-	r.Use(logMiddleware.MiddlewareFunc())        // 日志中间件
 	r.Use(prometheusMiddleware.MiddlewareFunc()) // Prometheus 监控中间件
+	r.Use(logMiddleware.MiddlewareFunc())        // 日志中间件
 	r.Use(limitMiddleware.Middleware())          // 限流中间件
 
 	apiV1 := r.Group("/api/v1")

@@ -1,11 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkbitable "github.com/larksuite/oapi-sdk-go/v3/service/bitable/v1"
@@ -42,45 +44,38 @@ type SheetService interface {
 	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	GetFAQResolutionRecord(studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error)
+	UpdateFAQResolutionRecordV2(resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error
+	SyncFAQRecord(tableConfig *domain.TableConfig) error
 }
 
 type SheetServiceImpl struct {
-	c        lark.Client
-	log      logger.Logger
-	faqDAO   dao.FAQResolutionDAO
-	sheetDao dao.SheetDAO
-	cache    cache.FAQResolutionStateCache
+	c             lark.Client
+	log           logger.Logger
+	resolutionDAO dao.FAQResolutionDAO
+	sheetDao      dao.SheetDAO
+	faqDAO        dao.FAQDAO
+	cache         cache.FAQResolutionStateCache
 }
 
-func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionDAO, sheetDAO dao.SheetDAO, cache cache.FAQResolutionStateCache) SheetService {
+func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQResolutionDAO, sheetDAO dao.SheetDAO, faqDAO dao.FAQDAO, cache cache.FAQResolutionStateCache) SheetService {
 	s := &SheetServiceImpl{
-		c:        c,
-		log:      log,
-		faqDAO:   faqDAO,
-		sheetDao: sheetDAO,
-		cache:    cache,
+		c:             c,
+		log:           log,
+		resolutionDAO: resolutionDAO,
+		sheetDao:      sheetDAO,
+		faqDAO:        faqDAO,
+		cache:         cache,
 	}
-
-	// 消费者，异步更新飞书表格记录进度
-	go func() {
-		for {
-			msg := <-progressCh
-			err := s.UpdateRecordProgress(&msg.RecordID, &msg.TableConfig)
-			if err != nil {
-				s.log.Error("UpdateRecordProgress 异步更新记录进度失败",
-					logger.String("error", err.Error()),
-					logger.String("record_id", msg.RecordID),
-					logger.String("table_identity", *msg.TableConfig.TableIdentity),
-				)
-			}
-		}
-	}()
 
 	// 消费者，异步同步未同步的记录到数据库
 	go func() {
 		for {
 			select {
 			case msg := <-syncCh:
+				// 同步反馈记录
+				// 飞书 -> 数据库
+				// 这是对 case table := <-syncTableCh 的聚合处理，减少 API 的使用量
 				err := s.SyncLarkRecords(msg.RecordIDs, msg.TableConfig)
 				if err != nil {
 					s.log.Error("SyncLarkRecords 同步记录到飞书表格失败",
@@ -89,14 +84,28 @@ func NewSheetService(c lark.Client, log logger.Logger, faqDAO dao.FAQResolutionD
 					)
 				}
 			case table := <-syncTableCh:
-				_, _, _, err := s.SyncUnsyncedTableRecords(&table)
-				if err != nil {
-					s.log.Error("SyncUnsyncedTableRecords 同步未同步记录到飞书表格失败",
-						logger.String("error", err.Error()),
-						logger.String("table_identity", *table.TableIdentity),
-					)
+				// 获取带同步表格标识，区分常见问题表格和反馈记录表格
+				if bytes.Contains([]byte(*table.TableIdentity), []byte("-faq")) {
+					// 同步常见问题中 解决/未解决 数量
+					// redis -> 飞书
+					err := s.SyncFAQRecord(&table)
+					if err != nil {
+						s.log.Error("SyncFAQResolutionCount 同步 FAQ 记录到飞书表格失败",
+							logger.String("error", err.Error()),
+							logger.String("table_identity", *table.TableIdentity),
+						)
+					}
+				} else {
+					// 同步反馈记录
+					// 飞书 -> 数据库
+					_, _, _, err := s.SyncUnsyncedTableRecords(&table)
+					if err != nil {
+						s.log.Error("SyncUnsyncedTableRecords 同步未同步记录到飞书表格失败",
+							logger.String("error", err.Error()),
+							logger.String("table_identity", *table.TableIdentity),
+						)
+					}
 				}
-
 			}
 		}
 	}()
@@ -377,9 +386,9 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 			return nil
 		}
 
-		list, err := s.faqDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
+		list, err := s.resolutionDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
 		if err != nil {
-			s.log.Error("GetFAQProblemTableRecord faqDAO.ListResolutionsByUser err",
+			s.log.Error("GetFAQProblemTableRecord resolutionDAO.ListResolutionsByUser err",
 				logger.String("error", err.Error()))
 			return err
 		}
@@ -461,10 +470,10 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 }
 
 func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
-	// 1. 查询用户是否已经对该 FAQ 做过选择
-	existingRecord, err := s.faqDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
+	// 1. 查询用户是否已经对该 FAQRecord 做过选择
+	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
 	if err != nil {
-		s.log.Error("UpdateFAQResolutionRecord faqDAO.GetResolutionByUserAndRecord err",
+		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.GetResolutionByUserAndRecord err",
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionFindError(err)
 	}
@@ -556,9 +565,9 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 		IsResolved:    resolution.IsResolved,
 		Frequency:     &newFrequency,
 	}
-	err = s.faqDAO.CreateOrUpsertFAQResolution(m)
+	err = s.resolutionDAO.CreateOrUpsertFAQResolution(m)
 	if err != nil {
-		s.log.Error("UpdateFAQResolutionRecord faqDAO.CreateOrUpsertFAQResolution err",
+		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.CreateOrUpsertFAQResolution err",
 			logger.String("error", err.Error()))
 		return errs.FAQResolutionChangeError(err)
 	}
@@ -613,6 +622,9 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, erro
 	return files, nil
 }
 
+// UpdateRecordProgress 异步更新飞书表格记录进度为已完成
+// 2026-03-14 下线这个功能
+// 更换为 message.MarkRecordNoticed 更新通知记录的状态为已完成
 func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error {
 	req := larkbitable.NewUpdateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -881,6 +893,335 @@ func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domai
 		}
 	}
 
+	return nil
+}
+
+// GetFAQResolutionRecord 获取 FAQ 记录，全部从 DB 获取
+func (s *SheetServiceImpl) GetFAQResolutionRecord(studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error) {
+	g, _ := errgroup.WithContext(context.Background())
+
+	var resolutionMap map[string]*bool
+	var dbResp map[string]map[string]any
+
+	// 并发查数据库
+	g.Go(func() error {
+		if studentID == nil {
+			resolutionMap = nil
+			s.log.Error("GetFAQProblemTableRecord studentID is nil")
+			return nil
+		}
+
+		list, err := s.resolutionDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
+		if err != nil {
+			s.log.Error("GetFAQProblemTableRecord resolutionDAO.ListResolutionsByUser err",
+				logger.String("error", err.Error()))
+			return errs.FAQResolutionFindError(err)
+		}
+
+		m := make(map[string]*bool, len(list))
+		for _, r := range list {
+			if r.RecordID != nil {
+				m[*r.RecordID] = r.IsResolved
+			}
+		}
+		resolutionMap = m
+		return nil
+	})
+
+	g.Go(func() error {
+		records, err := s.faqDAO.GetFAQRecords(tableConfig.TableIdentity)
+		if err != nil {
+			s.log.Error("GetFAQResolutionRecord faqDAO.GetFAQRecords err",
+				logger.String("error", err.Error()),
+			)
+			return errs.GetFAQRecordByTableError(err)
+		}
+		dbResp = make(map[string]map[string]any)
+		for _, r := range records {
+			dbResp[*r.RecordID] = r.Record
+		}
+		return nil
+	})
+
+	// 任何一个失败，整体失败
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	// 组装记录
+	var records []domain.FAQTableRecord
+	for key, record := range dbResp {
+		var isResolved *bool
+		recordID := key
+		if resolutionMap != nil {
+			if val, ok := resolutionMap[recordID]; ok {
+				isResolved = val
+			}
+		}
+
+		records = append(records, domain.FAQTableRecord{
+			RecordID:   &recordID,
+			Record:     record,
+			IsResolved: stringIsResolved(isResolved),
+		})
+	}
+
+	// 组装返回值
+	return records, nil
+}
+
+// UpdateFAQResolutionRecordV2 更新 FAQ 记录，更新数据库后更新 Redis 计数器
+func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error {
+	// 1. 查询用户是否已经对该 FAQRecord 做过选择
+	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
+	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.GetResolutionByUserAndRecord err",
+			logger.String("error", err.Error()))
+		return errs.FAQResolutionFindError(err)
+	}
+
+	// 2. 判断是否为首次选择
+	isFirstChoice := existingRecord == nil
+
+	// 3. 如果是修改状态，检查修改次数限制（最多允许修改 3 次）
+	if !isFirstChoice {
+		if existingRecord.Frequency != nil && *existingRecord.Frequency >= 3 {
+			return errs.FAQResolutionChangeLimitExceededError(errors.New("faq resolution change limit exceeded"))
+		}
+
+		// 检查状态是否真的发生变化
+		if existingRecord.IsResolved != nil && *existingRecord.IsResolved == *resolution.IsResolved {
+			return errs.FAQResolutionExistError(errors.New("faq resolution status exist"))
+		}
+	}
+
+	// 4. 计算 修改次数
+	newFrequency := 1
+	if !isFirstChoice {
+		newFrequency = *existingRecord.Frequency + 1
+	}
+
+	// 5. 生成 Redis 缓存 key
+	resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
+	unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
+
+	// 6. 使用 Lua 脚本原子性更新 Redis 计数器
+	if isFirstChoice {
+		// 首次选择：只增加对应状态的计数
+		if *resolution.IsResolved {
+			_, _, err = s.cache.IncAAndGetB(resolvedKey, unresolvedKey)
+		} else {
+			_, _, err = s.cache.IncAAndGetB(unresolvedKey, resolvedKey)
+		}
+	} else {
+		// 修改状态：新状态计数 +1，旧状态计数 -1
+		if *resolution.IsResolved {
+			_, _, err = s.cache.IncAAndDecB(resolvedKey, unresolvedKey)
+		} else {
+			_, _, err = s.cache.IncAAndDecB(unresolvedKey, resolvedKey)
+		}
+	}
+
+	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord redis cache update err",
+			logger.String("error", err.Error()))
+		return errs.FAQResolutionCountGetError(err)
+	}
+
+	// 更新或插入数据库记录
+	m := &model.FAQResolution{
+		UserID:        resolution.UserID,
+		TableIdentify: tableConfig.TableIdentity,
+		RecordID:      resolution.RecordID,
+		IsResolved:    resolution.IsResolved,
+		Frequency:     &newFrequency,
+	}
+	err = s.resolutionDAO.CreateOrUpsertFAQResolution(m)
+	if err != nil {
+		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.CreateOrUpsertFAQResolution err",
+			logger.String("error", err.Error()))
+		return errs.FAQResolutionChangeError(err)
+	}
+	return nil
+}
+
+// SyncFAQRecord 同步飞书表格和数据库中的 FAQ 记录，保证两者的一致性
+// 这个过程需要 redis <-> mysql <-> 飞书表格 三者的配合，保证最终一致性
+func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error {
+	g, ctx := errgroup.WithContext(context.Background())
+
+	var larkResp map[string]map[string]interface{}
+	var dbResp map[string]struct{}
+	// 1 获取飞书数据
+	g.Go(func() error {
+		// 创建请求对象
+		req := larkbitable.NewSearchAppTableRecordReqBuilder().
+			AppToken(*tableConfig.TableToken).
+			TableId(*tableConfig.TableID).
+			PageToken("").
+			PageSize(100). // 分页大小，拿全部，有更大的需求再改大
+			Body(larkbitable.NewSearchAppTableRecordReqBodyBuilder().
+				ViewId(*tableConfig.ViewID).
+				FieldNames(nil). //返回所有字段
+				Build()).
+			Build()
+
+		// 发起请求
+		resp, err := s.c.GetAppTableRecord(ctx, req)
+		if err != nil {
+			s.log.Error("SyncFAQRecord 调用失败",
+				logger.String("error", err.Error()),
+			)
+			return errs.LarkRequestError(err)
+		}
+
+		// 服务端错误处理
+		if !resp.Success() {
+			s.log.Error("SyncFAQRecord Lark 接口错误",
+				logger.String("request_id", resp.RequestId()),
+				logger.String("error", larkcore.Prettify(resp.CodeError)),
+			)
+			return errs.LarkResponseError(err)
+		}
+
+		larkResp = make(map[string]map[string]interface{})
+		for _, r := range resp.Data.Items {
+			larkResp[*r.RecordId] = simplifyFields(r.Fields)
+		}
+
+		return nil
+	})
+
+	// 2 获取数据库数据
+	g.Go(func() error {
+		records, err := s.faqDAO.GetFAQRecords(tableConfig.TableIdentity)
+		if err != nil {
+			s.log.Error("SyncFAQRecord 数据库查询失败",
+				logger.String("error", err.Error()),
+			)
+			return errs.GetFAQRecordByTableError(err)
+		}
+		dbResp = make(map[string]struct{})
+		for _, r := range records {
+			dbResp[*r.RecordID] = struct{}{}
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	sem := make(chan struct{}, 10)
+	var wg sync.WaitGroup
+	flag := true
+
+	// 3 同步 record + 更新 Redis 计数器
+	for recordID, fields := range larkResp {
+		// Redis vote
+		resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusResolved)
+		unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
+
+		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(resolvedKey, unresolvedKey)
+
+		// MySQL upsert
+		m := &model.FAQRecord{
+			TableIdentify:   tableConfig.TableIdentity,
+			RecordID:        &recordID,
+			Record:          fields,
+			ResolvedCount:   int64(resolvedNum),
+			UnresolvedCount: int64(unresolvedNum),
+		}
+
+		err := s.faqDAO.CreateOrUpdateSheetRecord(m)
+		if err != nil {
+			flag = false
+			s.log.Error("mysql upsert err",
+				logger.String("record_id", recordID),
+				logger.String("error", err.Error()),
+			)
+		}
+
+		// 飞书更新 已解决/未解决 数量
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(rID string, rNum, uNum uint64) {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+
+			req := larkbitable.NewUpdateAppTableRecordReqBuilder().
+				AppToken(*tableConfig.TableToken).
+				TableId(*tableConfig.TableID).
+				RecordId(rID).
+				AppTableRecord(larkbitable.NewAppTableRecordBuilder().
+					Fields(map[string]interface{}{
+						StatusResolved:   rNum,
+						StatusUnresolved: uNum,
+					}).
+					Build()).
+				Build()
+			// 发起请求
+			resp, err := s.c.UpdateRecord(context.Background(), req)
+
+			// 处理错误
+			if err != nil {
+				s.log.Error("SyncFAQResolutionCount UpdateRecord 调用失败",
+					logger.String("error", err.Error()),
+					logger.String("record_id", rID),
+				)
+				return
+			}
+
+			// 服务端错误处理
+			if !resp.Success() {
+				s.log.Error("SyncFAQResolutionCount UpdateRecord Lark 接口错误",
+					logger.String("request_id", resp.RequestId()),
+					logger.String("error", larkcore.Prettify(resp.CodeError)),
+					logger.String("record_id", rID),
+				)
+				return
+			}
+		}(recordID, resolvedNum, unresolvedNum)
+	}
+
+	// 4 删除多余的记录
+	var redisKeys []string
+	for recordID := range dbResp {
+		if _, ok := larkResp[recordID]; !ok {
+			// 1 删除 mysql
+			err := s.faqDAO.DeleteFAQRecord(tableConfig.TableIdentity, &recordID)
+			if err != nil {
+				flag = false
+				s.log.Error("删除多余 FAQ 记录失败",
+					logger.String("record_id", recordID),
+					logger.String("error", err.Error()),
+				)
+			}
+
+			// 2 删除 Redis
+			redisKeys = append(redisKeys,
+				fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusResolved),
+				fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusUnresolved),
+			)
+		}
+	}
+	if len(redisKeys) > 0 {
+		err := s.cache.Delete(redisKeys...)
+		if err != nil {
+			flag = false
+			s.log.Error("批量删除 redis 失败",
+				logger.String("error", err.Error()),
+			)
+		}
+	}
+
+	wg.Wait()
+
+	if !flag {
+		return errs.SyncFAQRecordPartialFailedError(errors.New("部分 FAQ 记录同步失败"))
+	}
 	return nil
 }
 

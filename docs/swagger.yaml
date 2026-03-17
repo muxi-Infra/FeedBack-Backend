@@ -1,5 +1,15 @@
 basePath: /
 definitions:
+  domain.FAQTableRecord:
+    properties:
+      is_resolved:
+        type: string
+      record:
+        additionalProperties: {}
+        type: object
+      record_id:
+        type: string
+    type: object
   domain.TableRecord:
     properties:
       record:
@@ -171,6 +181,22 @@ definitions:
     required:
     - table_identify
     type: object
+  v2.FAQResolutionUpdateReq:
+    properties:
+      is_resolved:
+        type: boolean
+      record_id:
+        type: string
+      table_identify:
+        type: string
+      user_id:
+        type: string
+    required:
+    - is_resolved
+    - record_id
+    - table_identify
+    - user_id
+    type: object
   v2.ForceSyncTableRecordsReq:
     properties:
       table_identify:
@@ -216,6 +242,13 @@ definitions:
         description: 本次尝试同步的总记录数
         type: integer
     type: object
+  v2.GetTableRecordByRecordIdResp:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/domain.FAQTableRecord'
+        type: array
+    type: object
   v2.GetTableRecordResp:
     properties:
       has_more:
@@ -226,6 +259,13 @@ definitions:
         items:
           $ref: '#/definitions/domain.TableRecord'
         type: array
+    type: object
+  v2.SyncFaqRecordReq:
+    properties:
+      table_identify:
+        type: string
+    required:
+    - table_identify
     type: object
   v2.SyncUnsyncedTableRecordsReq:
     properties:
@@ -619,9 +659,17 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 记录 ID
+      - collectionFormat: csv
+        description: 需要查询的字段名
         in: query
-        name: record_id
+        items:
+          type: string
+        name: record_names
+        required: true
+        type: array
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
         required: true
         type: string
       - in: query
@@ -737,6 +785,85 @@ paths:
       summary: 查询用户历史反馈记录
       tags:
       - SheetV2
+  /api/v2/sheet/records/faq:
+    get:
+      consumes:
+      - application/json
+      description: 根据学号查询用户相关的常见问题记录及其解决状态。
+      operationId: get-faq-record
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
+        required: true
+        type: string
+      - in: query
+        name: table_identify
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回单条记录的字段键值对
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v2.GetTableRecordByRecordIdResp'
+              type: object
+        "400":
+          description: 请求参数错误或飞书接口调用失败
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 查询FAQ问题记录
+      tags:
+      - SheetV2
+    post:
+      consumes:
+      - application/json
+      description: 用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
+      operationId: update-faq-resolution
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 更新FAQ解决状态请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.FAQResolutionUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功更新FAQ解决状态
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误或飞书接口调用失败
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 标记FAQ问题解决状态
+      tags:
+      - SheetV2
   /api/v2/sheet/sync:
     post:
       consumes:
@@ -778,6 +905,38 @@ paths:
       summary: 同步未同步记录
       tags:
       - SheetV2
+  /api/v2/sheet/sync/faq:
+    post:
+      consumes:
+      - application/json
+      description: 同步某表格下的FAQ问题记录及其解决状态，用于后台增量同步或修复数据。
+      operationId: sync-faq-record
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 同步FAQ记录请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v2.SyncFaqRecordReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功同步FAQ记录
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 同步FAQ问题记录
+      tags:
+      - SheetV2
   /api/v2/sheet/sync/force:
     post:
       consumes:
@@ -816,7 +975,7 @@ paths:
           description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
-      summary: 强制同步用户记录
+      summary: 强制同步表格所有记录
       tags:
       - SheetV2
   /api/v2/sheet/sync/user:

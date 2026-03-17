@@ -47,6 +47,13 @@ type FAQResolution struct {
 	IsResolved          *bool
 }
 
+// FAQResolutionV2 用于处理 FAQ 记录的解决状态变更
+type FAQResolutionV2 struct {
+	RecordID   *string
+	UserID     *string
+	IsResolved *bool
+}
+
 type File struct {
 	FileToken      *string `json:"file_token"`
 	TmpDownloadURL *string `json:"tmp_download_url"`

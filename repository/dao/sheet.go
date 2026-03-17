@@ -21,6 +21,8 @@ type SheetDAO interface {
 	GetSheetRecordByRecordID(tableIdentify, userID, recordID string) (*model.Sheet, error)
 	ResetIsSyncedByUser(tableIdentify, userID string) error
 	GetUnsyncedRecordsByTable(tableIdentify string) ([]string, error)
+	GetUnNoticedRecordsByTable(tableIdentify string) ([]model.Sheet, error)
+	MarkRecordNoticed(tableIdentify, recordID string) error
 }
 
 type sheetDAO struct {
@@ -84,20 +86,6 @@ func (s *sheetDAO) CreateOrUpdateSheetRecord(m *model.Sheet) error {
 			"updated_at": gorm.Expr("NOW(3)"),
 		}),
 	}).Create(m).Error
-
-	return err
-}
-
-func (s *sheetDAO) UpdateRecordShareURL(tableIdentify, userID, recordID, shareURL string) error {
-	err := s.db.Model(&model.Sheet{}).
-		Where("table_identify = ? AND user_id = ? AND record_id = ?",
-			tableIdentify, userID, recordID,
-		).
-		Select("share_url", "updated_at").
-		Updates(map[string]interface{}{
-			"share_url":  shareURL,
-			"updated_at": gorm.Expr("NOW(3)"),
-		}).Error
 
 	return err
 }
@@ -202,4 +190,28 @@ func (s *sheetDAO) GetUnsyncedRecordsByTable(tableIdentify string) ([]string, er
 	}
 
 	return recordIDs, nil
+}
+
+// GetUnNoticedRecordsByTable 获取指定表格下所有未通知的记录ID列表
+func (s *sheetDAO) GetUnNoticedRecordsByTable(tableIdentify string) ([]model.Sheet, error) {
+	var records []model.Sheet
+
+	err := s.db.
+		Model(&model.Sheet{}).
+		Select([]string{"record_id", "user_id"}).
+		Where("table_identify = ? AND is_noticed = 0", tableIdentify).
+		Find(&records).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return records, nil
+}
+
+// MarkRecordNoticed 将指定表格下的特定记录的 is_noticed 字段更新为 1（已通知状态）
+func (s *sheetDAO) MarkRecordNoticed(tableIdentify, recordID string) error {
+	return s.db.Model(&model.Sheet{}).
+		Where("table_identify = ? AND record_id = ?", tableIdentify, recordID).
+		Update("is_noticed", 1).Error
 }
