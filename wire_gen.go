@@ -7,6 +7,7 @@
 package main
 
 import (
+	"github.com/muxi-Infra/FeedBack-Backend/ai"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
@@ -16,6 +17,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"github.com/muxi-Infra/FeedBack-Backend/web"
 )
@@ -57,9 +59,30 @@ func InitApp() (*App, error) {
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
 	authHandler := controller.NewAuth(jwt, authService)
+	aiConfig := config.NewAIConfig()
+	toolCallingChatModel, err := ioc.InitChatModel(aiConfig)
+	if err != nil {
+		return nil, err
+	}
+	embedder, err := ioc.InitLocalEmbedder(aiConfig)
+	if err != nil {
+		return nil, err
+	}
+	esConfig := config.NewESConfig()
+	elasticsearchClient, err := ioc.InitESClient(esConfig)
+	if err != nil {
+		return nil, err
+	}
+	faqesRepo, err := es.NewFAQESRepo(elasticsearchClient)
+	if err != nil {
+		return nil, err
+	}
+	agent := ai.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
+	aiService := service.NewAIService(agent, loggerLogger)
+	aiHandler := controller.NewAI(aiService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, aiHandler, messageHandler, sheetV2Handler)
 	app := &App{
 		r: engine,
 	}

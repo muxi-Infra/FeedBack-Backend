@@ -17,7 +17,10 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
 	swag controller.SwagHandler,
-	sh controller.SheetV1Handler, ah controller.AuthHandler, mh controller.MessageHandler,
+	sh controller.SheetV1Handler,
+	ah controller.AuthHandler,
+	aih controller.AIHandler,
+	mh controller.MessageHandler,
 	shV2 controller.SheetV2Handler,
 ) *gin.Engine {
 	gin.ForceConsoleColor()
@@ -40,6 +43,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
+	RegisterAIRouter(apiV1, aih)
 	RegisterAuthRouter(apiV1, ah)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
 	RegisterMessageRouter(apiV1, mh)

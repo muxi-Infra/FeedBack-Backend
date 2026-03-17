@@ -4,6 +4,7 @@ import (
 	"github.com/google/wire"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"gorm.io/gorm"
 )
@@ -13,6 +14,7 @@ var ProviderSet = wire.NewSet(DaoSet, CacheSet)
 var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
 	dao.NewSheetDAO,
+	es.NewFAQESRepo,
 )
 
 var CacheSet = wire.NewSet(

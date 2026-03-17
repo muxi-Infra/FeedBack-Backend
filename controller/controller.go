@@ -8,4 +8,5 @@ var ProviderSet = wire.NewSet(
 	NewSheet,
 	NewSheetV2,
 	NewMessage,
+	NewAI,
 )

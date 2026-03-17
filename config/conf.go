@@ -30,6 +30,8 @@ var ProviderSet = wire.NewSet(
 	NewLimiterConfig,
 	NewBasicAuthConfig,
 	NewLogConfig,
+	NewESConfig,
+	NewAIConfig,
 )
 
 var vp *viper.Viper
@@ -384,4 +386,39 @@ func NewBasicAuthConfig() []BasicAuthConfig {
 		}
 	}
 	return users
+}
+
+type ESConfig struct {
+	Addresses []string `yaml:"addresses"`
+	Username  string   `yaml:"username"`
+	Password  string   `yaml:"password"`
+	CloudID   string   `yaml:"cloud_id"`
+	APIKey    string   `yaml:"api_key"`
+}
+
+func NewESConfig() *ESConfig {
+	esConfig := &ESConfig{}
+	err := vp.UnmarshalKey("es", &esConfig)
+	if err != nil {
+		panic(fmt.Sprintf("无法解析 ES 配置: %v", err))
+	}
+
+	return esConfig
+}
+
+type AIConfig struct {
+	APIKey         string `yaml:"api_key" `
+	Model          string `yaml:"model"`
+	BaseURL        string `yaml:"base_url"`
+	EmbedModelPath string `yaml:"embed_model_path"`
+}
+
+func NewAIConfig() *AIConfig {
+	aiConfig := &AIConfig{}
+	err := vp.UnmarshalKey("ai", aiConfig)
+	if err != nil {
+		panic(fmt.Errorf("无法解析 AI 配置: %w", err))
+	}
+
+	return aiConfig
 }
