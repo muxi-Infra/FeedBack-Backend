@@ -13,17 +13,23 @@ var (
 
 	//go:embed scripts/inc_a_and_get_b.lua
 	incAAndGetBScriptSrc string
+
+	//go:embed scripts/get_a_and_get_b.lua
+	getAAndGetBScriptSrc string
 )
 
 type FAQResolutionStateCache interface {
 	IncAAndGetB(keyA, keyB string) (uint64, uint64, error)
 	IncAAndDecB(keyA, keyB string) (uint64, uint64, error)
+	GetAAndGetB(keyA, keyB string) (uint64, uint64, error)
+	Delete(keys ...string) error
 }
 
 type faqResolutionStateCache struct {
 	cache             redis.Cmdable
 	incAAndDecBScript *redis.Script
 	incAAndGetBScript *redis.Script
+	getAAndGetBScript *redis.Script
 }
 
 func NewFAQResolutionStateCache(cache *redis.Client) FAQResolutionStateCache {
@@ -31,6 +37,7 @@ func NewFAQResolutionStateCache(cache *redis.Client) FAQResolutionStateCache {
 		cache:             cache,
 		incAAndDecBScript: redis.NewScript(incAAndDecBScriptSrc),
 		incAAndGetBScript: redis.NewScript(incAAndGetBScriptSrc),
+		getAAndGetBScript: redis.NewScript(getAAndGetBScriptSrc),
 	}
 }
 
@@ -61,4 +68,27 @@ func (c *faqResolutionStateCache) IncAAndDecB(keyA, keyB string) (uint64, uint64
 	b := uint64(vals[1].(int64))
 
 	return a, b, nil
+}
+
+func (c *faqResolutionStateCache) GetAAndGetB(keyA, keyB string) (uint64, uint64, error) {
+	ctx := context.Background()
+	res, err := c.getAAndGetBScript.Run(ctx, c.cache, []string{keyA, keyB}).Result()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	vals := res.([]interface{})
+	a := uint64(vals[0].(int64))
+	b := uint64(vals[1].(int64))
+
+	return a, b, nil
+}
+
+func (c *faqResolutionStateCache) Delete(keys ...string) error {
+	if len(keys) == 0 {
+		return nil
+	}
+
+	err := c.cache.Del(context.Background(), keys...).Err()
+	return err
 }

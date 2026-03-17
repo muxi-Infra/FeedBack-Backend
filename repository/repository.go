@@ -15,6 +15,7 @@ var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
 	dao.NewSheetDAO,
 	es.NewFAQESRepo,
+	dao.NewFAQDAO,
 )
 
 var CacheSet = wire.NewSet(
@@ -25,6 +26,7 @@ func InitTables(db *gorm.DB) error {
 	models := []any{
 		&model.FAQResolution{},
 		&model.Sheet{},
+		&model.FAQRecord{},
 	}
 
 	return db.AutoMigrate(models...)
