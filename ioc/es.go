@@ -5,17 +5,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 )
 
 func InitESClient(cfg *config.ESConfig) (*elasticsearch.Client, error) {
 	esCfg := elasticsearch.Config{
-		Addresses: cfg.Addresses,
+		Addresses: []string{cfg.URL},
 		Username:  cfg.Username,
 		Password:  cfg.Password,
-		CloudID:   cfg.CloudID,
-		APIKey:    cfg.APIKey,
 		// 配置传输层，处理长连接和 TLS
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost:   10,

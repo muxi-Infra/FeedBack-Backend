@@ -389,11 +389,9 @@ func NewBasicAuthConfig() []BasicAuthConfig {
 }
 
 type ESConfig struct {
-	Addresses []string `yaml:"addresses"`
-	Username  string   `yaml:"username"`
-	Password  string   `yaml:"password"`
-	CloudID   string   `yaml:"cloud_id"`
-	APIKey    string   `yaml:"api_key"`
+	URL      string `yaml:"url"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 func NewESConfig() *ESConfig {
@@ -407,10 +405,10 @@ func NewESConfig() *ESConfig {
 }
 
 type AIConfig struct {
-	APIKey         string `yaml:"api_key" `
-	Model          string `yaml:"model"`
-	BaseURL        string `yaml:"base_url"`
-	EmbedModelPath string `yaml:"embed_model_path"`
+	APIKey   string `yaml:"api_key" `
+	Model    string `yaml:"model"`
+	BaseURL  string `yaml:"base_url"`
+	EmbedURL string `yaml:"embed_url"`
 }
 
 func NewAIConfig() *AIConfig {

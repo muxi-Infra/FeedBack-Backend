@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/cloudwego/eino/components/embedding"
+	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/components/tool/utils"
 	"github.com/cloudwego/eino/schema"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
@@ -45,7 +46,7 @@ func (t *FAQSearchTool) Info(ctx context.Context) (*schema.ToolInfo, error) {
 }
 
 // InvokableRun 是核心执行逻辑
-func (t *FAQSearchTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...any) (string, error) {
+func (t *FAQSearchTool) InvokableRun(ctx context.Context, argumentsInJSON string, opts ...tool.Option) (string, error) {
 	// 1. 解析 LLM 传入的 JSON 参数
 	var input FAQSearchInput
 	if err := json.Unmarshal([]byte(argumentsInJSON), &input); err != nil {

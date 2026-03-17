@@ -42,15 +42,16 @@ type LocalPureGoEmbedder struct {
 // NewLocalPureGoEmbedder 初始化本地纯 Go 向量化组件
 // modelPath: 你下载的 .llamafile
 // 下载的模型git clone https://huggingface.co/thenlper/gte-small-zh
-func NewLocalPureGoEmbedder(ctx context.Context, modelPath string) (*LocalPureGoEmbedder, error) {
+func NewLocalPureGoEmbedder(ctx context.Context, baseUrl string) (*LocalPureGoEmbedder, error) {
 	// 使用 chromem 提供的 llamafile 适配器
 	// 它会通过命令行启动一个极其轻量的本地服务来处理计算，而不需要你安装重量级的环境
-	embFunc := chromem.NewEmbeddingFuncLocalAI(modelPath)
+	normalized := true
+	embFunc := chromem.NewEmbeddingFuncOpenAICompat(baseUrl, "", "", &normalized)
 
 	// 验证模型是否能正常响应 (可选)
 	_, err := embFunc(ctx, "test")
 	if err != nil {
-		return nil, fmt.Errorf("无法加载本地模型，请确认 llamafile 路径正确且可执行: %w", err)
+		return nil, fmt.Errorf("无法访问emb模型,请检查是否正常: %w", err)
 	}
 
 	return &LocalPureGoEmbedder{

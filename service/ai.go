@@ -7,21 +7,40 @@ import (
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
 )
 
 type AIService interface {
 	Query(ctx context.Context, query string) (string, error)
+	Insert(ctx context.Context) error
 }
 
 type AIServiceImpl struct {
-	agent *react.Agent
-	log   logger.Logger
+	agent  *react.Agent
+	log    logger.Logger
+	faqDAO dao.FAQResolutionDAO
+	esDAO  es.FAQESRepo
 }
 
-func NewAIService(agent *react.Agent, log logger.Logger) AIService {
+func (s *AIServiceImpl) Insert(ctx context.Context) error {
+	user, err := s.faqDAO.ListResolutionsByUser()
+	if err != nil {
+		return err
+	}
+}
+
+func NewAIService(
+	agent *react.Agent,
+	log logger.Logger,
+	faqDAO dao.FAQResolutionDAO,
+	esDAO es.FAQESRepo,
+) AIService {
 	return &AIServiceImpl{
-		agent: agent,
-		log:   log,
+		agent:  agent,
+		log:    log,
+		faqDAO: faqDAO,
+		esDAO:  esDAO,
 	}
 }
 

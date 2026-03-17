@@ -10,13 +10,13 @@ import (
 
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 
-	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esapi"
+	"github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
 )
 
 // 定义索引名称和 Mapping 常量
 const (
-	faqIndexName = "faq_resolution_vector"
+	faqIndexName = "feedback_faq_resolution_vector"
 	faqMapping   = `{
   "mappings": {
     "properties": {

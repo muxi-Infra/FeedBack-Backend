@@ -31,11 +31,11 @@ func InitChatModel(cfg *config.AIConfig) (model.ToolCallingChatModel, error) {
 // InitLocalEmbedder 初始化本地向量化模型 (gte-small-zh)
 func InitLocalEmbedder(cfg *config.AIConfig) (embedding.Embedder, error) {
 	ctx := context.Background()
-	if cfg.EmbedModelPath == "" {
+	if cfg.EmbedURL == "" {
 		return nil, fmt.Errorf("local model path is required for embedding")
 	}
 
-	emb, err := ai.NewLocalPureGoEmbedder(ctx, cfg.EmbedModelPath)
+	emb, err := ai.NewLocalPureGoEmbedder(ctx, cfg.EmbedURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize local embedder: %w", err)
 	}
