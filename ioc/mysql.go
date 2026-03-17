@@ -25,7 +25,7 @@ func InitMysql(cfg *config.MysqlConfig) *gorm.DB {
 				SlowThreshold:             200 * time.Millisecond, // 慢 SQL 阈值
 				LogLevel:                  logger.Warn,            // 日志级别
 				IgnoreRecordNotFoundError: true,                   // 是否忽略记录未找到错误
-				Colorful:                  true,                   // 是否彩色打印
+				Colorful:                  false,                  // 是否彩色打印
 			},
 		),
 	})

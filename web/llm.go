@@ -6,8 +6,8 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 )
 
-func RegisterAIRouter(r *gin.RouterGroup, ah controller.AIHandler) {
-	c := r.Group("/ai")
+func RegisterAIRouter(r *gin.RouterGroup, ah controller.ChatHandler) {
+	c := r.Group("/llm")
 	{
 		c.POST("/query", ginx.WrapReq(ah.Query))
 	}

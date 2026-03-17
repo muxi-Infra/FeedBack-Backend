@@ -591,9 +591,20 @@
                         "required": true
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "需要查询的字段名",
+                        "name": "record_names",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
                         "type": "string",
-                        "description": "记录 ID",
-                        "name": "record_id",
+                        "description": "学号，用于标记用户身份",
+                        "name": "student_id",
                         "in": "query",
                         "required": true
                     },
@@ -771,6 +782,128 @@
                 }
             }
         },
+        "/api/v2/sheet/records/faq": {
+            "get": {
+                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "查询FAQ问题记录",
+                "operationId": "get-faq-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "学号，用于标记用户身份",
+                        "name": "student_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "name": "table_identify",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回单条记录的字段键值对",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v2.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "标记FAQ问题解决状态",
+                "operationId": "update-faq-resolution",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "更新FAQ解决状态请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v2.FAQResolutionUpdateReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功更新FAQ解决状态",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误或飞书接口调用失败",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/sheet/sync": {
             "post": {
                 "description": "同步指定表格下 is_synced = false 的所有记录，用于后台增量同步。",
@@ -837,6 +970,54 @@
                 }
             }
         },
+        "/api/v2/sheet/sync/faq": {
+            "post": {
+                "description": "同步某表格下的FAQ问题记录及其解决状态，用于后台增量同步或修复数据。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SheetV2"
+                ],
+                "summary": "同步FAQ问题记录",
+                "operationId": "sync-faq-record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "同步FAQ记录请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v2.SyncFaqRecordReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功同步FAQ记录",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "服务器内部错误",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v2/sheet/sync/force": {
             "post": {
                 "description": "同步某表格下的所有记录（不区分是否已同步），用于全量重建或修复数据。慎用！！！",
@@ -849,7 +1030,7 @@
                 "tags": [
                     "SheetV2"
                 ],
-                "summary": "强制同步用户记录",
+                "summary": "强制同步表格所有记录",
                 "operationId": "force-sync-table-records",
                 "parameters": [
                     {
@@ -971,6 +1152,21 @@
         }
     },
     "definitions": {
+        "domain.FAQTableRecord": {
+            "type": "object",
+            "properties": {
+                "is_resolved": {
+                    "type": "string"
+                },
+                "record": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "record_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.TableRecord": {
             "type": "object",
             "properties": {
@@ -1223,6 +1419,29 @@
                 }
             }
         },
+        "v2.FAQResolutionUpdateReq": {
+            "type": "object",
+            "required": [
+                "is_resolved",
+                "record_id",
+                "table_identify",
+                "user_id"
+            ],
+            "properties": {
+                "is_resolved": {
+                    "type": "boolean"
+                },
+                "record_id": {
+                    "type": "string"
+                },
+                "table_identify": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "v2.ForceSyncTableRecordsReq": {
             "type": "object",
             "required": [
@@ -1289,6 +1508,17 @@
                 }
             }
         },
+        "v2.GetTableRecordByRecordIdResp": {
+            "type": "object",
+            "properties": {
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.FAQTableRecord"
+                    }
+                }
+            }
+        },
         "v2.GetTableRecordResp": {
             "type": "object",
             "properties": {
@@ -1303,6 +1533,17 @@
                     "items": {
                         "$ref": "#/definitions/domain.TableRecord"
                     }
+                }
+            }
+        },
+        "v2.SyncFaqRecordReq": {
+            "type": "object",
+            "required": [
+                "table_identify"
+            ],
+            "properties": {
+                "table_identify": {
+                    "type": "string"
                 }
             }
         },

@@ -112,6 +112,21 @@ func (mr *MockSheetServiceMockRecorder) GetFAQProblemTableRecord(arg0, arg1, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFAQProblemTableRecord", reflect.TypeOf((*MockSheetService)(nil).GetFAQProblemTableRecord), arg0, arg1, arg2)
 }
 
+// GetFAQResolutionRecord mocks base method.
+func (m *MockSheetService) GetFAQResolutionRecord(arg0 *string, arg1 *domain.TableConfig) ([]domain.FAQTableRecord, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFAQResolutionRecord", arg0, arg1)
+	ret0, _ := ret[0].([]domain.FAQTableRecord)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFAQResolutionRecord indicates an expected call of GetFAQResolutionRecord.
+func (mr *MockSheetServiceMockRecorder) GetFAQResolutionRecord(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFAQResolutionRecord", reflect.TypeOf((*MockSheetService)(nil).GetFAQResolutionRecord), arg0, arg1)
+}
+
 // GetPhotoUrl mocks base method.
 func (m *MockSheetService) GetPhotoUrl(arg0 []string) ([]domain.File, error) {
 	m.ctrl.T.Helper()
@@ -173,6 +188,20 @@ func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByUser(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByUser", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByUser), arg0, arg1, arg2, arg3)
 }
 
+// SyncFAQRecord mocks base method.
+func (m *MockSheetService) SyncFAQRecord(arg0 *domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SyncFAQRecord", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SyncFAQRecord indicates an expected call of SyncFAQRecord.
+func (mr *MockSheetServiceMockRecorder) SyncFAQRecord(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SyncFAQRecord", reflect.TypeOf((*MockSheetService)(nil).SyncFAQRecord), arg0)
+}
+
 // SyncUnsyncedTableRecords mocks base method.
 func (m *MockSheetService) SyncUnsyncedTableRecords(arg0 *domain.TableConfig) ([]string, int, bool, error) {
 	m.ctrl.T.Helper()
@@ -216,4 +245,18 @@ func (m *MockSheetService) UpdateFAQResolutionRecord(arg0 *domain.FAQResolution,
 func (mr *MockSheetServiceMockRecorder) UpdateFAQResolutionRecord(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFAQResolutionRecord", reflect.TypeOf((*MockSheetService)(nil).UpdateFAQResolutionRecord), arg0, arg1)
+}
+
+// UpdateFAQResolutionRecordV2 mocks base method.
+func (m *MockSheetService) UpdateFAQResolutionRecordV2(arg0 *domain.FAQResolutionV2, arg1 *domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateFAQResolutionRecordV2", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateFAQResolutionRecordV2 indicates an expected call of UpdateFAQResolutionRecordV2.
+func (mr *MockSheetServiceMockRecorder) UpdateFAQResolutionRecordV2(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFAQResolutionRecordV2", reflect.TypeOf((*MockSheetService)(nil).UpdateFAQResolutionRecordV2), arg0, arg1)
 }

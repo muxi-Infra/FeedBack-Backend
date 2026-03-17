@@ -34,19 +34,33 @@ func (m *MockMessageService) EXPECT() *MockMessageServiceMockRecorder {
 	return m.recorder
 }
 
-// GetCCNUBoxPendingNotifications mocks base method.
-func (m *MockMessageService) GetCCNUBoxPendingNotifications(arg0 *domain.TableConfig) ([]domain.NotificationRecipient, error) {
+// GetPendingNotifications mocks base method.
+func (m *MockMessageService) GetPendingNotifications(arg0 *domain.TableConfig) ([]domain.NotificationRecipient, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCCNUBoxPendingNotifications", arg0)
+	ret := m.ctrl.Call(m, "GetPendingNotifications", arg0)
 	ret0, _ := ret[0].([]domain.NotificationRecipient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetCCNUBoxPendingNotifications indicates an expected call of GetCCNUBoxPendingNotifications.
-func (mr *MockMessageServiceMockRecorder) GetCCNUBoxPendingNotifications(arg0 interface{}) *gomock.Call {
+// GetPendingNotifications indicates an expected call of GetPendingNotifications.
+func (mr *MockMessageServiceMockRecorder) GetPendingNotifications(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCCNUBoxPendingNotifications", reflect.TypeOf((*MockMessageService)(nil).GetCCNUBoxPendingNotifications), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingNotifications", reflect.TypeOf((*MockMessageService)(nil).GetPendingNotifications), arg0)
+}
+
+// MarkRecordNoticed mocks base method.
+func (m *MockMessageService) MarkRecordNoticed(arg0 *string, arg1 *domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkRecordNoticed", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkRecordNoticed indicates an expected call of MarkRecordNoticed.
+func (mr *MockMessageServiceMockRecorder) MarkRecordNoticed(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkRecordNoticed", reflect.TypeOf((*MockMessageService)(nil).MarkRecordNoticed), arg0, arg1)
 }
 
 // SendCCNUBoxNotification mocks base method.

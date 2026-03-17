@@ -7,10 +7,10 @@
 package main
 
 import (
-	"github.com/muxi-Infra/FeedBack-Backend/ai"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
+	"github.com/muxi-Infra/FeedBack-Backend/llm"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
@@ -50,16 +50,17 @@ func InitApp() (*App, error) {
 	db := ioc.InitMysql(mysqlConfig)
 	faqResolutionDAO := dao.NewFAQResolutionDAO(db)
 	sheetDAO := dao.NewSheetDAO(db)
+	faqdao := dao.NewFAQDAO(db)
 	faqResolutionStateCache := cache.NewFAQResolutionStateCache(client)
-	sheetService := service.NewSheetService(client2, loggerLogger, faqResolutionDAO, sheetDAO, faqResolutionStateCache)
+	sheetService := service.NewSheetService(client2, loggerLogger, faqResolutionDAO, sheetDAO, faqdao, faqResolutionStateCache)
 	larkMessage := config.NewLarkMessageConfig()
 	ccnuBoxMessage := config.NewCCNUBoxMessageConfig()
-	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage)
+	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage, sheetDAO)
 	sheetV1Handler := controller.NewSheet(sheetService, messageService)
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
 	authHandler := controller.NewAuth(jwt, authService)
-	aiConfig := config.NewAIConfig()
+	aiConfig := config.NewLLMConfig()
 	toolCallingChatModel, err := ioc.InitChatModel(aiConfig)
 	if err != nil {
 		return nil, err
@@ -77,9 +78,9 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := ai.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
-	aiService := service.NewAIService(agent, loggerLogger)
-	aiHandler := controller.NewAI(aiService)
+	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
+	aiService := service.NewChatService(agent, loggerLogger)
+	aiHandler := controller.NewChat(aiService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, aiHandler, messageHandler, sheetV2Handler)

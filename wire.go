@@ -4,10 +4,10 @@ package main
 
 import (
 	"github.com/google/wire"
-	"github.com/muxi-Infra/FeedBack-Backend/ai"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
+	"github.com/muxi-Infra/FeedBack-Backend/llm"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
@@ -34,7 +34,7 @@ func InitApp() (*App, error) {
 		middleware.NewPrometheusMiddleware,
 		middleware.NewLimitMiddleware,
 		controller.ProviderSet,
-		ai.ProviderSet,
+		llm.ProviderSet,
 		web.NewGinEngine,
 	)
 	return &App{}, nil

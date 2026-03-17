@@ -19,7 +19,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	swag controller.SwagHandler,
 	sh controller.SheetV1Handler,
 	ah controller.AuthHandler,
-	aih controller.AIHandler,
+	ch controller.ChatHandler,
 	mh controller.MessageHandler,
 	shV2 controller.SheetV2Handler,
 ) *gin.Engine {
@@ -28,8 +28,8 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 
 	// 全局中间件
 	r.Use(corsMiddleware.MiddlewareFunc())       // 跨域中间件
-	r.Use(logMiddleware.MiddlewareFunc())        // 日志中间件
 	r.Use(prometheusMiddleware.MiddlewareFunc()) // Prometheus 监控中间件
+	r.Use(logMiddleware.MiddlewareFunc())        // 日志中间件
 	r.Use(limitMiddleware.Middleware())          // 限流中间件
 
 	apiV1 := r.Group("/api/v1")
@@ -43,7 +43,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
-	RegisterAIRouter(apiV1, aih)
+	RegisterAIRouter(apiV1, ch)
 	RegisterAuthRouter(apiV1, ah)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
 	RegisterMessageRouter(apiV1, mh)

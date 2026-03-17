@@ -1,4 +1,4 @@
-package ai
+package llm
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type Config struct {
 // NewChatModel 构造一个遵循 Eino 标准接口的 ChatModel
 func NewChatModel(ctx context.Context, cfg *Config) (model.ToolCallingChatModel, error) {
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("ai config: APIKey is required")
+		return nil, fmt.Errorf("llm config: APIKey is required")
 	}
 
 	m, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{

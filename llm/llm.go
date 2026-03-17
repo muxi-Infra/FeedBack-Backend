@@ -1,4 +1,4 @@
-package ai
+package llm
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/google/wire"
-	"github.com/muxi-Infra/FeedBack-Backend/ai/agent"
-	"github.com/muxi-Infra/FeedBack-Backend/ai/prompts"
-	"github.com/muxi-Infra/FeedBack-Backend/ai/tools"
+	"github.com/muxi-Infra/FeedBack-Backend/llm/agent"
+	"github.com/muxi-Infra/FeedBack-Backend/llm/prompts"
+	"github.com/muxi-Infra/FeedBack-Backend/llm/tools"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
 )
 

@@ -15,7 +15,3 @@ type GenerateTenantToken struct {
 type RefreshTableConfigResp struct {
 	TableConfig []domain.TableConfig `json:"table_config"`
 }
-
-type AIQueryResp struct {
-	Answer string `json:"answer"` //回答的结果
-}

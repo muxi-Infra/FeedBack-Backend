@@ -22,7 +22,7 @@ import (
 
 const (
 	TenantRefreshInterval = time.Hour + 35*time.Minute
-	NoticeRefreshInterval = 4 * time.Hour
+	NoticeRefreshInterval = 10 * time.Minute
 	SyncRefreshInterval   = 4 * time.Hour
 )
 
@@ -59,6 +59,7 @@ func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c
 	}
 	s.startTenantTokenRefresher()
 	s.startNotifiableTableScanner()
+	s.startSyncTableScanner()
 
 	return s
 }
@@ -257,11 +258,9 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 
 func (t *AuthServiceImpl) startNotifiableTableScanner() {
 	ticker := time.NewTicker(NoticeRefreshInterval)
-
+	defer ticker.Stop()
 	// 生产者，定时扫描需要发送通知的表，并将其放入 noticeCh 中
 	go func() {
-		defer ticker.Stop()
-
 		for {
 			select {
 			case <-ticker.C:
@@ -291,20 +290,14 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 
 func (t *AuthServiceImpl) startSyncTableScanner() {
 	ticker := time.NewTicker(SyncRefreshInterval)
-
+	defer ticker.Stop()
 	// 生产者，定时扫描需要同步的表，并将其放入 syncTableCh 中
 	go func() {
-		defer ticker.Stop()
-
 		for {
 			select {
 			case <-ticker.C:
 				t.mutex.RLock()
 				for tableID, table := range tableCfg {
-					if !table.Notice {
-						continue
-					}
-
 					select {
 					case syncTableCh <- table:
 						t.log.Info("sync table queued",

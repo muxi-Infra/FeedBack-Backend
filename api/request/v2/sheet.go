@@ -26,3 +26,21 @@ type ForceSyncUserTableRecordsReq struct {
 type ForceSyncTableRecordsReq struct {
 	TableIdentify *string `json:"table_identify" binding:"required"`
 }
+
+// GetFAQProblemTableRecordReg 获取常见问题记录请求参数
+type GetFAQProblemTableRecordReg struct {
+	TableIdentify *string `form:"table_identify" binding:"required"`
+	StudentID     *string `form:"student_id" binding:"required"` // 学号，用于标记用户身份
+}
+
+// FAQResolutionUpdateReq 更新常见问题解决状态请求参数
+type FAQResolutionUpdateReq struct {
+	TableIdentify *string `json:"table_identify" binding:"required"`
+	RecordID      *string `json:"record_id" binding:"required"`
+	UserID        *string `json:"user_id" binding:"required"`
+	IsResolved    *bool   `json:"is_resolved" binding:"required"`
+}
+
+type SyncFaqRecordReq struct {
+	TableIdentify *string `json:"table_identify" binding:"required"`
+}
