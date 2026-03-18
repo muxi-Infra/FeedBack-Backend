@@ -73,6 +73,11 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 		for {
 			select {
 			case msg := <-syncCh:
+				s.log.Info("received sync message",
+					logger.String("table_identity", *msg.TableConfig.TableIdentity),
+					logger.Int("record_count", len(msg.RecordIDs)),
+				)
+
 				// 同步反馈记录
 				// 飞书 -> 数据库
 				// 这是对 case table := <-syncTableCh 的聚合处理，减少 API 的使用量
@@ -84,8 +89,15 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 					)
 				}
 			case table := <-syncTableCh:
+				s.log.Info("received sync table",
+					logger.String("table_identity", *table.TableIdentity),
+				)
+
 				// 获取带同步表格标识，区分常见问题表格和反馈记录表格
 				if bytes.Contains([]byte(*table.TableIdentity), []byte("-faq")) {
+					s.log.Info("received table faq record",
+						logger.String("table_identity", *table.TableIdentity),
+					)
 					// 同步常见问题中 解决/未解决 数量
 					// redis -> 飞书
 					err := s.SyncFAQRecord(&table)
@@ -96,6 +108,9 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 						)
 					}
 				} else {
+					s.log.Info("received table table record",
+						logger.String("table_identity", *table.TableIdentity),
+					)
 					// 同步反馈记录
 					// 飞书 -> 数据库
 					_, _, _, err := s.SyncUnsyncedTableRecords(&table)

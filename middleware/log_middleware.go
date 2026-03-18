@@ -26,6 +26,11 @@ func (lm *LoggerMiddleware) MiddlewareFunc() gin.HandlerFunc {
 		path := ctx.Request.URL.Path
 		ctx.Next() // 处理请求
 
+		// 跳过对 /api/v1/metrics 的日志记录
+		if path == "/api/v1/metrics" {
+			return
+		}
+
 		cost := time.Since(start)
 		if len(ctx.Errors) > 0 {
 			// 有错误记录错误日志
