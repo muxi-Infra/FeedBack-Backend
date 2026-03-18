@@ -60,7 +60,7 @@ func InitApp() (*App, error) {
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
 	authHandler := controller.NewAuth(jwt, authService)
-	aiConfig := config.NewAIConfig()
+	aiConfig := config.NewLLMConfig()
 	toolCallingChatModel, err := ioc.InitChatModel(aiConfig)
 	if err != nil {
 		return nil, err

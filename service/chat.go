@@ -25,6 +25,16 @@ type ChatServiceImpl struct {
 	embedder embedding.Embedder
 }
 
+func NewChatService(agent *react.Agent, log logger.Logger, faqDAO dao.FAQDAO, esDAO es.FAQESRepo, embedder embedding.Embedder) ChatService {
+	return &ChatServiceImpl{
+		agent:    agent,
+		log:      log,
+		faqDAO:   faqDAO,
+		esDAO:    esDAO,
+		embedder: embedder,
+	}
+}
+
 func (s *ChatServiceImpl) Insert(ctx context.Context, tableIdentify string) error {
 	records, err := s.faqDAO.GetFAQRecords(&tableIdentify)
 	if err != nil {
@@ -47,22 +57,6 @@ func (s *ChatServiceImpl) Insert(ctx context.Context, tableIdentify string) erro
 	}
 
 	return nil
-}
-
-func NewChatService(
-	agent *react.Agent,
-	log logger.Logger,
-	faqDAO dao.FAQDAO,
-	esDAO es.FAQESRepo,
-	embedder embedding.Embedder,
-) ChatService {
-	return &ChatServiceImpl{
-		agent:    agent,
-		log:      log,
-		faqDAO:   faqDAO,
-		esDAO:    esDAO,
-		embedder: embedder,
-	}
 }
 
 // Query 处理用户的提问

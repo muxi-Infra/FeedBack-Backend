@@ -31,7 +31,7 @@ var ProviderSet = wire.NewSet(
 	NewBasicAuthConfig,
 	NewLogConfig,
 	NewESConfig,
-	NewAIConfig,
+	NewLLMConfig,
 )
 
 var vp *viper.Viper
@@ -404,19 +404,19 @@ func NewESConfig() *ESConfig {
 	return esConfig
 }
 
-type AIConfig struct {
+type LLMConfig struct {
 	APIKey   string `yaml:"api_key" `
 	Model    string `yaml:"model"`
 	BaseURL  string `yaml:"base_url"`
 	EmbedURL string `yaml:"embed_url"`
 }
 
-func NewAIConfig() *AIConfig {
-	aiConfig := &AIConfig{}
-	err := vp.UnmarshalKey("ai", aiConfig)
+func NewLLMConfig() *LLMConfig {
+	llmConfig := &LLMConfig{}
+	err := vp.UnmarshalKey("llm", llmConfig)
 	if err != nil {
 		panic(fmt.Errorf("无法解析 AI 配置: %w", err))
 	}
 
-	return aiConfig
+	return llmConfig
 }

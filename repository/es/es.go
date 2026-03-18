@@ -39,7 +39,7 @@ const (
 }`
 )
 
-// ES 文档结构（必须扁平）
+// FAQRecordDoc ES 文档结构（必须扁平）
 type FAQRecordDoc struct {
 	ID              uint64         `json:"id"`
 	TableIdentify   *string        `json:"table_identify"`
@@ -106,7 +106,7 @@ func (r *FAQESRepo) ensureIndex(ctx context.Context) error {
 	return nil
 }
 
-// 写入 ES（带向量）
+// SaveWithVector 写入 ES（带向量）
 func (r *FAQESRepo) SaveWithVector(ctx context.Context, data *model.FAQRecord, vector []float64) error {
 	doc := &FAQRecordDoc{
 		ID:              data.ID,
@@ -145,7 +145,7 @@ func (r *FAQESRepo) SaveWithVector(ctx context.Context, data *model.FAQRecord, v
 	return nil
 }
 
-// ✅ ES7 向量搜索（script_score）
+// SearchSimilarFAQ ES7 向量搜索（script_score）
 func (r *FAQESRepo) SearchSimilarFAQ(ctx context.Context, vector []float64, topK int) ([]*model.FAQRecord, error) {
 	query := map[string]any{
 		"size": topK,
@@ -186,7 +186,7 @@ func (r *FAQESRepo) SearchSimilarFAQ(ctx context.Context, vector []float64, topK
 	return r.parseHits(res.Body)
 }
 
-// ✅ 解析返回
+// 解析返回
 func (r *FAQESRepo) parseHits(body io.Reader) ([]*model.FAQRecord, error) {
 	var response struct {
 		Hits struct {
