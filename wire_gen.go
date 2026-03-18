@@ -79,7 +79,8 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
-	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder)
+	chatCache := cache.NewChatCache(client)
+	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder, chatCache)
 	chatHandler := controller.NewChat(chatService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)

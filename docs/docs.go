@@ -206,6 +206,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/llm/history": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根据当前用户的身份标识和请求的 UserID，从 Redis 缓存（或 DB）中拉取完整的对话上下文",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "查询聊天历史",
+                "operationId": "llm-get-history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "返回完整的 Conversation 对象（含 Messages）",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.GetHistoryResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "会话已过期或不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "缓存查询异常",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/llm/insert": {
             "post": {
                 "description": "将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）",
@@ -1265,6 +1326,36 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.Conversation": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_message": {
+                    "description": "冗余一些统计信息，方便在列表页展示",
+                    "type": "string"
+                },
+                "message_count": {
+                    "type": "integer"
+                },
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Message"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.FAQTableRecord": {
             "type": "object",
             "properties": {
@@ -1279,6 +1370,55 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "domain.Message": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "消息文本内容",
+                    "type": "string"
+                },
+                "conversation_id": {
+                    "description": "所属会话 ID",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "基础字段",
+                    "type": "string"
+                },
+                "metadata": {
+                    "description": "扩展字段 (Metadata)\n使用 map[string]any 可以灵活存储：Token 消耗、模型名称、耗时、引用来源等",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "role": {
+                    "description": "角色: system/user/assistant",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.Role"
+                        }
+                    ]
+                }
+            }
+        },
+        "domain.Role": {
+            "type": "string",
+            "enum": [
+                "system",
+                "user",
+                "assistant",
+                "tool"
+            ],
+            "x-enum-varnames": [
+                "RoleSystem",
+                "RoleUser",
+                "RoleAssistant",
+                "RoleTool"
+            ]
         },
         "domain.TableRecord": {
             "type": "object",
@@ -1307,11 +1447,15 @@ const docTemplate = `{
         "v1.ChatQueryReq": {
             "type": "object",
             "required": [
-                "query"
+                "query",
+                "user_id"
             ],
             "properties": {
                 "query": {
                     "description": "用户的问题描述",
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -1426,6 +1570,14 @@ const docTemplate = `{
             "properties": {
                 "access_token": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.GetHistoryResp": {
+            "type": "object",
+            "properties": {
+                "conversation": {
+                    "$ref": "#/definitions/domain.Conversation"
                 }
             }
         },

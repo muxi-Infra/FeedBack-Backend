@@ -10,7 +10,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/llm"
 )
 
-func InitChatModel(cfg *config.AIConfig) (model.ToolCallingChatModel, error) {
+func InitChatModel(cfg *config.LLMConfig) (model.ToolCallingChatModel, error) {
 	ctx := context.Background()
 
 	// 转换配置格式
@@ -29,7 +29,7 @@ func InitChatModel(cfg *config.AIConfig) (model.ToolCallingChatModel, error) {
 }
 
 // InitLocalEmbedder 初始化本地向量化模型 (gte-small-zh)
-func InitLocalEmbedder(cfg *config.AIConfig) (embedding.Embedder, error) {
+func InitLocalEmbedder(cfg *config.LLMConfig) (embedding.Embedder, error) {
 	ctx := context.Background()
 	if cfg.EmbedURL == "" {
 		return nil, fmt.Errorf("local model path is required for embedding")

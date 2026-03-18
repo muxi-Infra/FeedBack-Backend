@@ -43,7 +43,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
-	RegisterAIRouter(apiV1, ch)
+	RegisterAIRouter(apiV1, ch, authMiddleware.MiddlewareFunc())
 	RegisterAuthRouter(apiV1, ah)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
 	RegisterMessageRouter(apiV1, mh)
