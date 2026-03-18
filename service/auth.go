@@ -258,9 +258,9 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 
 func (t *AuthServiceImpl) startNotifiableTableScanner() {
 	ticker := time.NewTicker(NoticeRefreshInterval)
-	defer ticker.Stop()
 	// 生产者，定时扫描需要发送通知的表，并将其放入 noticeCh 中
 	go func() {
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
@@ -290,9 +290,9 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 
 func (t *AuthServiceImpl) startSyncTableScanner() {
 	ticker := time.NewTicker(SyncRefreshInterval)
-	defer ticker.Stop()
 	// 生产者，定时扫描需要同步的表，并将其放入 syncTableCh 中
 	go func() {
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
