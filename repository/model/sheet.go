@@ -13,8 +13,8 @@ type Sheet struct {
 	Record   map[string]any `gorm:"column:record;not null;type:json;serializer:json"`
 	ShareUrl *string        `gorm:"column:share_url;type:varchar(255);"`
 
-	IsNoticed bool `gorm:"type:tinyint(1);column:is_noticed;not null;default:false;index:idx_table_notice,priority:2"`
-	IsSynced  bool `gorm:"type:tinyint(1);column:is_synced;not null;default:false;index:idx_table_sync,priority:2"`
+	IsNoticed bool `gorm:"type:tinyint(1);column:is_noticed;not null;default:false;index:idx_table_notice,priority:3"`
+	IsSynced  bool `gorm:"type:tinyint(1);column:is_synced;not null;default:false;index:idx_table_sync,priority:2;index:idx_table_notice,priority:2"`
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
