@@ -79,11 +79,11 @@ func InitApp() (*App, error) {
 		return nil, err
 	}
 	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
-	aiService := service.NewChatService(agent, loggerLogger)
-	aiHandler := controller.NewChat(aiService)
+	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder)
+	chatHandler := controller.NewChat(chatService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, aiHandler, messageHandler, sheetV2Handler)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, chatHandler, messageHandler, sheetV2Handler)
 	app := &App{
 		r: engine,
 	}

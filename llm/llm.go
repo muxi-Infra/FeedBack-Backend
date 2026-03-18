@@ -19,10 +19,10 @@ var ProviderSet = wire.NewSet(NewCustomerServiceReact)
 func NewCustomerServiceReact(
 	m model.ToolCallingChatModel,
 	embedder embedding.Embedder,
-	repo *es.FAQESRepo,
+	repo es.FAQESRepo,
 ) *react.Agent {
 
-	faqTool := tools.NewFAQSearchTool(embedder, repo)
+	faqTool := tools.NewFAQSearchTool(embedder, &repo)
 
 	buildReact, err := agent.BuildReact(context.Background(), m, []tool.BaseTool{faqTool}, 5, prompts.CustomerServicePersona)
 	if err != nil {

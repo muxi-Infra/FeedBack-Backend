@@ -10,5 +10,6 @@ func RegisterAIRouter(r *gin.RouterGroup, ah controller.ChatHandler) {
 	c := r.Group("/llm")
 	{
 		c.POST("/query", ginx.WrapReq(ah.Query))
+		c.POST("/insert", ginx.WrapReq(ah.Insert))
 	}
 }

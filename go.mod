@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/cloudwego/eino v0.8.2
 	github.com/cloudwego/eino-ext/components/model/openai v0.1.9
+	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/elastic/go-elasticsearch/v8 v8.19.3
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
@@ -12,6 +13,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang/mock v1.6.0
 	github.com/google/wire v0.7.0
+	github.com/joho/godotenv v1.5.1
 	github.com/larksuite/oapi-sdk-go/v3 v3.4.13
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
 	github.com/natefinch/lumberjack v2.0.0+incompatible

@@ -26,6 +26,20 @@ definitions:
       msg:
         type: string
     type: object
+  v1.ChatQueryReq:
+    properties:
+      query:
+        description: 用户的问题描述
+        type: string
+    required:
+    - query
+    type: object
+  v1.ChatQueryResp:
+    properties:
+      answer:
+        description: 回答的结果
+        type: string
+    type: object
   v1.CreatTableRecordReg:
     properties:
       contact_info:
@@ -133,6 +147,14 @@ definitions:
         allOf:
         - $ref: '#/definitions/v1.SystemStats'
         description: System 系统资源使用情况
+    type: object
+  v1.InsertReq:
+    properties:
+      tableIdentify:
+        description: 用户的问题描述
+        type: string
+    required:
+    - tableIdentify
     type: object
   v1.ProcessStats:
     properties:
@@ -409,6 +431,73 @@ paths:
       summary: 系统健康检查
       tags:
       - Health
+  /api/v1/llm/insert:
+    post:
+      consumes:
+      - application/json
+      description: 将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）
+      operationId: llm-insert
+      parameters:
+      - description: 插入请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.InsertReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 插入成功
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 插入 FAQ 数据
+      tags:
+      - Chat
+  /api/v1/llm/query:
+    post:
+      consumes:
+      - application/json
+      description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
+      operationId: llm-query
+      parameters:
+      - description: Chat 查询请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.ChatQueryReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回 Chat 答复
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.ChatQueryResp'
+              type: object
+        "400":
+          description: 请求参数错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: AI 客服咨询
+      tags:
+      - Chat
   /api/v1/message/trigger:
     post:
       consumes:

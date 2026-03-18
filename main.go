@@ -2,10 +2,16 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
+
+func init() {
+	// 预加载.env文件,用于本地开发
+	_ = godotenv.Load()
+}
 
 // @title		木犀反馈系统 API
 // @version	1.0
