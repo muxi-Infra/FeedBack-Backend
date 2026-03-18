@@ -515,8 +515,8 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	}
 
 	// 5. 生成 Redis 缓存 key
-	resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
-	unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
+	resolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
+	unresolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
 
 	// 6. 使用 Lua 脚本原子性更新 Redis 计数器
 	var resolvedCount, unresolvedCount uint64
@@ -1017,8 +1017,8 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQRes
 	}
 
 	// 5. 生成 Redis 缓存 key
-	resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
-	unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
+	resolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusResolved)
+	unresolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, *resolution.RecordID, StatusUnresolved)
 
 	// 6. 使用 Lua 脚本原子性更新 Redis 计数器
 	if isFirstChoice {
@@ -1134,8 +1134,8 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 	// 3 同步 record + 更新 Redis 计数器
 	for recordID, fields := range larkResp {
 		// Redis vote
-		resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusResolved)
-		unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
+		resolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusResolved)
+		unresolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
 
 		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(resolvedKey, unresolvedKey)
 
@@ -1217,8 +1217,8 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 
 			// 2 删除 Redis
 			redisKeys = append(redisKeys,
-				fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusResolved),
-				fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusUnresolved),
+				fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusResolved),
+				fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusUnresolved),
 			)
 		}
 	}
