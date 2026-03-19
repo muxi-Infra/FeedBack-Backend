@@ -60,12 +60,12 @@ func InitApp() (*App, error) {
 	baseTable := config.NewBaseTable()
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger)
 	authHandler := controller.NewAuth(jwt, authService)
-	aiConfig := config.NewLLMConfig()
-	toolCallingChatModel, err := ioc.InitChatModel(aiConfig)
+	llmConfig := config.NewLLMConfig()
+	toolCallingChatModel, err := ioc.InitChatModel(llmConfig)
 	if err != nil {
 		return nil, err
 	}
-	embedder, err := ioc.InitLocalEmbedder(aiConfig)
+	embedder, err := ioc.InitLocalEmbedder(llmConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,11 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
+	feedbackESRepo, err := es.NewFeedbackESRepo(elasticsearchClient)
+	if err != nil {
+		return nil, err
+	}
+	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo)
 	chatCache := cache.NewChatCache(client)
 	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder, chatCache)
 	chatHandler := controller.NewChat(chatService)
