@@ -84,6 +84,9 @@ func InitApp() (*App, error) {
 	}
 	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo)
 	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder)
+	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
+	chatCache := cache.NewChatCache(client)
+	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder, chatCache)
 	chatHandler := controller.NewChat(chatService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)

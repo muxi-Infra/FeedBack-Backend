@@ -6,10 +6,11 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 )
 
-func RegisterAIRouter(r *gin.RouterGroup, ah controller.ChatHandler) {
+func RegisterAIRouter(r *gin.RouterGroup, ah controller.ChatHandler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/llm")
 	{
-		c.POST("/query", ginx.WrapReq(ah.Query))
+		c.POST("/query", authMiddleware, ginx.WrapClaimsAndReq(ah.Query))
 		c.POST("/insert", ginx.WrapReq(ah.Insert))
+		c.GET("/history", authMiddleware, ginx.WrapClaimsAndReq(ah.GetHistory))
 	}
 }
