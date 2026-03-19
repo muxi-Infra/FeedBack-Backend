@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/go-redis/redis/v8"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 )
@@ -15,7 +16,7 @@ const ConversationExpiration = 1 * time.Hour
 type ChatCache interface {
 	Exists(ctx context.Context, convID string) (bool, error) // 新增
 	SetConversationMeta(ctx context.Context, conv *model.Conversation) error
-	PushMessage(ctx context.Context, convID string, msg model.Message) error
+	PushMessage(ctx context.Context, convID string, msg *schema.Message) error
 	GetFullConversation(ctx context.Context, convID string) (*model.Conversation, error)
 	DeleteConversation(ctx context.Context, convID string) error
 }
@@ -42,7 +43,7 @@ func (c *chatCache) SetConversationMeta(ctx context.Context, conv *model.Convers
 	return c.client.Set(ctx, key, data, ConversationExpiration).Err()
 }
 
-func (c *chatCache) PushMessage(ctx context.Context, convID string, msg model.Message) error {
+func (c *chatCache) PushMessage(ctx context.Context, convID string, msg *schema.Message) error {
 	listKey := c.GetFullKey("list:" + convID)
 	metaKey := c.GetFullKey("meta:" + convID)
 	data, err := json.Marshal(msg)
@@ -93,7 +94,7 @@ func (c *chatCache) GetFullConversation(ctx context.Context, convID string) (*mo
 		return nil, fmt.Errorf("fetch messages error: %w", err)
 	}
 
-	messages := make([]model.Message, len(listData))
+	messages := make([]*schema.Message, len(listData))
 	for i, str := range listData {
 		if err := json.Unmarshal([]byte(str), &messages[i]); err != nil {
 			return nil, err
