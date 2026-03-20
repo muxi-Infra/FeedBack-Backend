@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
@@ -18,7 +19,6 @@ func BuildReact(
 	maxStep int,
 	systemPrompt string,
 ) (*react.Agent, error) {
-
 	// 创建 agent
 	agent, err := react.NewAgent(ctx, &react.AgentConfig{
 		ToolCallingModel: m,
@@ -32,6 +32,31 @@ func BuildReact(
 			res = append(res, schema.SystemMessage(systemPrompt))
 			res = append(res, input...)
 			return res
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return agent, nil
+}
+
+func BuildChat(
+	ctx context.Context,
+	m model.ToolCallingChatModel,
+	tools []tool.BaseTool,
+	maxStep int,
+	systemPrompt string,
+) (*adk.ChatModelAgent, error) {
+	agent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+		Model:         m,
+		MaxIterations: maxStep,
+		Middlewares: []adk.AgentMiddleware{{
+			BeforeChatModel: func(ctx context.Context, state *adk.ChatModelAgentState) error {
+				state.Messages = append(state.Messages, schema.SystemMessage(systemPrompt))
+				return nil
+			},
+		},
 		},
 	})
 	if err != nil {

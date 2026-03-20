@@ -23,7 +23,7 @@ model.eval()
 print("[INFO] Model loaded successfully")
 
 
-# ✅ 完全兼容 OpenAI
+# 完全兼容 OpenAI
 class EmbeddingRequest(BaseModel):
     input: Union[str, List[str]]
     model: Optional[str] = None
@@ -36,7 +36,7 @@ def health():
 
 @app.post("/v1/embeddings")
 def embeddings(req: EmbeddingRequest):
-    # 👉 统一成 list
+    # 统一成 list
     if isinstance(req.input, str):
         texts = [req.input]
     else:
@@ -57,7 +57,7 @@ def embeddings(req: EmbeddingRequest):
         embeddings = outputs.last_hidden_state[:, 0]
         embeddings = F.normalize(embeddings, p=2, dim=1)
 
-    # ✅ OpenAI 返回格式
+    # OpenAI 返回格式
     data = []
     for i, emb in enumerate(embeddings):
         data.append({

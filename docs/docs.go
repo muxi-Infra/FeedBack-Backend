@@ -206,6 +206,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/llm/conversation": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "获取/激活会话",
+                "operationId": "llm-get-conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "返回会话元数据",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.GetConversationResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "未授权",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "查询异常",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/llm/history": {
             "get": {
                 "security": [
@@ -213,7 +274,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "根据当前用户的身份标识和请求的 UserID，从 Redis 缓存（或 DB）中拉取完整的对话上下文",
+                "description": "根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文",
                 "consumes": [
                     "application/json"
                 ],
@@ -227,8 +288,22 @@ const docTemplate = `{
                 "operationId": "llm-get-history",
                 "parameters": [
                     {
-                        "type": "string",
-                        "name": "user_id",
+                        "type": "integer",
+                        "name": "conv_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "向上滑动用的游标",
+                        "name": "last_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每次会向上拉取更早的 limit 条记录",
+                        "name": "limit",
                         "in": "query",
                         "required": true
                     }
@@ -1333,20 +1408,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string"
-                },
-                "last_message": {
-                    "description": "冗余一些统计信息，方便在列表页展示",
-                    "type": "string"
-                },
-                "message_count": {
                     "type": "integer"
-                },
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Message"
-                    }
                 },
                 "updated_at": {
                     "type": "string"
@@ -1375,50 +1437,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
-                    "description": "消息文本内容",
                     "type": "string"
                 },
                 "conversation_id": {
-                    "description": "所属会话 ID",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "created_at": {
-                    "description": "创建时间",
                     "type": "string"
                 },
                 "id": {
-                    "description": "基础字段",
-                    "type": "string"
-                },
-                "metadata": {
-                    "description": "扩展字段 (Metadata)\n使用 map[string]any 可以灵活存储：Token 消耗、模型名称、耗时、引用来源等",
-                    "type": "object",
-                    "additionalProperties": {}
+                    "type": "integer"
                 },
                 "role": {
-                    "description": "角色: system/user/assistant",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.Role"
-                        }
-                    ]
+                    "description": "user, assistant, system",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
-        },
-        "domain.Role": {
-            "type": "string",
-            "enum": [
-                "system",
-                "user",
-                "assistant",
-                "tool"
-            ],
-            "x-enum-varnames": [
-                "RoleSystem",
-                "RoleUser",
-                "RoleAssistant",
-                "RoleTool"
-            ]
         },
         "domain.TableRecord": {
             "type": "object",
@@ -1447,15 +1484,15 @@ const docTemplate = `{
         "v1.ChatQueryReq": {
             "type": "object",
             "required": [
-                "query",
-                "user_id"
+                "conv_id",
+                "query"
             ],
             "properties": {
+                "conv_id": {
+                    "type": "integer"
+                },
                 "query": {
                     "description": "用户的问题描述",
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -1573,11 +1610,22 @@ const docTemplate = `{
                 }
             }
         },
-        "v1.GetHistoryResp": {
+        "v1.GetConversationResp": {
             "type": "object",
             "properties": {
                 "conversation": {
                     "$ref": "#/definitions/domain.Conversation"
+                }
+            }
+        },
+        "v1.GetHistoryResp": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Message"
+                    }
                 }
             }
         },
@@ -1646,7 +1694,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "tableIdentify": {
-                    "description": "用户的问题描述",
                     "type": "string"
                 }
             }
