@@ -199,14 +199,9 @@
                 }
             }
         },
-        "/api/v1/llm/history": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "根据当前用户的身份标识和请求的 UserID，从 Redis 缓存（或 DB）中拉取完整的对话上下文",
+        "/api/v1/llm/chat": {
+            "post": {
+                "description": "提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。",
                 "consumes": [
                     "application/json"
                 ],
@@ -216,43 +211,41 @@
                 "tags": [
                     "Chat"
                 ],
-                "summary": "查询聊天历史",
-                "operationId": "llm-get-history",
+                "summary": "AI 客服咨询",
+                "operationId": "llm-chat",
                 "parameters": [
                     {
                         "type": "string",
-                        "name": "user_id",
-                        "in": "query",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Chat 查询请求参数",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.ChatQueryReq"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "返回完整的 Conversation 对象（含 Messages）",
+                        "description": "成功返回 Chat 答复",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/v1.GetHistoryResp"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
-                    "404": {
-                        "description": "会话已过期或不存在",
+                    "400": {
+                        "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
-                        "description": "缓存查询异常",
+                        "description": "服务器内部错误",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -275,6 +268,13 @@
                 "summary": "插入 FAQ 数据",
                 "operationId": "llm-insert",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "插入请求参数",
                         "name": "request",
@@ -322,6 +322,13 @@
                 "summary": "AI 客服咨询",
                 "operationId": "llm-query",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "Chat 查询请求参数",
                         "name": "request",
@@ -1319,36 +1326,6 @@
         }
     },
     "definitions": {
-        "domain.Conversation": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "last_message": {
-                    "description": "冗余一些统计信息，方便在列表页展示",
-                    "type": "string"
-                },
-                "message_count": {
-                    "type": "integer"
-                },
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Message"
-                    }
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.FAQTableRecord": {
             "type": "object",
             "properties": {
@@ -1363,55 +1340,6 @@
                     "type": "string"
                 }
             }
-        },
-        "domain.Message": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "description": "消息文本内容",
-                    "type": "string"
-                },
-                "conversation_id": {
-                    "description": "所属会话 ID",
-                    "type": "string"
-                },
-                "created_at": {
-                    "description": "创建时间",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "基础字段",
-                    "type": "string"
-                },
-                "metadata": {
-                    "description": "扩展字段 (Metadata)\n使用 map[string]any 可以灵活存储：Token 消耗、模型名称、耗时、引用来源等",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "role": {
-                    "description": "角色: system/user/assistant",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.Role"
-                        }
-                    ]
-                }
-            }
-        },
-        "domain.Role": {
-            "type": "string",
-            "enum": [
-                "system",
-                "user",
-                "assistant",
-                "tool"
-            ],
-            "x-enum-varnames": [
-                "RoleSystem",
-                "RoleUser",
-                "RoleAssistant",
-                "RoleTool"
-            ]
         },
         "domain.TableRecord": {
             "type": "object",
@@ -1563,14 +1491,6 @@
             "properties": {
                 "access_token": {
                     "type": "string"
-                }
-            }
-        },
-        "v1.GetHistoryResp": {
-            "type": "object",
-            "properties": {
-                "conversation": {
-                    "$ref": "#/definitions/domain.Conversation"
                 }
             }
         },

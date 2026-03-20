@@ -14,6 +14,46 @@ import (
 
 const CTX = "claims"
 
+func WrapSSE[Req any](fn func(*gin.Context, Req, ijwt.UserClaims) error) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		if len(ctx.Errors) > 0 {
+			return
+		}
+
+		var req Req
+		if err := ctx.ShouldBind(&req); err != nil {
+			ctx.JSON(http.StatusBadRequest, response.Response{
+				Code:    http.StatusBadRequest,
+				Message: fmt.Sprintf("请求参数错误: %v", err.Error()),
+				Data:    nil,
+			})
+			return
+		}
+
+		claims, err := GetClaims(ctx)
+		if err != nil {
+			ctx.JSON(http.StatusUnauthorized, response.Response{
+				Code:    http.StatusUnauthorized,
+				Message: "无效或过期的身份令牌",
+				Data:    nil,
+			})
+			return
+		}
+
+		// 设置 SSE header
+		ctx.Writer.Header().Set("Content-Type", "text/event-stream")
+		ctx.Writer.Header().Set("Cache-Control", "no-cache")
+		ctx.Writer.Header().Set("Connection", "keep-alive")
+		ctx.Writer.Header().Set("X-Accel-Buffering", "no") // nginx 下很关键
+		ctx.Status(http.StatusOK)
+
+		// 不再 JSON 返回
+		if err := fn(ctx, req, claims); err != nil {
+			ctx.Error(err)
+		}
+	}
+}
+
 func WrapClaimsAndReq[Req any](fn func(*gin.Context, Req, ijwt.UserClaims) (response.Response, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		//检查前置中间件是否存在错误,如果存在应当直接返回

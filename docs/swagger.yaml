@@ -1,25 +1,5 @@
 basePath: /
 definitions:
-  domain.Conversation:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: string
-      last_message:
-        description: 冗余一些统计信息，方便在列表页展示
-        type: string
-      message_count:
-        type: integer
-      messages:
-        items:
-          $ref: '#/definitions/domain.Message'
-        type: array
-      updated_at:
-        type: string
-      user_id:
-        type: string
-    type: object
   domain.FAQTableRecord:
     properties:
       is_resolved:
@@ -30,43 +10,6 @@ definitions:
       record_id:
         type: string
     type: object
-  domain.Message:
-    properties:
-      content:
-        description: 消息文本内容
-        type: string
-      conversation_id:
-        description: 所属会话 ID
-        type: string
-      created_at:
-        description: 创建时间
-        type: string
-      id:
-        description: 基础字段
-        type: string
-      metadata:
-        additionalProperties: {}
-        description: |-
-          扩展字段 (Metadata)
-          使用 map[string]any 可以灵活存储：Token 消耗、模型名称、耗时、引用来源等
-        type: object
-      role:
-        allOf:
-        - $ref: '#/definitions/domain.Role'
-        description: '角色: system/user/assistant'
-    type: object
-  domain.Role:
-    enum:
-    - system
-    - user
-    - assistant
-    - tool
-    type: string
-    x-enum-varnames:
-    - RoleSystem
-    - RoleUser
-    - RoleAssistant
-    - RoleTool
   domain.TableRecord:
     properties:
       record:
@@ -171,11 +114,6 @@ definitions:
     properties:
       access_token:
         type: string
-    type: object
-  v1.GetHistoryResp:
-    properties:
-      conversation:
-        $ref: '#/definitions/domain.Conversation'
     type: object
   v1.GetTableRecordByRecordIdResp:
     properties:
@@ -496,40 +434,40 @@ paths:
       summary: 系统健康检查
       tags:
       - Health
-  /api/v1/llm/history:
-    get:
+  /api/v1/llm/chat:
+    post:
       consumes:
       - application/json
-      description: 根据当前用户的身份标识和请求的 UserID，从 Redis 缓存（或 DB）中拉取完整的对话上下文
-      operationId: llm-get-history
+      description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
+      operationId: llm-chat
       parameters:
-      - in: query
-        name: user_id
+      - description: Bearer Token
+        in: header
+        name: Authorization
         required: true
         type: string
+      - description: Chat 查询请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.ChatQueryReq'
       produces:
       - application/json
       responses:
         "200":
-          description: 返回完整的 Conversation 对象（含 Messages）
+          description: 成功返回 Chat 答复
           schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.GetHistoryResp'
-              type: object
-        "404":
-          description: 会话已过期或不存在
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求参数错误
           schema:
             $ref: '#/definitions/response.Response'
         "500":
-          description: 缓存查询异常
+          description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
-      security:
-      - ApiKeyAuth: []
-      summary: 查询聊天历史
+      summary: AI 客服咨询
       tags:
       - Chat
   /api/v1/llm/insert:
@@ -539,6 +477,11 @@ paths:
       description: 将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）
       operationId: llm-insert
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 插入请求参数
         in: body
         name: request
@@ -570,6 +513,11 @@ paths:
       description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
       operationId: llm-query
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Chat 查询请求参数
         in: body
         name: request
