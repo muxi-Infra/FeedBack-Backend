@@ -13,6 +13,7 @@ var ProviderSet = wire.NewSet(DaoSet, CacheSet)
 
 var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
+	es.NewFeedbackESRepo,
 	dao.NewSheetDAO,
 	dao.NewChatDAO,
 	es.NewFAQESRepo,

@@ -79,7 +79,11 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo)
+	feedbackESRepo, err := es.NewFeedbackESRepo(elasticsearchClient)
+	if err != nil {
+		return nil, err
+	}
+	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo)
 	chatCache := cache.NewChatCache(client)
 	chatDAO := dao.NewChatDAO(db)
 	runnable, err := chain.NewSummaryChain(toolCallingChatModel)

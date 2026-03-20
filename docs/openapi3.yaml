@@ -123,6 +123,121 @@ paths:
       summary: 系统健康检查
       tags:
         - Health
+  /api/v1/llm/chat:
+    post:
+      description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
+      operationId: llm-chat
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/v1.ChatQueryReq"
+      responses:
+        "200":
+          description: 成功返回 Chat 答复
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: AI 客服咨询
+      tags:
+        - Chat
+  /api/v1/llm/insert:
+    post:
+      description: 将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）
+      operationId: llm-insert
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/v1.InsertReq"
+        description: 插入请求参数
+        required: true
+      responses:
+        "200":
+          description: 插入成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: 插入 FAQ 数据
+      tags:
+        - Chat
+  /api/v1/llm/query:
+    post:
+      description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
+      operationId: llm-query
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+      requestBody:
+        $ref: "#/components/requestBodies/v1.ChatQueryReq"
+      responses:
+        "200":
+          description: 成功返回 Chat 答复
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v1.ChatQueryResp"
+                    type: object
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      summary: AI 客服咨询
+      tags:
+        - Chat
   /api/v1/message/trigger:
     post:
       description: 将 `table_identify` 写入通知通道以触发下游消费
@@ -806,6 +921,14 @@ paths:
 servers:
   - url: //localhost:8080
 components:
+  requestBodies:
+    v1.ChatQueryReq:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/v1.ChatQueryReq"
+      description: Chat 查询请求参数
+      required: true
   schemas:
     domain.FAQTableRecord:
       properties:
@@ -831,6 +954,23 @@ components:
           type: integer
         data: {}
         msg:
+          type: string
+      type: object
+    v1.ChatQueryReq:
+      properties:
+        query:
+          description: 用户的问题描述
+          type: string
+        user_id:
+          type: string
+      required:
+        - query
+        - user_id
+      type: object
+    v1.ChatQueryResp:
+      properties:
+        answer:
+          description: 回答的结果
           type: string
       type: object
     v1.CreatTableRecordReg:
@@ -940,6 +1080,14 @@ components:
           allOf:
             - $ref: "#/components/schemas/v1.SystemStats"
           description: System 系统资源使用情况
+      type: object
+    v1.InsertReq:
+      properties:
+        tableIdentify:
+          description: 用户的问题描述
+          type: string
+      required:
+        - tableIdentify
       type: object
     v1.ProcessStats:
       properties:
