@@ -35,7 +35,10 @@ func (c *chatDAO) SaveConversation(ctx context.Context, conv *model.Conversation
 }
 
 func (c *chatDAO) FirstOrCreateConversation(ctx context.Context, tableIdentity, userID string) (*model.Conversation, error) {
-	var conv model.Conversation
+	conv := model.Conversation{
+		TableIdentity: tableIdentity,
+		UserID:        userID,
+	}
 	// 定义 1 小时前的时间点
 	oneHourAgo := time.Now().Add(-1 * time.Hour)
 	// 1. 匹配 user_id 和 table_identity
