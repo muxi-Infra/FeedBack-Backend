@@ -290,15 +290,13 @@
                         "type": "integer",
                         "description": "向上滑动用的游标",
                         "name": "last_id",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
                         "description": "每次会向上拉取更早的 limit 条记录",
                         "name": "limit",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -351,6 +349,13 @@
                 "operationId": "llm-insert",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "插入请求参数",
                         "name": "request",
                         "in": "body",
@@ -398,6 +403,13 @@
                 "operationId": "llm-query",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Chat 查询请求参数",
                         "name": "request",
                         "in": "body",
@@ -407,38 +419,7 @@
                         }
                     }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回 Chat 答复",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/v1.ChatQueryResp"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/api/v1/message/trigger": {
@@ -1486,15 +1467,6 @@
                 },
                 "query": {
                     "description": "用户的问题描述",
-                    "type": "string"
-                }
-            }
-        },
-        "v1.ChatQueryResp": {
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "description": "回答的结果",
                     "type": "string"
                 }
             }

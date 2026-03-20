@@ -64,12 +64,6 @@ definitions:
     - conv_id
     - query
     type: object
-  v1.ChatQueryResp:
-    properties:
-      answer:
-        description: 回答的结果
-        type: string
-    type: object
   v1.CreatTableRecordReg:
     properties:
       contact_info:
@@ -522,12 +516,10 @@ paths:
       - description: 向上滑动用的游标
         in: query
         name: last_id
-        required: true
         type: integer
       - description: 每次会向上拉取更早的 limit 条记录
         in: query
         name: limit
-        required: true
         type: integer
       produces:
       - application/json
@@ -561,6 +553,11 @@ paths:
       description: 将指定 table_identify 的数据写入 FAQ 库，并构建向量索引（embedding + ES）
       operationId: llm-insert
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: 插入请求参数
         in: body
         name: request
@@ -592,6 +589,11 @@ paths:
       description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
       operationId: llm-query
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Chat 查询请求参数
         in: body
         name: request
@@ -600,24 +602,7 @@ paths:
           $ref: '#/definitions/v1.ChatQueryReq'
       produces:
       - application/json
-      responses:
-        "200":
-          description: 成功返回 Chat 答复
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.ChatQueryResp'
-              type: object
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: 服务器内部错误
-          schema:
-            $ref: '#/definitions/response.Response'
+      responses: {}
       summary: AI 客服咨询
       tags:
       - Chat

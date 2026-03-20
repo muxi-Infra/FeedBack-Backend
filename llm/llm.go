@@ -12,7 +12,6 @@ import (
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	"github.com/google/wire"
-	"github.com/muxi-Infra/FeedBack-Backend/llm/agent"
 	"github.com/muxi-Infra/FeedBack-Backend/llm/chain"
 	"github.com/muxi-Infra/FeedBack-Backend/llm/prompts"
 	"github.com/muxi-Infra/FeedBack-Backend/llm/tools"
@@ -68,6 +67,17 @@ func NewCustomerServiceReact(
 			Tools: []tool.BaseTool{faqTool, feedbackTool, multiSearchTool},
 		},
 		StreamToolCallChecker: toolCallChecker,
+		MessageModifier: func(ctx context.Context, input []*schema.Message) []*schema.Message {
+			// 如果已经有 system message，就不要重复加
+			if len(input) > 0 && input[0].Role == schema.System {
+				return input
+			}
+
+			res := make([]*schema.Message, 0, len(input)+1)
+			res = append(res, schema.SystemMessage(prompts.CustomerServicePersona))
+			res = append(res, input...)
+			return res
+		},
 	})
 	if err != nil {
 		panic(err)

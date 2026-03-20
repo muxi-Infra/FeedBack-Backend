@@ -5,55 +5,23 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
+	"github.com/muxi-Infra/FeedBack-Backend/llm/skills"
 )
 
-// LoadSkills 加载所有 skill.md
-func LoadSkills(skillsDir string) (string, error) {
-	var builder strings.Builder
-
-	builder.WriteString("\n\n# Available Skills\n")
-
-	err := filepath.Walk(skillsDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// 只读取 skill.md
-		if !info.IsDir() && info.Name() == "skill.md" {
-			data, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-
-			builder.WriteString("\n\n=== SKILL START ===\n")
-			builder.WriteString(string(data))
-			builder.WriteString("\n=== SKILL END ===\n")
-		}
-		return nil
-	})
-
-	if err != nil {
-		return "", err
-	}
-
-	return builder.String(), nil
-}
-
+// 暂时弃用
 // BuildReact 这里使用react包自动完成第一版的agent,之后可以考虑使用eino/compose手动去做React的编排
 func BuildReact(ctx context.Context, m model.ToolCallingChatModel, tools []tool.BaseTool, maxStep int, systemPrompt string) (*react.Agent, error) {
 	pwd, _ := os.Getwd()
 
 	skillsDir := filepath.Join(pwd, "llm", "skills")
 
-	skillPrompt, err := LoadSkills(skillsDir)
+	skillPrompt, err := skills.LoadSkills(skillsDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -101,31 +69,6 @@ func BuildReact(ctx context.Context, m model.ToolCallingChatModel, tools []tool.
 			res = append(res, schema.SystemMessage(finalSystemPrompt))
 			res = append(res, input...)
 			return res
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return agent, nil
-}
-
-func BuildChat(
-	ctx context.Context,
-	m model.ToolCallingChatModel,
-	tools []tool.BaseTool,
-	maxStep int,
-	systemPrompt string,
-) (*adk.ChatModelAgent, error) {
-	agent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
-		Model:         m,
-		MaxIterations: maxStep,
-		Middlewares: []adk.AgentMiddleware{{
-			BeforeChatModel: func(ctx context.Context, state *adk.ChatModelAgentState) error {
-				state.Messages = append(state.Messages, schema.SystemMessage(systemPrompt))
-				return nil
-			},
-		},
 		},
 	})
 	if err != nil {
