@@ -2,7 +2,7 @@ DOCS_DIR := docs
 SWAGGER_FILE := $(DOCS_DIR)/swagger.yaml
 OPENAPI_FILE := $(DOCS_DIR)/openapi3.yaml
 
-.PHONY: swag generate test
+.PHONY: swag generate test run_py
 swag:
 	@echo "📚 Formatting Swagger documentation..."
 	@swag fmt
@@ -22,3 +22,9 @@ test:
 	@echo "🧪 Running tests..."
 	go test ./... -v
 	@echo "✅ Tests complete"
+
+run_py:
+	@echo "🐍 Running Python script..."
+	@cd embdservice && \
+	trap 'echo "\n🛑 Stopping Python..."; exit 0' INT TERM && \
+	.venv/bin/python main.py
