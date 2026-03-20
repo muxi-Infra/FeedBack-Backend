@@ -83,6 +83,11 @@ func (s *ChatServiceImpl) GetConversation(ctx context.Context, tableIdentify, us
 	if err != nil {
 		return nil, err
 	}
+	//刷新一下当前的会话时间防止出现对话时过期的问题
+	err = s.chatDAO.SaveConversation(ctx, conversation)
+	if err != nil {
+		return nil, err
+	}
 	// 3. 组装并返回 domain.Conversation
 	return &domain.Conversation{
 		ID:        conversation.ID,
