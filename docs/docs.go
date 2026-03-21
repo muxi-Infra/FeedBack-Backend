@@ -206,9 +206,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/llm/chat": {
-            "post": {
-                "description": "提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。",
+        "/api/v1/llm/conversation": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话",
                 "consumes": [
                     "application/json"
                 ],
@@ -218,41 +223,116 @@ const docTemplate = `{
                 "tags": [
                     "Chat"
                 ],
-                "summary": "AI 客服咨询",
-                "operationId": "llm-chat",
+                "summary": "获取/激活会话",
+                "operationId": "llm-get-conversation",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer Token",
-                        "name": "Authorization",
-                        "in": "header",
+                        "name": "user_id",
+                        "in": "query",
                         "required": true
-                    },
-                    {
-                        "description": "Chat 查询请求参数",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/v1.ChatQueryReq"
-                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回 Chat 答复",
+                        "description": "返回会话元数据",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.GetConversationResp"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "401": {
+                        "description": "未授权",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
-                        "description": "服务器内部错误",
+                        "description": "查询异常",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/llm/history": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "查询聊天历史",
+                "operationId": "llm-get-history",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "name": "conv_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "向上滑动用的游标",
+                        "name": "last_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每次会向上拉取更早的 limit 条记录",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "返回完整的 Conversation 对象（含 Messages）",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.GetHistoryResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "会话已过期或不存在",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "缓存查询异常",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -346,38 +426,7 @@ const docTemplate = `{
                         }
                     }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回 Chat 答复",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/v1.ChatQueryResp"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/api/v1/message/trigger": {
@@ -1333,6 +1382,23 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.Conversation": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.FAQTableRecord": {
             "type": "object",
             "properties": {
@@ -1344,6 +1410,30 @@ const docTemplate = `{
                     "additionalProperties": {}
                 },
                 "record_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.Message": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "conversation_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "role": {
+                    "description": "user, assistant, system",
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
@@ -1375,24 +1465,15 @@ const docTemplate = `{
         "v1.ChatQueryReq": {
             "type": "object",
             "required": [
-                "query",
-                "user_id"
+                "conv_id",
+                "query"
             ],
             "properties": {
+                "conv_id": {
+                    "type": "integer"
+                },
                 "query": {
                     "description": "用户的问题描述",
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1.ChatQueryResp": {
-            "type": "object",
-            "properties": {
-                "answer": {
-                    "description": "回答的结果",
                     "type": "string"
                 }
             }
@@ -1501,6 +1582,25 @@ const docTemplate = `{
                 }
             }
         },
+        "v1.GetConversationResp": {
+            "type": "object",
+            "properties": {
+                "conversation": {
+                    "$ref": "#/definitions/domain.Conversation"
+                }
+            }
+        },
+        "v1.GetHistoryResp": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Message"
+                    }
+                }
+            }
+        },
         "v1.GetTableRecordByRecordIdResp": {
             "type": "object",
             "properties": {
@@ -1566,7 +1666,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "tableIdentify": {
-                    "description": "用户的问题描述",
                     "type": "string"
                 }
             }

@@ -2,20 +2,21 @@ package domain
 
 import (
 	"time"
-
-	"github.com/cloudwego/eino/schema"
 )
 
-// Conversation 会话主体，用于管理一组消息
+// Conversation 会话主体，用于管理一组消息,目前附加消息比较少,后续可以根据需要逐步拓展,例如title等
 type Conversation struct {
-	ID        string    `json:"id" bson:"_id"`
+	ID        uint      `json:"id" bson:"_id"`
 	UserID    string    `json:"user_id" bson:"user_id"`
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
+}
 
-	// 冗余一些统计信息，方便在列表页展示
-	LastMessage  string `json:"last_message" bson:"last_message"`
-	MessageCount int    `json:"message_count" bson:"message_count"`
-
-	Messages []*schema.Message `json:"messages" bson:"messages"`
+type Message struct {
+	ID             uint      `json:"id" bson:"_id"`
+	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" bson:"updated_at"`
+	ConversationID uint      `json:"conversation_id"`
+	Role           string    `json:"role"` // user, assistant, system
+	Content        string    `json:"content"`
 }

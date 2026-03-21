@@ -8,17 +8,23 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 	"github.com/go-redis/redis/v8"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 )
 
-const ConversationExpiration = 1 * time.Hour
+const ConversationExpiration = 1*time.Hour + 30*time.Minute
+
+type InsertPosition bool
+
+const (
+	PositionTail InsertPosition = false
+	PositionHead InsertPosition = true
+)
 
 type ChatCache interface {
-	Exists(ctx context.Context, convID string) (bool, error) // 新增
-	SetConversationMeta(ctx context.Context, conv *model.Conversation) error
-	PushMessage(ctx context.Context, convID string, msg *schema.Message) error
-	GetFullConversation(ctx context.Context, convID string) (*model.Conversation, error)
-	DeleteConversation(ctx context.Context, convID string) error
+	PushMessages(ctx context.Context, convID uint, atHead InsertPosition, msgs ...*schema.Message) error
+	TrimMessageLeft(ctx context.Context, convID uint, n int64) error
+	GetMSGList(ctx context.Context, convID uint) ([]*schema.Message, error)
+	SetSummary(ctx context.Context, convID uint, summary *schema.Message) error
+	GetSummary(ctx context.Context, convID uint) (*schema.Message, error)
 }
 
 type chatCache struct {
@@ -29,69 +35,82 @@ func NewChatCache(client *redis.Client) ChatCache {
 	return &chatCache{client: client}
 }
 
-func (c *chatCache) SetConversationMeta(ctx context.Context, conv *model.Conversation) error {
-	key := c.GetFullKey("meta:" + conv.ID)
-	// 存储前清空 Messages 指针，避免冗余序列化存入 meta
-	temp := conv.Messages
-	conv.Messages = nil
-	defer func() { conv.Messages = temp }()
+// refreshExpiry 统一为该会话的所有相关 Key 续期
+func (c *chatCache) refreshExpiry(ctx context.Context, pipe redis.Pipeliner, convID uint) {
+	listKey := c.GetFullKey(fmt.Sprintf("list:%d", convID))
+	summaryKey := c.GetFullKey(fmt.Sprintf("summary:%d", convID))
 
-	data, err := json.Marshal(conv)
-	if err != nil {
-		return err
-	}
-	return c.client.Set(ctx, key, data, ConversationExpiration).Err()
+	pipe.Expire(ctx, listKey, ConversationExpiration)
+	pipe.Expire(ctx, summaryKey, ConversationExpiration)
 }
 
-func (c *chatCache) PushMessage(ctx context.Context, convID string, msg *schema.Message) error {
-	listKey := c.GetFullKey("list:" + convID)
-	metaKey := c.GetFullKey("meta:" + convID)
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
+func (c *chatCache) PushMessages(ctx context.Context, convID uint, atHead InsertPosition, msgs ...*schema.Message) error {
+	if len(msgs) == 0 {
+		return nil
+	}
+
+	listKey := c.GetFullKey(fmt.Sprintf("list:%d", convID))
+	values := make([]interface{}, 0, len(msgs))
+
+	for i := 0; i < len(msgs); i++ {
+		idx := i
+		if atHead {
+			idx = len(msgs) - 1 - i // LPush 需要逆序保持视觉顺序
+		}
+		data, err := json.Marshal(msgs[idx])
+		if err != nil {
+			return err
+		}
+		values = append(values, data)
 	}
 
 	pipe := c.client.Pipeline()
-	pipe.RPush(ctx, listKey, data)
-	pipe.Expire(ctx, listKey, ConversationExpiration)
-	pipe.Expire(ctx, metaKey, ConversationExpiration) // 只要说话，元数据也续期
+	if atHead {
+		pipe.LPush(ctx, listKey, values...)
+	} else {
+		pipe.RPush(ctx, listKey, values...)
+	}
 
-	_, err = pipe.Exec(ctx)
+	// 修改：同步更新 Summary 的过期时间
+	c.refreshExpiry(ctx, pipe, convID)
+
+	_, err := pipe.Exec(ctx)
 	return err
 }
 
-// GetFullHistory 组合 meta 和 list，返回完整结构体
-func (c *chatCache) GetFullConversation(ctx context.Context, convID string) (*model.Conversation, error) {
-	metaKey := c.GetFullKey("meta:" + convID)
-	listKey := c.GetFullKey("list:" + convID)
+func (c *chatCache) TrimMessageLeft(ctx context.Context, convID uint, n int64) error {
+	if n <= 0 {
+		return nil
+	}
+	listKey := c.GetFullKey(fmt.Sprintf("list:%d", convID))
 
-	// 使用 Pipeline 同时获取元数据和消息列表，并一键续期
 	pipe := c.client.Pipeline()
-	metaGet := pipe.Get(ctx, metaKey)
+	pipe.LTrim(ctx, listKey, n, -1)
+
+	// 修改：同步更新 Summary 的过期时间
+	c.refreshExpiry(ctx, pipe, convID)
+
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (c *chatCache) GetMSGList(ctx context.Context, convID uint) ([]*schema.Message, error) {
+	listKey := c.GetFullKey(fmt.Sprintf("list:%d", convID))
+
+	pipe := c.client.Pipeline()
 	listRange := pipe.LRange(ctx, listKey, 0, -1)
-	pipe.Expire(ctx, metaKey, ConversationExpiration)
-	pipe.Expire(ctx, listKey, ConversationExpiration)
+
+	// 修改：读的时候也同步续期
+	c.refreshExpiry(ctx, pipe, convID)
 
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// 1. 解析元数据 (Conversation 壳子)
-	metaData, err := metaGet.Result()
-	if err != nil {
-		return nil, fmt.Errorf("fetch meta error: %w", err)
-	}
-
-	var conv model.Conversation
-	if err := json.Unmarshal([]byte(metaData), &conv); err != nil {
-		return nil, err
-	}
-
-	// 2. 解析消息列表 (Messages)
 	listData, err := listRange.Result()
 	if err != nil {
-		return nil, fmt.Errorf("fetch messages error: %w", err)
+		return nil, err
 	}
 
 	messages := make([]*schema.Message, len(listData))
@@ -101,46 +120,49 @@ func (c *chatCache) GetFullConversation(ctx context.Context, convID string) (*mo
 		}
 	}
 
-	// 3. 装配结果
-	conv.Messages = messages
-	return &conv, nil
+	return messages, nil
 }
 
-func (c *chatCache) DeleteConversation(ctx context.Context, convID string) error {
+func (c *chatCache) SetSummary(ctx context.Context, convID uint, summary *schema.Message) error {
+	if summary == nil {
+		return nil
+	}
+
+	summaryKey := c.GetFullKey(fmt.Sprintf("summary:%d", convID))
+	data, err := json.Marshal(summary)
+	if err != nil {
+		return err
+	}
+
+	// 这里不需要专门调用 refreshExpiry，因为 Set 已经带了过期时间
+	// 但为了严谨，我们可以用 Pipeline 让 List 也同步续期
 	pipe := c.client.Pipeline()
-	pipe.Del(ctx, c.GetFullKey("meta:"+convID))
-	pipe.Del(ctx, c.GetFullKey("list:"+convID))
-	_, err := pipe.Exec(ctx)
+	pipe.Set(ctx, summaryKey, data, ConversationExpiration)
+	pipe.Expire(ctx, c.GetFullKey(fmt.Sprintf("list:%d", convID)), ConversationExpiration)
+
+	_, err = pipe.Exec(ctx)
 	return err
 }
 
-// Exists 快速判断会话是否存在，并顺便续期
-func (c *chatCache) Exists(ctx context.Context, convID string) (bool, error) {
-	metaKey := c.GetFullKey("meta:" + convID)
-	listKey := c.GetFullKey("list:" + convID)
+func (c *chatCache) GetSummary(ctx context.Context, convID uint) (*schema.Message, error) {
+	summaryKey := c.GetFullKey(fmt.Sprintf("summary:%d", convID))
 
-	// 使用 Exists 检查 metaKey
-	n, err := c.client.Exists(ctx, metaKey).Result()
+	data, err := c.client.Get(ctx, summaryKey).Result()
+	if err == redis.Nil {
+		return nil, nil
+	}
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	exists := n > 0
-
-	// 如果存在，顺便异步续期（滑动窗口）
-	if exists {
-		go func() {
-			// 这里使用新的上下文，防止主流程结束导致续期失败
-			bgCtx := context.Background()
-			pipe := c.client.Pipeline()
-			pipe.Expire(bgCtx, metaKey, ConversationExpiration)
-			pipe.Expire(bgCtx, listKey, ConversationExpiration)
-			_, _ = pipe.Exec(bgCtx)
-		}()
+	var msg schema.Message
+	if err := json.Unmarshal([]byte(data), &msg); err != nil {
+		return nil, err
 	}
 
-	return exists, nil
+	return &msg, nil
 }
+
 func (c *chatCache) GetFullKey(s string) string {
 	return fmt.Sprintf("feedback:chat:%s", s)
 }
