@@ -1,8 +1,11 @@
 package llm
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/cloudwego/eino-ext/components/model/openai"
 	"github.com/cloudwego/eino/components/embedding"
@@ -40,12 +43,9 @@ type LocalPureGoEmbedder struct {
 }
 
 // NewLocalPureGoEmbedder 初始化本地纯 Go 向量化组件
-// modelPath: 你下载的 .llamafile
-// 下载的模型git clone https://huggingface.co/thenlper/gte-small-zh
 func NewLocalPureGoEmbedder(ctx context.Context, baseUrl string) (*LocalPureGoEmbedder, error) {
-	// 使用 chromem 提供的 llamafile 适配器
-	// 它会通过命令行启动一个极其轻量的本地服务来处理计算，而不需要你安装重量级的环境
 	normalized := true
+	// 访问指定路径的服务并进行请求
 	embFunc := chromem.NewEmbeddingFuncOpenAICompat(baseUrl, "", "", &normalized)
 
 	// 验证模型是否能正常响应 (可选)
@@ -90,4 +90,67 @@ func (e *LocalPureGoEmbedder) EmbedStrings(ctx context.Context, texts []string, 
 	}
 
 	return res, nil
+}
+
+type NLIResult struct {
+	IsValid    bool
+	Status     string
+	Entailment float64
+}
+
+// NLIClient 抽象接口，方便后续 Mock 测试
+type NLIClient interface {
+	Check(ctx context.Context, premise, hypothesis string) (*NLIResult, error)
+}
+
+// nLIClient 基于 HTTP 的具体实现
+type nLIClient struct {
+	baseURL    string
+	httpClient *http.Client
+}
+
+func NewHTTPNLIClient(baseURL string) NLIClient {
+	return &nLIClient{
+		baseURL:    baseURL,
+		httpClient: &http.Client{
+			//Timeout: 500 * time.Millisecond, //需要的话可以设置一下
+		},
+	}
+}
+
+func (c *nLIClient) Check(ctx context.Context, premise, hypothesis string) (*NLIResult, error) {
+	reqBody, _ := json.Marshal(map[string]string{
+		"premise":    premise,
+		"hypothesis": hypothesis,
+	})
+
+	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/nli/check", bytes.NewBuffer(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("nli backend unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var rawRes struct {
+		IsValid bool   `json:"is_valid"`
+		Status  string `json:"status"`
+		Scores  struct {
+			Entailment float64 `json:"entailment"`
+		} `json:"scores"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&rawRes); err != nil {
+		return nil, err
+	}
+
+	return &NLIResult{
+		IsValid:    rawRes.IsValid,
+		Status:     rawRes.Status,
+		Entailment: rawRes.Scores.Entailment,
+	}, nil
 }

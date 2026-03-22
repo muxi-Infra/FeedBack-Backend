@@ -31,14 +31,18 @@ func InitChatModel(cfg *config.LLMConfig) (model.ToolCallingChatModel, error) {
 // InitLocalEmbedder 初始化本地向量化模型 (gte-small-zh)
 func InitLocalEmbedder(cfg *config.LLMConfig) (embedding.Embedder, error) {
 	ctx := context.Background()
-	if cfg.EmbedURL == "" {
+	if cfg.LocalURL == "" {
 		return nil, fmt.Errorf("local model path is required for embedding")
 	}
 
-	emb, err := llm.NewLocalPureGoEmbedder(ctx, cfg.EmbedURL)
+	emb, err := llm.NewLocalPureGoEmbedder(ctx, cfg.LocalURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize local embedder: %w", err)
 	}
 
 	return emb, nil
+}
+
+func InitNLI(cfg *config.LLMConfig) llm.NLIClient {
+	return llm.NewHTTPNLIClient(cfg.LocalURL)
 }
