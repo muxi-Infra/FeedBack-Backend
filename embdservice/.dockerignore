@@ -1,0 +1,9 @@
+.git
+.venv
+__pycache__
+*.pyc
+*.log
+*.db
+.DS_Store
+
+node_modules
