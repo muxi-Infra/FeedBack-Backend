@@ -1,0 +1,13 @@
+[project]
+name = "llmservice"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "onnxruntime>=1.19.0",
+    "transformers==4.47.1",  # 必须固定在这个版本，防止导入错误，有我们py可恶的依赖问题
+    "optimum[onnxruntime]>=1.20.0",
+    "uvicorn>=0.30.0",
+]
