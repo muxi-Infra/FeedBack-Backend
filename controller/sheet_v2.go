@@ -67,7 +67,7 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 		ViewID:        &uc.ViewId,
 	}
 
-	serviceResult, err := s.s.GetTableRecordReqByUser(r.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
+	serviceResult, err := s.s.GetTableRecordReqByUser(c, r.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -126,7 +126,7 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 	}
 
 	// 调用 service 层
-	recordIDs, total, full, err := s.s.SyncUnsyncedTableRecords(&tableConfig)
+	recordIDs, total, full, err := s.s.SyncUnsyncedTableRecords(c, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -176,7 +176,7 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 	}
 
 	// 调用 service 层
-	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(r.StudentID, &tableConfig)
+	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(c, r.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -227,7 +227,7 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 	}
 
 	// 调用 service 层
-	recordIDs, total, full, err := s.s.ForceSyncTableRecords(&tableConfig)
+	recordIDs, total, full, err := s.s.ForceSyncTableRecords(c, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -278,7 +278,7 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 		ViewID:        &uc.ViewId,
 	}
 
-	faqServiceResult, err := s.s.GetFAQResolutionRecord(r.StudentID, &tableConfig)
+	faqServiceResult, err := s.s.GetFAQResolutionRecord(c, r.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -303,7 +303,7 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Summary		标记FAQ问题解决状态
 //	@Description	用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
 //	@Tags			SheetV2
-//	@ID				update-faq-resolution
+//	@ID				update-faq-resolution-v2
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"
@@ -333,7 +333,7 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 		ViewID:        &uc.ViewId,
 	}
 
-	err = s.s.UpdateFAQResolutionRecordV2(&FAQResolution, &tableConfig)
+	err = s.s.UpdateFAQResolutionRecordV2(c, &FAQResolution, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -372,7 +372,7 @@ func (s *SheetV2) SyncFAQRecord(c *gin.Context, r reqV2.SyncFaqRecordReq, uc ijw
 		ViewID:        &uc.ViewId,
 	}
 
-	err = s.s.SyncFAQRecord(tableConfig)
+	err = s.s.SyncFAQRecord(c, tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}

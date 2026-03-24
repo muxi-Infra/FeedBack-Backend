@@ -1,14 +1,16 @@
 package retry
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	MaxAttempts = 3
 	DelayMs     = 20
 )
 
-func Retry[T any](fn func() (T, error)) (T, error) {
-	var res T
+func Retry[Resp any](fn func() (Resp, error)) (Resp, error) {
+	var res Resp
 	var lastErr error
 	delay := time.Duration(DelayMs) * time.Millisecond
 	for i := 1; i <= MaxAttempts; i++ {

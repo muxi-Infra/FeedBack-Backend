@@ -45,7 +45,7 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 //	@Failure		500		{object}	response.Response										"服务器内部错误"
 //	@Router			/api/v1/auth/table-config/token [post]
 func (o Auth) GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error) {
-	tableCfg, err := o.s.GetTableConfig(&req.TableIdentify)
+	tableCfg, err := o.s.GetTableConfig(c, &req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -80,7 +80,7 @@ func (o Auth) GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (re
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/api/v1/auth/table-config/refresh [get]
 func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
-	tableCfgs, err := o.s.RefreshTableConfig()
+	tableCfgs, err := o.s.RefreshTableConfig(c)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -105,7 +105,7 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 //	@Failure		500	{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/auth/tenant/token [post]
 func (o Auth) GetTenantToken(c *gin.Context) (response.Response, error) {
-	token := o.s.GetTenantToken()
+	token := o.s.GetTenantToken(c)
 
 	resp := respV1.GenerateTenantToken{
 		AccessToken: token,

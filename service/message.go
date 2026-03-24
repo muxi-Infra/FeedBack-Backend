@@ -28,11 +28,11 @@ var (
 
 //go:generate mockgen -destination=./mock/message_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service MessageService
 type MessageService interface {
-	SendLarkNotification(tableName, content, url string) error
-	TriggerNotification(tableIdentify string) error
-	GetPendingNotifications(tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error)
-	SendCCNUBoxNotification(studentID, recordID *string) error
-	MarkRecordNoticed(recordID *string, tableConfig *domain.TableConfig) error
+	SendLarkNotification(ctx context.Context, tableName, content, url string) error
+	TriggerNotification(ctx context.Context, tableIdentify string) error
+	GetPendingNotifications(ctx context.Context, tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error)
+	SendCCNUBoxNotification(ctx context.Context, studentID, recordID *string) error
+	MarkRecordNoticed(ctx context.Context, recordID *string, tableConfig *domain.TableConfig) error
 }
 
 type MessageServiceImpl struct {
@@ -54,6 +54,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 
 	// 消费者，监听通知通道，根据表格配置查询待通知的记录，并发送通知
 	go func() {
+		ctx := context.Background()
 		for {
 			table := <-noticeCh
 			if !table.Notice {
@@ -64,7 +65,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 				continue
 			}
 			// 获取待通知的记录列表
-			recipients, err := m.GetPendingNotifications(&table)
+			recipients, err := m.GetPendingNotifications(ctx, &table)
 			if err != nil {
 				m.log.Error("get ccnubox pending notifications failed",
 					logger.String("error", err.Error()),
@@ -76,14 +77,14 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 			switch *table.TableIdentity {
 			case "ccnubox":
 				for _, recipient := range recipients {
-					err = m.SendCCNUBoxNotification(&recipient.StudentID, &recipient.RecordID)
+					err = m.SendCCNUBoxNotification(ctx, &recipient.StudentID, &recipient.RecordID)
 					if err != nil {
 						m.log.Error("send ccnubox notification failed",
 							logger.String("student_id", recipient.StudentID),
 							logger.String("error", err.Error()),
 						)
 					}
-					err := m.MarkRecordNoticed(&recipient.RecordID, &table)
+					err := m.MarkRecordNoticed(ctx, &recipient.RecordID, &table)
 					if err != nil {
 						m.log.Error("MarkRecordNoticed 更新记录通知状态失败",
 							logger.String("error", err.Error()),
@@ -102,7 +103,7 @@ func NewMessageService(c lark.Client, log logger.Logger, lc *config.LarkMessage,
 	return m
 }
 
-func (m *MessageServiceImpl) SendLarkNotification(tableName, content, url string) error {
+func (m *MessageServiceImpl) SendLarkNotification(ctx context.Context, tableName, content, url string) error {
 	if len(content) > 30 {
 		content = content[:30] + "......"
 	}
@@ -188,7 +189,7 @@ func (m *MessageServiceImpl) SendLarkNotification(tableName, content, url string
 	return nil
 }
 
-func (m *MessageServiceImpl) TriggerNotification(tableIdentify string) error {
+func (m *MessageServiceImpl) TriggerNotification(ctx context.Context, tableIdentify string) error {
 	table, ok := tableCfg[tableIdentify]
 	if !ok {
 		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify not found: %s", tableIdentify))
@@ -206,8 +207,8 @@ func (m *MessageServiceImpl) TriggerNotification(tableIdentify string) error {
 }
 
 // GetPendingNotifications 根据表格配置查询待通知的记录，并返回通知对象列表
-func (m *MessageServiceImpl) GetPendingNotifications(tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error) {
-	records, err := m.sheetDao.GetUnNoticedRecordsByTable(*tableConfig.TableIdentity)
+func (m *MessageServiceImpl) GetPendingNotifications(ctx context.Context, tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error) {
+	records, err := m.sheetDao.GetUnNoticedRecordsByTable(ctx, *tableConfig.TableIdentity)
 	if err != nil {
 		return nil, errs.GetUnNoticedRecordByTableError(err)
 	}
@@ -223,7 +224,7 @@ func (m *MessageServiceImpl) GetPendingNotifications(tableConfig *domain.TableCo
 	return recipients, nil
 }
 
-func (m *MessageServiceImpl) SendCCNUBoxNotification(studentID, recordID *string) error {
+func (m *MessageServiceImpl) SendCCNUBoxNotification(ctx context.Context, studentID, recordID *string) error {
 	auth := "Basic " + base64.StdEncoding.EncodeToString([]byte(m.cc.BasicUser+":"+m.cc.BasicPassword))
 	message := domain.CCNUBoxFeedMessage{
 		Content:   "您的问题已经处理完成，点击查看详情",
@@ -289,8 +290,8 @@ func (m *MessageServiceImpl) SendCCNUBoxNotification(studentID, recordID *string
 }
 
 // MarkRecordNoticed 更新通知记录的状态为已完成
-func (m *MessageServiceImpl) MarkRecordNoticed(recordID *string, tableConfig *domain.TableConfig) error {
-	err := m.sheetDao.MarkRecordNoticed(*tableConfig.TableIdentity, *recordID)
+func (m *MessageServiceImpl) MarkRecordNoticed(ctx context.Context, recordID *string, tableConfig *domain.TableConfig) error {
+	err := m.sheetDao.MarkRecordNoticed(ctx, *tableConfig.TableIdentity, *recordID)
 	if err != nil {
 		return errs.MarkRecordNoticedError(err)
 	}

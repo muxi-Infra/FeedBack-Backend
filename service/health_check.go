@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -14,7 +15,7 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
-func HealthCheck() v1.HealthCheckResponse {
+func HealthCheck(ctx context.Context) v1.HealthCheckResponse {
 	start := time.Now() // 记录开始时间
 
 	// 整机资源

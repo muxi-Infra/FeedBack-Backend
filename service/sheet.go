@@ -32,21 +32,21 @@ const (
 
 //go:generate mockgen -destination=./mock/sheet_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service SheetService
 type SheetService interface {
-	CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
-	CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
-	UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
-	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
-	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
-	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
-	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
-	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
-	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
-	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
-	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
-	ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
-	GetFAQResolutionRecord(studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error)
-	UpdateFAQResolutionRecordV2(resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error
-	SyncFAQRecord(tableConfig *domain.TableConfig) error
+	CreateLarkRecord(ctx context.Context, record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
+	CreateDBRecord(ctx context.Context, recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
+	UpdateDBRecord(ctx context.Context, recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
+	GetTableRecordReqByKey(ctx context.Context, keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	GetTableRecordReqByUser(ctx context.Context, userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	GetTableRecordReqByRecordID(ctx context.Context, recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
+	GetFAQProblemTableRecord(ctx context.Context, studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
+	UpdateFAQResolutionRecord(ctx context.Context, resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
+	GetPhotoUrl(ctx context.Context, fileTokens []string) ([]domain.File, error)
+	SyncUnsyncedTableRecords(ctx context.Context, tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	ForceSyncUserTableRecords(ctx context.Context, studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	ForceSyncTableRecords(ctx context.Context, tableConfig *domain.TableConfig) ([]string, int, bool, error)
+	GetFAQResolutionRecord(ctx context.Context, studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error)
+	UpdateFAQResolutionRecordV2(ctx context.Context, resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error
+	SyncFAQRecord(ctx context.Context, tableConfig *domain.TableConfig) error
 }
 
 type SheetServiceImpl struct {
@@ -70,13 +70,14 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 
 	// 消费者，异步同步未同步的记录到数据库
 	go func() {
+		ctx := context.Background()
 		for {
 			select {
 			case msg := <-syncCh:
 				// 同步反馈记录
 				// 飞书 -> 数据库
 				// 这是对 case table := <-syncTableCh 的聚合处理，减少 API 的使用量
-				err := s.SyncLarkRecords(msg.RecordIDs, msg.TableConfig)
+				err := s.SyncLarkRecords(ctx, msg.RecordIDs, msg.TableConfig)
 				if err != nil {
 					s.log.Error("SyncLarkRecords 同步记录到飞书表格失败",
 						logger.String("error", err.Error()),
@@ -88,7 +89,7 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 				if bytes.Contains([]byte(*table.TableIdentity), []byte("-faq")) {
 					// 同步常见问题中 解决/未解决 数量
 					// redis -> 飞书
-					err := s.SyncFAQRecord(&table)
+					err := s.SyncFAQRecord(ctx, &table)
 					if err != nil {
 						s.log.Error("SyncFAQResolutionCount 同步 FAQ 记录到飞书表格失败",
 							logger.String("error", err.Error()),
@@ -98,7 +99,7 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 				} else {
 					// 同步反馈记录
 					// 飞书 -> 数据库
-					_, _, _, err := s.SyncUnsyncedTableRecords(&table)
+					_, _, _, err := s.SyncUnsyncedTableRecords(ctx, &table)
 					if err != nil {
 						s.log.Error("SyncUnsyncedTableRecords 同步未同步记录到飞书表格失败",
 							logger.String("error", err.Error()),
@@ -113,7 +114,7 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 	return s
 }
 
-func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
+func (s *SheetServiceImpl) CreateLarkRecord(ctx context.Context, record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -125,7 +126,6 @@ func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableCon
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.CreateAppTableRecord(ctx, req)
 
 	// 处理错误
@@ -148,7 +148,7 @@ func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableCon
 	return resp.Data.Record.RecordId, nil
 }
 
-func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
+func (s *SheetServiceImpl) CreateDBRecord(ctx context.Context, recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
 	studentID, ok := recordData["学号"].(string)
 	if !ok {
 		s.log.Error("SyncLarkRecords 学号字段类型断言失败",
@@ -166,7 +166,7 @@ func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData
 		IsSynced:      false,
 	}
 
-	err := s.sheetDao.CreateSheetRecord(m)
+	err := s.sheetDao.CreateSheetRecord(ctx, m)
 	if err != nil {
 		s.log.Error("CreateDBRecord 保存记录到数据库失败",
 			logger.String("error", err.Error()),
@@ -178,7 +178,7 @@ func (s *SheetServiceImpl) CreateDBRecord(recordID, shareUrl *string, recordData
 	return nil
 }
 
-func (s *SheetServiceImpl) UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
+func (s *SheetServiceImpl) UpdateDBRecord(ctx context.Context, recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error {
 	studentID, ok := recordData["学号"].(string)
 	if !ok {
 		s.log.Error("SyncLarkRecords 学号字段类型断言失败",
@@ -202,7 +202,7 @@ func (s *SheetServiceImpl) UpdateDBRecord(recordID, shareUrl *string, recordData
 		IsSynced:      synced,
 	}
 
-	err := s.sheetDao.CreateOrUpdateSheetRecord(m)
+	err := s.sheetDao.CreateOrUpdateSheetRecord(ctx, m)
 	if err != nil {
 		s.log.Error("CreateOrUpdateSheetRecord 保存记录到数据库失败",
 			logger.String("error", err.Error()),
@@ -214,7 +214,7 @@ func (s *SheetServiceImpl) UpdateDBRecord(recordID, shareUrl *string, recordData
 	return nil
 }
 
-func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByKey(ctx context.Context, keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -245,7 +245,6 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.GetAppTableRecord(ctx, req)
 
 	// 处理错误
@@ -284,7 +283,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByKey(keyField *domain.TableField, f
 }
 
 // GetTableRecordReqByUser 根据用户查询表格记录，支持分页
-func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByUser(ctx context.Context, userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error) {
 	lastId := new(uint64)
 	if pageToken != nil && *pageToken != "" {
 		ld, err := decodePageToken(*pageToken)
@@ -294,7 +293,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, li
 		lastId = ld
 	}
 
-	dbRecords, hasMore, err := s.sheetDao.GetSheetRecordByUser(*tableConfig.TableIdentity, *userID, lastId, limitSize)
+	dbRecords, hasMore, err := s.sheetDao.GetSheetRecordByUser(ctx, *tableConfig.TableIdentity, *userID, lastId, limitSize)
 	if err != nil {
 		s.log.Error("GetTableRecordReqByUser 数据库查询失败",
 			logger.String("error", err.Error()),
@@ -327,7 +326,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, li
 	}, nil
 }
 
-func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
+func (s *SheetServiceImpl) GetTableRecordReqByRecordID(ctx context.Context, recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
 	// 创建请求对象
 	req := larkbitable.NewBatchGetAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -339,7 +338,6 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.GetRecordByRecordId(ctx, req)
 
 	// 处理错误
@@ -369,7 +367,7 @@ func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableCo
 	return simplifyFields(resp.Data.Records[0].Fields), resp.Data.Records[0].SharedUrl, nil
 }
 
-func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {
+func (s *SheetServiceImpl) GetFAQProblemTableRecord(ctx context.Context, studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -386,7 +384,7 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 			return nil
 		}
 
-		list, err := s.resolutionDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
+		list, err := s.resolutionDAO.ListResolutionsByUser(ctx, studentID, tableConfig.TableIdentity)
 		if err != nil {
 			s.log.Error("GetFAQProblemTableRecord resolutionDAO.ListResolutionsByUser err",
 				logger.String("error", err.Error()))
@@ -469,9 +467,9 @@ func (s *SheetServiceImpl) GetFAQProblemTableRecord(studentID *string, fieldName
 	return res, nil
 }
 
-func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
+func (s *SheetServiceImpl) UpdateFAQResolutionRecord(ctx context.Context, resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error {
 	// 1. 查询用户是否已经对该 FAQRecord 做过选择
-	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
+	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(ctx, resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.GetResolutionByUserAndRecord err",
 			logger.String("error", err.Error()))
@@ -508,16 +506,16 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	if isFirstChoice {
 		// 首次选择：只增加对应状态的计数
 		if *resolution.IsResolved {
-			resolvedCount, unresolvedCount, err = s.cache.IncAAndGetB(resolvedKey, unresolvedKey)
+			resolvedCount, unresolvedCount, err = s.cache.IncAAndGetB(ctx, resolvedKey, unresolvedKey)
 		} else {
-			unresolvedCount, resolvedCount, err = s.cache.IncAAndGetB(unresolvedKey, resolvedKey)
+			unresolvedCount, resolvedCount, err = s.cache.IncAAndGetB(ctx, unresolvedKey, resolvedKey)
 		}
 	} else {
 		// 修改状态：新状态计数 +1，旧状态计数 -1
 		if *resolution.IsResolved {
-			resolvedCount, unresolvedCount, err = s.cache.IncAAndDecB(resolvedKey, unresolvedKey)
+			resolvedCount, unresolvedCount, err = s.cache.IncAAndDecB(ctx, resolvedKey, unresolvedKey)
 		} else {
-			unresolvedCount, resolvedCount, err = s.cache.IncAAndDecB(unresolvedKey, resolvedKey)
+			unresolvedCount, resolvedCount, err = s.cache.IncAAndDecB(ctx, unresolvedKey, resolvedKey)
 		}
 	}
 
@@ -565,7 +563,7 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 		IsResolved:    resolution.IsResolved,
 		Frequency:     &newFrequency,
 	}
-	err = s.resolutionDAO.CreateOrUpsertFAQResolution(m)
+	err = s.resolutionDAO.CreateOrUpsertFAQResolution(ctx, m)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.CreateOrUpsertFAQResolution err",
 			logger.String("error", err.Error()))
@@ -574,7 +572,7 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecord(resolution *domain.FAQResol
 	return nil
 }
 
-func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, error) {
+func (s *SheetServiceImpl) GetPhotoUrl(ctx context.Context, fileTokens []string) ([]domain.File, error) {
 	if len(fileTokens) == 0 {
 		s.log.Error("GetPhotoUrl fileTokens is empty")
 		return nil, errs.FileTokenInvalidError(errors.New("file token 为空"))
@@ -586,7 +584,6 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, erro
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.GetPhotoUrl(ctx, req)
 
 	// 处理错误
@@ -625,7 +622,7 @@ func (s *SheetServiceImpl) GetPhotoUrl(fileTokens []string) ([]domain.File, erro
 // UpdateRecordProgress 异步更新飞书表格记录进度为已完成
 // 2026-03-14 下线这个功能
 // 更换为 message.MarkRecordNoticed 更新通知记录的状态为已完成
-func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *domain.TableConfig) error {
+func (s *SheetServiceImpl) UpdateRecordProgress(ctx context.Context, recordID *string, tableConfig *domain.TableConfig) error {
 	req := larkbitable.NewUpdateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
 		TableId(*tableConfig.TableID).
@@ -636,7 +633,6 @@ func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *d
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.UpdateRecord(ctx, req)
 
 	// 处理错误
@@ -660,9 +656,9 @@ func (s *SheetServiceImpl) UpdateRecordProgress(recordID *string, tableConfig *d
 }
 
 // SyncUnsyncedTableRecords 同步未同步的记录到飞书表格，返回成功同步的 recordID 列表
-func (s *SheetServiceImpl) SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+func (s *SheetServiceImpl) SyncUnsyncedTableRecords(ctx context.Context, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
 	// 获取未同步 recordID 列表
-	recordIDs, err := s.sheetDao.GetUnsyncedRecordsByTable(*tableConfig.TableIdentity)
+	recordIDs, err := s.sheetDao.GetUnsyncedRecordsByTable(ctx, *tableConfig.TableIdentity)
 	if err != nil {
 		return nil, 0, false, errs.GetUnsyncedRecordsByTableError(err)
 	}
@@ -713,7 +709,7 @@ func (s *SheetServiceImpl) SyncUnsyncedTableRecords(tableConfig *domain.TableCon
 	return filtered, len(filtered), queueFull, nil
 }
 
-func (s *SheetServiceImpl) ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+func (s *SheetServiceImpl) ForceSyncUserTableRecords(ctx context.Context, studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
 	var lastID *uint64
 
 	enqueuedIDs := make([]string, 0)
@@ -721,7 +717,7 @@ func (s *SheetServiceImpl) ForceSyncUserTableRecords(studentID *string, tableCon
 
 loop:
 	for {
-		records, hasMore, err := s.sheetDao.GetSheetRecordByUser(*tableConfig.TableIdentity, *studentID, lastID, pageSize)
+		records, hasMore, err := s.sheetDao.GetSheetRecordByUser(ctx, *tableConfig.TableIdentity, *studentID, lastID, pageSize)
 		if err != nil {
 			return nil, 0, false, err
 		}
@@ -763,7 +759,7 @@ loop:
 	return enqueuedIDs, len(enqueuedIDs), queueFull, nil
 }
 
-func (s *SheetServiceImpl) ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error) {
+func (s *SheetServiceImpl) ForceSyncTableRecords(ctx context.Context, tableConfig *domain.TableConfig) ([]string, int, bool, error) {
 	var allRecordIDs []string
 	pageToken := new(string)
 
@@ -843,7 +839,7 @@ func (s *SheetServiceImpl) ForceSyncTableRecords(tableConfig *domain.TableConfig
 	return allRecordIDs, totalEnqueued, queueFull, nil
 }
 
-func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domain.TableConfig) error {
+func (s *SheetServiceImpl) SyncLarkRecords(ctx context.Context, recordIDs []string, tableConfig domain.TableConfig) error {
 	// 创建请求对象
 	req := larkbitable.NewBatchGetAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -855,7 +851,6 @@ func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domai
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := s.c.GetRecordByRecordId(ctx, req)
 
 	// 处理错误
@@ -883,7 +878,7 @@ func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domai
 	for _, r := range resp.Data.Records {
 		recordData := simplifyFields(r.Fields)
 
-		err := s.UpdateDBRecord(r.RecordId, r.SharedUrl, recordData, tableConfig)
+		err := s.UpdateDBRecord(ctx, r.RecordId, r.SharedUrl, recordData, tableConfig)
 		if err != nil {
 			s.log.Error("SyncLarkRecords 更新数据库记录失败",
 				logger.String("error", err.Error()),
@@ -897,7 +892,7 @@ func (s *SheetServiceImpl) SyncLarkRecords(recordIDs []string, tableConfig domai
 }
 
 // GetFAQResolutionRecord 获取 FAQ 记录，全部从 DB 获取
-func (s *SheetServiceImpl) GetFAQResolutionRecord(studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error) {
+func (s *SheetServiceImpl) GetFAQResolutionRecord(ctx context.Context, studentID *string, tableConfig *domain.TableConfig) ([]domain.FAQTableRecord, error) {
 	g, _ := errgroup.WithContext(context.Background())
 
 	var resolutionMap map[string]*bool
@@ -911,7 +906,7 @@ func (s *SheetServiceImpl) GetFAQResolutionRecord(studentID *string, tableConfig
 			return nil
 		}
 
-		list, err := s.resolutionDAO.ListResolutionsByUser(studentID, tableConfig.TableIdentity)
+		list, err := s.resolutionDAO.ListResolutionsByUser(ctx, studentID, tableConfig.TableIdentity)
 		if err != nil {
 			s.log.Error("GetFAQProblemTableRecord resolutionDAO.ListResolutionsByUser err",
 				logger.String("error", err.Error()))
@@ -929,7 +924,7 @@ func (s *SheetServiceImpl) GetFAQResolutionRecord(studentID *string, tableConfig
 	})
 
 	g.Go(func() error {
-		records, err := s.faqDAO.GetFAQRecords(tableConfig.TableIdentity)
+		records, err := s.faqDAO.GetFAQRecords(ctx, tableConfig.TableIdentity)
 		if err != nil {
 			s.log.Error("GetFAQResolutionRecord faqDAO.GetFAQRecords err",
 				logger.String("error", err.Error()),
@@ -971,9 +966,9 @@ func (s *SheetServiceImpl) GetFAQResolutionRecord(studentID *string, tableConfig
 }
 
 // UpdateFAQResolutionRecordV2 更新 FAQ 记录，更新数据库后更新 Redis 计数器
-func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error {
+func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(ctx context.Context, resolution *domain.FAQResolutionV2, tableConfig *domain.TableConfig) error {
 	// 1. 查询用户是否已经对该 FAQRecord 做过选择
-	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
+	existingRecord, err := s.resolutionDAO.GetResolutionByUserAndRecord(ctx, resolution.UserID, tableConfig.TableIdentity, resolution.RecordID)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.GetResolutionByUserAndRecord err",
 			logger.String("error", err.Error()))
@@ -1009,16 +1004,16 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQRes
 	if isFirstChoice {
 		// 首次选择：只增加对应状态的计数
 		if *resolution.IsResolved {
-			_, _, err = s.cache.IncAAndGetB(resolvedKey, unresolvedKey)
+			_, _, err = s.cache.IncAAndGetB(ctx, resolvedKey, unresolvedKey)
 		} else {
-			_, _, err = s.cache.IncAAndGetB(unresolvedKey, resolvedKey)
+			_, _, err = s.cache.IncAAndGetB(ctx, unresolvedKey, resolvedKey)
 		}
 	} else {
 		// 修改状态：新状态计数 +1，旧状态计数 -1
 		if *resolution.IsResolved {
-			_, _, err = s.cache.IncAAndDecB(resolvedKey, unresolvedKey)
+			_, _, err = s.cache.IncAAndDecB(ctx, resolvedKey, unresolvedKey)
 		} else {
-			_, _, err = s.cache.IncAAndDecB(unresolvedKey, resolvedKey)
+			_, _, err = s.cache.IncAAndDecB(ctx, unresolvedKey, resolvedKey)
 		}
 	}
 
@@ -1036,7 +1031,7 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQRes
 		IsResolved:    resolution.IsResolved,
 		Frequency:     &newFrequency,
 	}
-	err = s.resolutionDAO.CreateOrUpsertFAQResolution(m)
+	err = s.resolutionDAO.CreateOrUpsertFAQResolution(ctx, m)
 	if err != nil {
 		s.log.Error("UpdateFAQResolutionRecord resolutionDAO.CreateOrUpsertFAQResolution err",
 			logger.String("error", err.Error()))
@@ -1047,7 +1042,7 @@ func (s *SheetServiceImpl) UpdateFAQResolutionRecordV2(resolution *domain.FAQRes
 
 // SyncFAQRecord 同步飞书表格和数据库中的 FAQ 记录，保证两者的一致性
 // 这个过程需要 redis <-> mysql <-> 飞书表格 三者的配合，保证最终一致性
-func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error {
+func (s *SheetServiceImpl) SyncFAQRecord(ctx context.Context, tableConfig *domain.TableConfig) error {
 	g, ctx := errgroup.WithContext(context.Background())
 
 	var larkResp map[string]map[string]interface{}
@@ -1094,7 +1089,7 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 
 	// 2 获取数据库数据
 	g.Go(func() error {
-		records, err := s.faqDAO.GetFAQRecords(tableConfig.TableIdentity)
+		records, err := s.faqDAO.GetFAQRecords(ctx, tableConfig.TableIdentity)
 		if err != nil {
 			s.log.Error("SyncFAQRecord 数据库查询失败",
 				logger.String("error", err.Error()),
@@ -1122,7 +1117,7 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 		resolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusResolved)
 		unresolvedKey := fmt.Sprintf("%s-%s-%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
 
-		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(resolvedKey, unresolvedKey)
+		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(ctx, resolvedKey, unresolvedKey)
 
 		// MySQL upsert
 		m := &model.FAQRecord{
@@ -1133,7 +1128,7 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 			UnresolvedCount: int64(unresolvedNum),
 		}
 
-		err := s.faqDAO.CreateOrUpdateSheetRecord(m)
+		err := s.faqDAO.CreateOrUpdateSheetRecord(ctx, m)
 		if err != nil {
 			flag = false
 			s.log.Error("mysql upsert err",
@@ -1191,7 +1186,7 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 	for recordID := range dbResp {
 		if _, ok := larkResp[recordID]; !ok {
 			// 1 删除 mysql
-			err := s.faqDAO.DeleteFAQRecord(tableConfig.TableIdentity, &recordID)
+			err := s.faqDAO.DeleteFAQRecord(ctx, tableConfig.TableIdentity, &recordID)
 			if err != nil {
 				flag = false
 				s.log.Error("删除多余 FAQ 记录失败",
@@ -1208,7 +1203,7 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 		}
 	}
 	if len(redisKeys) > 0 {
-		err := s.cache.Delete(redisKeys...)
+		err := s.cache.Delete(ctx, redisKeys...)
 		if err != nil {
 			flag = false
 			s.log.Error("批量删除 redis 失败",

@@ -21,6 +21,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/llm/tools"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/llm"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
+	"github.com/muxi-Infra/FeedBack-Backend/tools/session"
 )
 
 var ProviderSet = wire.NewSet(
@@ -72,11 +73,15 @@ func NewCustomerServiceReact(
 		Middlewares: []adk.AgentMiddleware{
 			{
 				BeforeChatModel: func(ctx context.Context, input *adk.ChatModelAgentState) error {
-					// 如果已经有 system message，就不要重复加
 					if len(input.Messages) > 0 && input.Messages[0].Role == schema.System {
 						return nil
 					}
 					input.Messages = append(input.Messages, schema.SystemMessage(prompts.CustomerServicePersona))
+					appName := session.GetTableIdentity(ctx)
+					appPrompts, ok := prompts.GetAppPrompts(appName)
+					if ok {
+						input.Messages = append(input.Messages, schema.SystemMessage("当前 系统/应用 介绍如下："+appPrompts))
+					}
 					return nil
 				},
 			},

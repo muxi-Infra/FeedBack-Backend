@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -28,9 +28,9 @@ const (
 
 //go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
 type AuthService interface {
-	RefreshTableConfig() ([]domain.TableConfig, error)
-	GetTableConfig(tableIdentity *string) (domain.TableConfig, error)
-	GetTenantToken() string
+	RefreshTableConfig(ctx context.Context) ([]domain.TableConfig, error)
+	GetTableConfig(ctx context.Context, tableIdentity *string) (domain.TableConfig, error)
+	GetTenantToken(ctx context.Context) string
 }
 
 type AuthServiceImpl struct {
@@ -51,20 +51,21 @@ func NewAuthService(baseCfg *config.BaseTable, clientCfg *config.ClientConfig, c
 		c:            c,
 		log:          log,
 	}
+	ctx := context.Background()
 	// 启动时同步刷新一次表配置，失败只记录日志
-	if _, err := s.RefreshTableConfig(); err != nil {
+	if _, err := s.RefreshTableConfig(ctx); err != nil {
 		s.log.Error("启动阶段 RefreshTableConfig 初始调用失败",
 			logger.String("error", err.Error()),
 		)
 	}
-	s.startTenantTokenRefresher()
-	s.startNotifiableTableScanner()
-	s.startSyncTableScanner()
+	s.startTenantTokenRefresher(ctx)
+	s.startNotifiableTableScanner(ctx)
+	s.startSyncTableScanner(ctx)
 
 	return s
 }
 
-func (t *AuthServiceImpl) RefreshTableConfig() ([]domain.TableConfig, error) {
+func (t *AuthServiceImpl) RefreshTableConfig(ctx context.Context) ([]domain.TableConfig, error) {
 	// 创建请求对象
 	req := larkbitable.NewSearchAppTableRecordReqBuilder().
 		AppToken(t.baseTableCfg.TableToken).
@@ -78,7 +79,6 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]domain.TableConfig, error) {
 		Build()
 
 	// 发起请求
-	ctx := context.Background()
 	resp, err := t.c.GetAppTableRecord(ctx, req)
 
 	// 处理错误
@@ -144,7 +144,7 @@ func (t *AuthServiceImpl) RefreshTableConfig() ([]domain.TableConfig, error) {
 	return tables, nil
 }
 
-func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (domain.TableConfig, error) {
+func (t *AuthServiceImpl) GetTableConfig(ctx context.Context, tableIdentity *string) (domain.TableConfig, error) {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
@@ -160,14 +160,14 @@ func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (domain.TableCon
 	return table, nil
 }
 
-func (t *AuthServiceImpl) GetTenantToken() string {
+func (t *AuthServiceImpl) GetTenantToken(ctx context.Context) string {
 	t.mutex.RLock()
 	defer t.mutex.RUnlock()
 
 	return t.tenantToken
 }
 
-func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
+func (t *AuthServiceImpl) refreshTenantToken(ctx context.Context) (*string, error) {
 	// 局部定义请求/响应结构体
 	type TokenRequest struct {
 		AppID     string `json:"app_id"`
@@ -191,7 +191,7 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 		return nil, fmt.Errorf("序列化请求体失败: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %v", err)
 	}
@@ -202,9 +202,9 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 		return nil, fmt.Errorf("HTTP请求失败: %v", err)
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %v", err)
 	}
@@ -227,9 +227,11 @@ func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {
 	return &tokenResp.TenantAccessToken, nil
 }
 
-func (t *AuthServiceImpl) startTenantTokenRefresher() {
+func (t *AuthServiceImpl) startTenantTokenRefresher(ctx context.Context) {
 	// 启动立即刷新一次
-	if _, err := retry.Retry(t.refreshTenantToken); err != nil {
+	if _, err := retry.Retry(func() (*string, error) {
+		return t.refreshTenantToken(ctx)
+	}); err != nil {
 		t.log.Error(
 			"启动阶段 RefreshTenantToken 初始调用失败",
 			logger.String("error", err.Error()),
@@ -245,7 +247,9 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 		for {
 			select {
 			case <-ticker.C:
-				if _, err := retry.Retry(t.refreshTenantToken); err != nil {
+				if _, err := retry.Retry(func() (*string, error) {
+					return t.refreshTenantToken(ctx)
+				}); err != nil {
 					t.log.Error(
 						"定时刷新租户 Token 失败",
 						logger.String("error", err.Error()),
@@ -256,13 +260,15 @@ func (t *AuthServiceImpl) startTenantTokenRefresher() {
 	}()
 }
 
-func (t *AuthServiceImpl) startNotifiableTableScanner() {
+func (t *AuthServiceImpl) startNotifiableTableScanner(ctx context.Context) {
 	ticker := time.NewTicker(NoticeRefreshInterval)
 	defer ticker.Stop()
 	// 生产者，定时扫描需要发送通知的表，并将其放入 noticeCh 中
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case <-ticker.C:
 				t.mutex.RLock()
 				for tableID, table := range tableCfg {
@@ -288,13 +294,15 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 	}()
 }
 
-func (t *AuthServiceImpl) startSyncTableScanner() {
+func (t *AuthServiceImpl) startSyncTableScanner(ctx context.Context) {
 	ticker := time.NewTicker(SyncRefreshInterval)
 	defer ticker.Stop()
 	// 生产者，定时扫描需要同步的表，并将其放入 syncTableCh 中
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case <-ticker.C:
 				t.mutex.RLock()
 				for tableID, table := range tableCfg {

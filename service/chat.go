@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/cloudwego/eino/adk"
@@ -99,7 +100,7 @@ func (s *ChatServiceImpl) GetConversation(ctx context.Context, tableIdentify, us
 }
 
 func (s *ChatServiceImpl) Insert(ctx context.Context, tableIdentify string) error {
-	records, err := s.faqDAO.GetFAQRecords(&tableIdentify)
+	records, err := s.faqDAO.GetFAQRecords(ctx, &tableIdentify)
 	if err != nil {
 		return err
 	}
@@ -197,7 +198,7 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 				break
 			}
 			if event.Err != nil {
-				errCh <- fmt.Errorf("Agent 运行异常: %w", event.Err)
+				errCh <- fmt.Errorf("agent 运行异常: %w", event.Err)
 				return
 			}
 
@@ -241,16 +242,18 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 			}
 		}
 
-		// 6. 最终结果持久化
-		output := schema.AssistantMessage(sb.String(), nil)
+		unfiltered := sb.String()
+		// 正则过滤掉 <think> 标签及其内容
+		re := regexp.MustCompile(`(?s)<think>.*?</think>`)
+		filtered := re.ReplaceAllString(unfiltered, "")
 
-		// 写入 Redis
-		if err = s.cache.PushMessages(ctx, conversation.ID, cache.PositionTail, userMSG, output); err != nil {
+		// 写入 Redis (放过滤掉 think 标签后的内容来减少上下文长度)
+		if err = s.cache.PushMessages(ctx, conversation.ID, cache.PositionTail, userMSG, schema.AssistantMessage(filtered, nil)); err != nil {
 			errCh <- fmt.Errorf("同步消息到 Redis 失败: %w", err)
 			return
 		}
 
-		// 写入 MySQL
+		// 写入 MySQL (放不滤 think 标签后的内容 保留原始信息)
 		err = s.chatDAO.CreateMessages(ctx, &model.Message{
 			ConversationID: conversation.ID,
 			Role:           model.User,
@@ -259,8 +262,8 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 		}, &model.Message{
 			ConversationID: conversation.ID,
 			Role:           model.Assistant,
-			Content:        output.Content,
-			RawData:        model.EinoMessage{Message: output},
+			Content:        unfiltered,
+			RawData:        model.EinoMessage{Message: schema.AssistantMessage(unfiltered, nil)},
 		})
 		if err != nil {
 			errCh <- fmt.Errorf("持久化消息到数据库失败: %w", err)

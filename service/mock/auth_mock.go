@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,45 +36,45 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 }
 
 // GetTableConfig mocks base method.
-func (m *MockAuthService) GetTableConfig(arg0 *string) (domain.TableConfig, error) {
+func (m *MockAuthService) GetTableConfig(arg0 context.Context, arg1 *string) (domain.TableConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTableConfig", arg0)
+	ret := m.ctrl.Call(m, "GetTableConfig", arg0, arg1)
 	ret0, _ := ret[0].(domain.TableConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTableConfig indicates an expected call of GetTableConfig.
-func (mr *MockAuthServiceMockRecorder) GetTableConfig(arg0 interface{}) *gomock.Call {
+func (mr *MockAuthServiceMockRecorder) GetTableConfig(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableConfig", reflect.TypeOf((*MockAuthService)(nil).GetTableConfig), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableConfig", reflect.TypeOf((*MockAuthService)(nil).GetTableConfig), arg0, arg1)
 }
 
 // GetTenantToken mocks base method.
-func (m *MockAuthService) GetTenantToken() string {
+func (m *MockAuthService) GetTenantToken(arg0 context.Context) string {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTenantToken")
+	ret := m.ctrl.Call(m, "GetTenantToken", arg0)
 	ret0, _ := ret[0].(string)
 	return ret0
 }
 
 // GetTenantToken indicates an expected call of GetTenantToken.
-func (mr *MockAuthServiceMockRecorder) GetTenantToken() *gomock.Call {
+func (mr *MockAuthServiceMockRecorder) GetTenantToken(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTenantToken", reflect.TypeOf((*MockAuthService)(nil).GetTenantToken))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTenantToken", reflect.TypeOf((*MockAuthService)(nil).GetTenantToken), arg0)
 }
 
 // RefreshTableConfig mocks base method.
-func (m *MockAuthService) RefreshTableConfig() ([]domain.TableConfig, error) {
+func (m *MockAuthService) RefreshTableConfig(arg0 context.Context) ([]domain.TableConfig, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshTableConfig")
+	ret := m.ctrl.Call(m, "RefreshTableConfig", arg0)
 	ret0, _ := ret[0].([]domain.TableConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // RefreshTableConfig indicates an expected call of RefreshTableConfig.
-func (mr *MockAuthServiceMockRecorder) RefreshTableConfig() *gomock.Call {
+func (mr *MockAuthServiceMockRecorder) RefreshTableConfig(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshTableConfig", reflect.TypeOf((*MockAuthService)(nil).RefreshTableConfig))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshTableConfig", reflect.TypeOf((*MockAuthService)(nil).RefreshTableConfig), arg0)
 }
