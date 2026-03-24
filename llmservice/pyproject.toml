@@ -1,3 +1,6 @@
+[tool.uv]
+index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
 [project]
 name = "llmservice"
 version = "0.1.0"
@@ -6,8 +9,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
+    "numpy>=1.26.0",
     "onnxruntime>=1.19.0",
-    "transformers==4.47.1",  # 必须固定在这个版本，防止导入错误，有我们py可恶的依赖问题
-    "optimum[onnxruntime]>=1.20.0",
+    "transformers==4.47.1",
     "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0.0",
 ]
