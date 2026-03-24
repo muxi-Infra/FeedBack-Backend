@@ -7,9 +7,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/embedding"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
@@ -27,7 +27,7 @@ type ChatService interface {
 }
 
 type ChatServiceImpl struct {
-	agent           *react.Agent
+	runner          *adk.Runner
 	log             logger.Logger
 	faqDAO          dao.FAQDAO
 	chatDAO         dao.ChatDAO
@@ -38,7 +38,7 @@ type ChatServiceImpl struct {
 }
 
 func NewChatService(
-	agent *react.Agent,
+	agent *adk.Runner,
 	log logger.Logger,
 	faqDAO dao.FAQDAO,
 	esDAO es.FAQESRepo,
@@ -48,7 +48,7 @@ func NewChatService(
 	summaryRunnable compose.Runnable[[]*schema.Message, *schema.Message],
 ) ChatService {
 	return &ChatServiceImpl{
-		agent:           agent,
+		runner:          agent,
 		log:             log,
 		faqDAO:          faqDAO,
 		esDAO:           esDAO,
@@ -135,119 +135,122 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 	go func() {
 		defer close(out)
 		defer close(errCh)
-		// 获取会话信息以得到会话的id
+
+		// 1. 获取会话信息
 		conversation, err := s.chatDAO.FirstConversation(ctx, convID)
 		if err != nil {
 			errCh <- fmt.Errorf("获取会话 %d 失败: %w", convID, err)
 			return
 		}
 
-		// 读取历史对话
+		// 2. 读取历史对话
 		msgs, err := s.cache.GetMSGList(ctx, conversation.ID)
 		if err != nil {
-			errCh <- fmt.Errorf("获取会话 %d 的列表失败: %w", convID, err)
+			errCh <- fmt.Errorf("获取历史列表失败: %w", err)
 			return
 		}
 
-		// 获取上下文
+		// 3. 获取摘要
 		sum, err := s.cache.GetSummary(ctx, conversation.ID)
 		if err != nil {
-			errCh <- fmt.Errorf("从缓存获取会话 %d 的总结失败: %w", convID, err)
+			errCh <- fmt.Errorf("获取摘要失败: %w", err)
 			return
 		}
 
-		// 如果达到阈值进行上下文压缩
+		// 4. 上下文压缩逻辑 (已包含基本错误处理)
 		if len(msgs) >= SummaryThreshold {
 			var tmps = msgs[:SummarySize]
-
 			if sum != nil {
-				//上次的总结和被压缩的上下文
 				tmps = append([]*schema.Message{sum}, tmps...)
 			}
-			// 总结
 			summary, err := s.summary(ctx, tmps)
 			if err != nil {
-				errCh <- fmt.Errorf("对会话 %d 的总结失败: %w", convID, err)
+				errCh <- fmt.Errorf("执行摘要总结失败: %w", err)
 				return
 			}
-
-			// 设置总结
-			err = s.cache.SetSummary(ctx, conversation.ID, summary)
-			if err != nil {
-				errCh <- fmt.Errorf("对会话 %d 的设置的总结: %s 失败: %w", convID, summary.Content, err)
+			if err = s.cache.SetSummary(ctx, conversation.ID, summary); err != nil {
+				errCh <- fmt.Errorf("更新摘要缓存失败: %w", err)
 				return
 			}
-			// 清除被压缩的上下文
-			err = s.cache.TrimMessageLeft(ctx, conversation.ID, SummarySize)
-			if err != nil {
-				errCh <- fmt.Errorf("对会话 %d 的上下文清理失败: %w", convID, err)
+			if err = s.cache.TrimMessageLeft(ctx, conversation.ID, SummarySize); err != nil {
+				errCh <- fmt.Errorf("清理过期上下文失败: %w", err)
 				return
 			}
-			//清理上下文保证获取到的上下文是正常的
 			msgs = msgs[SummarySize:]
-
+			sum = summary // 更新当前使用的摘要
 		}
 
 		if sum != nil {
 			msgs = append([]*schema.Message{sum}, msgs...)
 		}
 
-		//添加用户消息
 		userMSG := schema.UserMessage(query)
 		msgs = append(msgs, userMSG)
 
-		// 直接调用预设好的 Agent
-		stream, err := s.agent.Stream(ctx, msgs)
-		if err != nil {
-			s.log.Error("Agent generate failed",
-				logger.String("query", query),
-				logger.String("error", err.Error()),
-			)
-			errCh <- fmt.Errorf("AI 助理执行失败: %w", err)
-			return
+		// 5. 调用 Agent 及其迭代器错误处理
+		events := s.runner.Run(ctx, msgs)
 
-		}
-		defer stream.Close()
-		var fullReply strings.Builder
-		var output *schema.Message
+		var sb strings.Builder
 		for {
-			frame, err := stream.Recv()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					// 结束
-					break
-				}
-				// 其他错误
-				s.log.Error("Agent stream receive failed",
-					logger.String("query", query),
-					logger.String("error", err.Error()),
-				)
-				errCh <- fmt.Errorf("AI 助理执行失败: %w", err)
+			event, ok := events.Next()
+			if !ok {
+				break
+			}
+			if event.Err != nil {
+				errCh <- fmt.Errorf("Agent 运行异常: %w", event.Err)
 				return
 			}
-			if frame == nil || frame.Content == "" {
+
+			if event.Output == nil || event.Output.MessageOutput == nil {
 				continue
 			}
-			if output == nil {
-				output = frame
+			mv := event.Output.MessageOutput
+			if mv.Role != schema.Assistant {
+				continue
 			}
-			out <- frame.Content
-			fmt.Printf("%#v\n", frame)
-			fullReply.WriteString(frame.Content)
+
+			if mv.IsStreaming {
+				mv.MessageStream.SetAutomaticClose()
+				for {
+					frame, err := mv.MessageStream.Recv()
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					// --- 补全点：流式读取层级错误 ---
+					if err != nil {
+						errCh <- fmt.Errorf("流式响应读取失败: %w", err)
+						return
+					}
+					if frame != nil && frame.Content != "" {
+						sb.WriteString(frame.Content)
+						// 配合 select 防止向关闭的 chan 发送
+						select {
+						case out <- frame.Content:
+						case <-ctx.Done():
+							errCh <- ctx.Err()
+							return
+						}
+					}
+				}
+				continue
+			}
+
+			if mv.Message != nil {
+				sb.WriteString(mv.Message.Content)
+				out <- mv.Message.Content
+			}
 		}
 
-		// 写入 robot 消息
-		output.Content = fullReply.String()
+		// 6. 最终结果持久化
+		output := schema.AssistantMessage(sb.String(), nil)
 
-		// TODO需要做事务保证一致性
-		// Redis
-		err = s.cache.PushMessages(ctx, conversation.ID, cache.PositionTail, userMSG, output)
-		if err != nil {
-			errCh <- fmt.Errorf("写入消息到redis失败: %w", err)
+		// 写入 Redis
+		if err = s.cache.PushMessages(ctx, conversation.ID, cache.PositionTail, userMSG, output); err != nil {
+			errCh <- fmt.Errorf("同步消息到 Redis 失败: %w", err)
 			return
 		}
-		// MYSQL
-		//创建用户消息
+
+		// 写入 MySQL
 		err = s.chatDAO.CreateMessages(ctx, &model.Message{
 			ConversationID: conversation.ID,
 			Role:           model.User,
@@ -260,21 +263,19 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 			RawData:        model.EinoMessage{Message: output},
 		})
 		if err != nil {
-			errCh <- fmt.Errorf("写入消息到mysql失败: %w", err)
+			errCh <- fmt.Errorf("持久化消息到数据库失败: %w", err)
 			return
 		}
 
-		// 刷新数据库会话更新时间
-		err = s.chatDAO.SaveConversation(ctx, conversation)
-		if err != nil {
-			errCh <- fmt.Errorf("更新会话时间失败: %w", err)
+		// 刷新会话时间
+		if err = s.chatDAO.SaveConversation(ctx, conversation); err != nil {
+			errCh <- fmt.Errorf("更新会话活跃时间失败: %w", err)
 			return
 		}
 	}()
 
 	return out, errCh
 }
-
 func (s *ChatServiceImpl) summary(ctx context.Context, msgs []*schema.Message) (*schema.Message, error) {
 
 	summary, err := s.summaryRunnable.Invoke(ctx, msgs)

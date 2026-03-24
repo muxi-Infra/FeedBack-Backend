@@ -6,22 +6,25 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cloudwego/eino/adk"
+	"github.com/cloudwego/eino/adk/middlewares/skill"
+	"github.com/cloudwego/eino/adk/prebuilt/deep"
 	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/components/tool"
 	"github.com/cloudwego/eino/compose"
-	"github.com/cloudwego/eino/flow/agent/react"
 	"github.com/cloudwego/eino/schema"
+
 	"github.com/muxi-Infra/FeedBack-Backend/llm/skills"
 )
 
 // 暂时弃用
 // BuildReact 这里使用react包自动完成第一版的agent,之后可以考虑使用eino/compose手动去做React的编排
-func BuildReact(ctx context.Context, m model.ToolCallingChatModel, tools []tool.BaseTool, maxStep int, systemPrompt string) (*react.Agent, error) {
+func BuildReact(ctx context.Context, m model.ToolCallingChatModel, tools []tool.BaseTool, maxStep int, systemPrompt string) (*adk.Runner, error) {
 	pwd, _ := os.Getwd()
 
 	skillsDir := filepath.Join(pwd, "llm", "skills")
 
-	skillPrompt, err := skills.LoadSkills(skillsDir)
+	skillBackend, err := skills.LoadSkills(ctx, skillsDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,31 +52,44 @@ func BuildReact(ctx context.Context, m model.ToolCallingChatModel, tools []tool.
 4. 工具调用是唯一的数据来源：
    - 不能用训练知识替代
 
-` + "\n\n" + skillPrompt
+`
+	skillMiddleware, err := skill.NewMiddleware(ctx, &skill.Config{
+		Backend: skillBackend,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// 创建 agent
-	agent, err := react.NewAgent(ctx, &react.AgentConfig{
-		ToolCallingModel: m,
-		ToolsConfig: compose.ToolsNodeConfig{
-			Tools: tools,
+	agent, err := deep.New(ctx, &deep.Config{
+		ChatModel: m,
+		ToolsConfig: adk.ToolsConfig{
+			ToolsNodeConfig: compose.ToolsNodeConfig{
+				Tools: tools,
+			},
 		},
-		MaxStep: maxStep,
-		//这个相当于一个拦截器/中间件,会把拦截到的消息进行处理,这里等于在最前面注入了一个system prompt
-		MessageModifier: func(ctx context.Context, input []*schema.Message) []*schema.Message {
-			// 如果已经有 system message，就不要重复加
-			if len(input) > 0 && input[0].Role == schema.System {
-				return input
-			}
-
-			res := make([]*schema.Message, 0, len(input)+1)
-			res = append(res, schema.SystemMessage(finalSystemPrompt))
-			res = append(res, input...)
-			return res
+		MaxIteration: maxStep,
+		Middlewares: []adk.AgentMiddleware{
+			{
+				BeforeChatModel: func(ctx context.Context, input *adk.ChatModelAgentState) error {
+					// 如果已经有 system message，就不要重复加
+					if len(input.Messages) > 0 && input.Messages[0].Role == schema.System {
+						return nil
+					}
+					input.Messages = append(input.Messages, schema.SystemMessage(finalSystemPrompt))
+					return nil
+				},
+			},
 		},
+		Handlers: []adk.ChatModelAgentMiddleware{skillMiddleware},
 	})
 	if err != nil {
 		return nil, err
 	}
+	runner := adk.NewRunner(ctx, adk.RunnerConfig{
+		Agent:           agent,
+		EnableStreaming: true,
+		//CheckPointStore: , // 后续如果需要做自动反馈的能力的话可以使用这个字段实现断点状态存储,从而获取多轮对话命中一个skill的多个阶段的效果
+	})
 
-	return agent, nil
+	return runner, nil
 }

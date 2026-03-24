@@ -408,7 +408,7 @@ type LLMConfig struct {
 	APIKey   string `yaml:"api_key" `
 	Model    string `yaml:"model"`
 	BaseURL  string `yaml:"base_url"`
-	EmbedURL string `yaml:"embed_url"`
+	LocalURL string `yaml:"local_url"`
 }
 
 func NewLLMConfig() *LLMConfig {

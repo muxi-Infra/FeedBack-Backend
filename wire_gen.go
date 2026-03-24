@@ -83,14 +83,15 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo)
+	nliClient := ioc.InitNLI(llmConfig)
+	runner := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo, nliClient)
 	chatCache := cache.NewChatCache(client)
 	chatDAO := dao.NewChatDAO(db)
 	runnable, err := chain.NewSummaryChain(toolCallingChatModel)
 	if err != nil {
 		return nil, err
 	}
-	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder, chatCache, chatDAO, runnable)
+	chatService := service.NewChatService(runner, loggerLogger, faqdao, faqesRepo, embedder, chatCache, chatDAO, runnable)
 	chatHandler := controller.NewChat(chatService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
