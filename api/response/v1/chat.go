@@ -7,5 +7,9 @@ type ChatQueryResp struct {
 }
 
 type GetHistoryResp struct {
+	Messages []*domain.Message `json:"messages"`
+}
+
+type GetConversationResp struct {
 	Conversation domain.Conversation `json:"conversation"`
 }

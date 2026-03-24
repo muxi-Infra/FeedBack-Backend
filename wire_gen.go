@@ -11,6 +11,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/llm"
+	"github.com/muxi-Infra/FeedBack-Backend/llm/chain"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
@@ -82,9 +83,15 @@ func InitApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo)
+	nliClient := ioc.InitNLI(llmConfig)
+	runner := llm.NewCustomerServiceReact(toolCallingChatModel, embedder, faqesRepo, feedbackESRepo, nliClient)
 	chatCache := cache.NewChatCache(client)
-	chatService := service.NewChatService(agent, loggerLogger, faqdao, faqesRepo, embedder, chatCache)
+	chatDAO := dao.NewChatDAO(db)
+	runnable, err := chain.NewSummaryChain(toolCallingChatModel)
+	if err != nil {
+		return nil, err
+	}
+	chatService := service.NewChatService(runner, loggerLogger, faqdao, faqesRepo, embedder, chatCache, chatDAO, runnable)
 	chatHandler := controller.NewChat(chatService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
