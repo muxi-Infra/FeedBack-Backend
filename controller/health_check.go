@@ -20,7 +20,7 @@ import (
 //	@Failure		500	{object}	response.Response{data=string}						"系统异常或部分服务不可用"
 //	@Router			/api/v1/health [get]
 func HealthCheck(c *gin.Context) (response.Response, error) {
-	serviceResult := service.HealthCheck()
+	serviceResult := service.HealthCheck(c)
 
 	resp := respV1.HealthCheckResponse{
 		Status:     serviceResult.Status,

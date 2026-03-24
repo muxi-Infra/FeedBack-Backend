@@ -99,7 +99,7 @@ func (s *ChatServiceImpl) GetConversation(ctx context.Context, tableIdentify, us
 }
 
 func (s *ChatServiceImpl) Insert(ctx context.Context, tableIdentify string) error {
-	records, err := s.faqDAO.GetFAQRecords(&tableIdentify)
+	records, err := s.faqDAO.GetFAQRecords(ctx, &tableIdentify)
 	if err != nil {
 		return err
 	}

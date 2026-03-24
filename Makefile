@@ -24,7 +24,10 @@ test:
 	@echo "✅ Tests complete"
 
 run_py:
-	@echo "🐍 Running Python script..."
-	@cd embdservice && \
-	trap 'echo "\n🛑 Stopping Python..."; exit 0' INT TERM && \
-	.venv/bin/python main.py
+	@echo "🐍 Running Python service (llmservice)..."
+	@cd llmservice && \
+		uv venv --python 3.12 .venv && \
+		. .venv/bin/activate && \
+		uv sync && \
+		uv run main.py
+	@echo "✅ Python service exited"

@@ -19,10 +19,10 @@ var (
 )
 
 type FAQResolutionStateCache interface {
-	IncAAndGetB(keyA, keyB string) (uint64, uint64, error)
-	IncAAndDecB(keyA, keyB string) (uint64, uint64, error)
-	GetAAndGetB(keyA, keyB string) (uint64, uint64, error)
-	Delete(keys ...string) error
+	IncAAndGetB(ctx context.Context, keyA, keyB string) (uint64, uint64, error)
+	IncAAndDecB(ctx context.Context, keyA, keyB string) (uint64, uint64, error)
+	GetAAndGetB(ctx context.Context, keyA, keyB string) (uint64, uint64, error)
+	Delete(ctx context.Context, keys ...string) error
 }
 
 type faqResolutionStateCache struct {
@@ -42,8 +42,7 @@ func NewFAQResolutionStateCache(cache *redis.Client) FAQResolutionStateCache {
 }
 
 // IncAAndGetB keyA 自增 1 并同时返回 keyA 和 keyB 的值
-func (c *faqResolutionStateCache) IncAAndGetB(keyA, keyB string) (uint64, uint64, error) {
-	ctx := context.Background()
+func (c *faqResolutionStateCache) IncAAndGetB(ctx context.Context, keyA, keyB string) (uint64, uint64, error) {
 	res, err := c.incAAndGetBScript.Run(ctx, c.cache, []string{keyA, keyB}).Result()
 	if err != nil {
 		return 0, 0, err
@@ -56,8 +55,7 @@ func (c *faqResolutionStateCache) IncAAndGetB(keyA, keyB string) (uint64, uint64
 	return a, b, nil
 }
 
-func (c *faqResolutionStateCache) IncAAndDecB(keyA, keyB string) (uint64, uint64, error) {
-	ctx := context.Background()
+func (c *faqResolutionStateCache) IncAAndDecB(ctx context.Context, keyA, keyB string) (uint64, uint64, error) {
 	res, err := c.incAAndDecBScript.Run(ctx, c.cache, []string{keyA, keyB}).Result()
 	if err != nil {
 		return 0, 0, err
@@ -70,8 +68,7 @@ func (c *faqResolutionStateCache) IncAAndDecB(keyA, keyB string) (uint64, uint64
 	return a, b, nil
 }
 
-func (c *faqResolutionStateCache) GetAAndGetB(keyA, keyB string) (uint64, uint64, error) {
-	ctx := context.Background()
+func (c *faqResolutionStateCache) GetAAndGetB(ctx context.Context, keyA, keyB string) (uint64, uint64, error) {
 	res, err := c.getAAndGetBScript.Run(ctx, c.cache, []string{keyA, keyB}).Result()
 	if err != nil {
 		return 0, 0, err
@@ -84,11 +81,11 @@ func (c *faqResolutionStateCache) GetAAndGetB(keyA, keyB string) (uint64, uint64
 	return a, b, nil
 }
 
-func (c *faqResolutionStateCache) Delete(keys ...string) error {
+func (c *faqResolutionStateCache) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
 	}
 
-	err := c.cache.Del(context.Background(), keys...).Err()
+	err := c.cache.Del(ctx, keys...).Err()
 	return err
 }

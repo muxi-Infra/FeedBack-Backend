@@ -34,7 +34,7 @@ func NewMessage(s service.MessageService) MessageHandler {
 //	@Failure		500		{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/message/trigger [post]
 func (m *Message) TriggerNotification(c *gin.Context, req reqV1.TriggerNotificationReq) (response.Response, error) {
-	err := m.s.TriggerNotification(req.TableIdentify)
+	err := m.s.TriggerNotification(c, req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err
 	}

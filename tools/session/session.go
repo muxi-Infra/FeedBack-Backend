@@ -1,6 +1,10 @@
 package session
 
-import "github.com/gin-gonic/gin"
+import (
+	"context"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Session string
 
@@ -14,11 +18,11 @@ func SetTableIdentity(c *gin.Context, value string) {
 	c.Set(TableIdentity, value)
 }
 
-func GetTableIdentity(c *gin.Context) string {
-	s, ok := c.Get(TableIdentity)
+func GetTableIdentity(c context.Context) string {
+	s, ok := c.Value(TableIdentity).(string)
 	if !ok {
 		return ""
 	}
 
-	return s.(string)
+	return s
 }

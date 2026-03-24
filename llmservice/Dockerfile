@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -17,9 +15,8 @@ RUN apt-get update \
 
 COPY requirements.txt ./
 
-# 安装 python deps（torch 这里尝试默认安装 CPU 版；如需 CUDA，请改成你自己的基础镜像/安装指令）
-RUN pip install --no-cache-dir -U pip \
-    && pip install --no-cache-dir -r requirements.txt \
+# 安装 python deps
+RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir torch
 
 COPY . .
