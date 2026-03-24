@@ -21,6 +21,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/llm/tools"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/llm"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/es"
+	"github.com/muxi-Infra/FeedBack-Backend/tools/session"
 )
 
 var ProviderSet = wire.NewSet(
@@ -73,8 +74,10 @@ func NewCustomerServiceReact(
 			{
 				BeforeChatModel: func(ctx context.Context, input *adk.ChatModelAgentState) error {
 					input.Messages = append(input.Messages, schema.SystemMessage(prompts.CustomerServicePersona))
-					// 在这里还要加入 app 信息
-					// TODO
+					appName := session.GetTableIdentity(ctx)
+					if appName != "" {
+						input.Messages = append(input.Messages, schema.SystemMessage("当前接入的应用是："+appName))
+					}
 					return nil
 				},
 			},
