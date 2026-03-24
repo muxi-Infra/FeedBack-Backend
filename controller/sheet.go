@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -77,7 +78,7 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 	}
 
 	// 发起请求
-	createdRecordID, err := s.s.CreateLarkRecord(record, &tableConfig)
+	createdRecordID, err := s.s.CreateLarkRecord(c, record, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -93,15 +94,16 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 	// TODO 后续想改成 kafka 异步处理
 	go func(recordID, content string, tc domain.TableConfig) {
 		// 发送消息通知
-		recordDate, url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
+		ctx := context.Background()
+		recordDate, url, err := s.s.GetTableRecordReqByRecordID(ctx, &recordID, &tc)
 		if err != nil || url == nil {
 			return
 		}
-		err = s.m.SendLarkNotification(*tc.TableName, content, *url)
+		err = s.m.SendLarkNotification(ctx, *tc.TableName, content, *url)
 		if err != nil {
 			return
 		}
-		err = s.s.CreateDBRecord(&recordID, url, recordDate, tc)
+		err = s.s.CreateDBRecord(ctx, &recordID, url, recordDate, tc)
 		if err != nil {
 			return
 		}
@@ -151,7 +153,7 @@ func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordR
 		ViewID:        &uc.ViewId,
 	}
 
-	serviceResult, err := s.s.GetTableRecordReqByKey(&keyField, r.RecordNames, r.PageToken, &tableConfig)
+	serviceResult, err := s.s.GetTableRecordReqByKey(c, &keyField, r.RecordNames, r.PageToken, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -208,7 +210,7 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 		ViewID:        &uc.ViewId,
 	}
 
-	serviceResult, _, err := s.s.GetTableRecordReqByRecordID(r.RecordID, &tableConfig)
+	serviceResult, _, err := s.s.GetTableRecordReqByRecordID(c, r.RecordID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -257,7 +259,7 @@ func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTa
 		ViewID:        &uc.ViewId,
 	}
 
-	faqServiceResult, err := s.s.GetFAQProblemTableRecord(r.StudentID, r.RecordNames, &tableConfig)
+	faqServiceResult, err := s.s.GetFAQProblemTableRecord(c, r.StudentID, r.RecordNames, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -317,7 +319,7 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 		ViewID:        &uc.ViewId,
 	}
 
-	err = s.s.UpdateFAQResolutionRecord(&FAQResolution, &tableConfig)
+	err = s.s.UpdateFAQResolutionRecord(c, &FAQResolution, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -344,7 +346,7 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v1/sheet/photos/url [get]
 func (s *SheetV1) GetPhotoUrl(c *gin.Context, r reqV1.GetPhotoUrlReq, uc ijwt.UserClaims) (response.Response, error) {
-	photoUrlResult, err := s.s.GetPhotoUrl(r.FileTokens)
+	photoUrlResult, err := s.s.GetPhotoUrl(c, r.FileTokens)
 	if err != nil {
 		return response.Response{}, err
 	}

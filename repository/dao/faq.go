@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"errors"
 
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
@@ -9,10 +10,10 @@ import (
 )
 
 type FAQDAO interface {
-	CreateOrUpdateSheetRecord(m *model.FAQRecord) error
-	GetFAQRecords(tableIdentify *string) ([]model.FAQRecord, error)
-	GetFAQRecordIDs(tableIdentify *string) ([]string, error)
-	DeleteFAQRecord(tableIdentify, recordID *string) error
+	CreateOrUpdateSheetRecord(ctx context.Context, m *model.FAQRecord) error
+	GetFAQRecords(ctx context.Context, tableIdentify *string) ([]model.FAQRecord, error)
+	GetFAQRecordIDs(ctx context.Context, tableIdentify *string) ([]string, error)
+	DeleteFAQRecord(ctx context.Context, tableIdentify, recordID *string) error
 }
 
 type faqDAO struct {
@@ -25,7 +26,7 @@ func NewFAQDAO(gorm *gorm.DB) FAQDAO {
 	}
 }
 
-func (f *faqDAO) CreateOrUpdateSheetRecord(m *model.FAQRecord) error {
+func (f *faqDAO) CreateOrUpdateSheetRecord(ctx context.Context, m *model.FAQRecord) error {
 	if m == nil {
 		return errors.New("sheet is nil")
 	}
@@ -35,7 +36,7 @@ func (f *faqDAO) CreateOrUpdateSheetRecord(m *model.FAQRecord) error {
 	}
 
 	// 存在时更新，不存在时创建
-	err := f.db.Clauses(clause.OnConflict{
+	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "table_identify"},
 			{Name: "record_id"},
@@ -51,14 +52,14 @@ func (f *faqDAO) CreateOrUpdateSheetRecord(m *model.FAQRecord) error {
 	return err
 }
 
-func (f *faqDAO) GetFAQRecords(tableIdentify *string) ([]model.FAQRecord, error) {
+func (f *faqDAO) GetFAQRecords(ctx context.Context, tableIdentify *string) ([]model.FAQRecord, error) {
 	if tableIdentify == nil {
 		return nil, errors.New("missing key fields")
 	}
 
 	var faqs []model.FAQRecord
 
-	err := f.db.
+	err := f.db.WithContext(ctx).
 		Where("table_identify = ?", *tableIdentify).
 		Find(&faqs).Error
 	if err != nil {
@@ -70,13 +71,13 @@ func (f *faqDAO) GetFAQRecords(tableIdentify *string) ([]model.FAQRecord, error)
 
 // GetFAQRecordIDs 获取特定表的所有FAQ记录ID列表
 // 和 GetFAQRecords 的区别在于只查询 record_id 字段，不回表
-func (f *faqDAO) GetFAQRecordIDs(tableIdentify *string) ([]string, error) {
+func (f *faqDAO) GetFAQRecordIDs(ctx context.Context, tableIdentify *string) ([]string, error) {
 	if tableIdentify == nil {
 		return nil, errors.New("missing key fields")
 	}
 
 	var recordIDs []string
-	err := f.db.
+	err := f.db.WithContext(ctx).
 		Model(&model.FAQRecord{}).
 		Where("table_identify = ?", *tableIdentify).
 		Pluck("record_id", &recordIDs).Error
@@ -87,12 +88,12 @@ func (f *faqDAO) GetFAQRecordIDs(tableIdentify *string) ([]string, error) {
 	return recordIDs, nil
 }
 
-func (f *faqDAO) DeleteFAQRecord(tableIdentify, recordID *string) error {
+func (f *faqDAO) DeleteFAQRecord(ctx context.Context, tableIdentify, recordID *string) error {
 	if tableIdentify == nil || recordID == nil {
 		return errors.New("missing key fields")
 	}
 
-	return f.db.
+	return f.db.WithContext(ctx).
 		Where("table_identify = ? AND record_id = ?", *tableIdentify, *recordID).
 		Delete(&model.FAQRecord{}).Error
 }

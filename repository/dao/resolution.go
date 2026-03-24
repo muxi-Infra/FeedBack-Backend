@@ -1,6 +1,7 @@
 package dao
 
 import (
+	"context"
 	"errors"
 
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
@@ -9,9 +10,9 @@ import (
 )
 
 type FAQResolutionDAO interface {
-	GetResolutionByUserAndRecord(userID, tableIdentify, recordID *string) (*model.FAQResolution, error)
-	ListResolutionsByUser(userID, tableIdentify *string) ([]model.FAQResolution, error)
-	CreateOrUpsertFAQResolution(input *model.FAQResolution) error
+	GetResolutionByUserAndRecord(ctx context.Context, userID, tableIdentify, recordID *string) (*model.FAQResolution, error)
+	ListResolutionsByUser(ctx context.Context, userID, tableIdentify *string) ([]model.FAQResolution, error)
+	CreateOrUpsertFAQResolution(ctx context.Context, input *model.FAQResolution) error
 }
 
 type faqResolutionDAO struct {
@@ -25,13 +26,13 @@ func NewFAQResolutionDAO(gorm *gorm.DB) FAQResolutionDAO {
 }
 
 // GetResolutionByUserAndRecord 获取特定用户和记录的FAQ解决状态（单条记录）
-func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, recordID *string) (*model.FAQResolution, error) {
+func (f *faqResolutionDAO) GetResolutionByUserAndRecord(ctx context.Context, userID, tableIdentify, recordID *string) (*model.FAQResolution, error) {
 	if userID == nil || tableIdentify == nil || recordID == nil {
 		return nil, errors.New("user_id or table_identify or record_id is nil")
 	}
 
 	var res model.FAQResolution
-	err := f.db.
+	err := f.db.WithContext(ctx).
 		Where("user_id = ? AND table_identify = ? AND record_id = ?", userID, tableIdentify, recordID).
 		Take(&res).Error
 
@@ -45,38 +46,39 @@ func (f *faqResolutionDAO) GetResolutionByUserAndRecord(userID, tableIdentify, r
 }
 
 // ListResolutionsByUser 获取用户的所有FAQ解决状态（多条记录）
-func (f *faqResolutionDAO) ListResolutionsByUser(userID, tableIdentify *string) ([]model.FAQResolution, error) {
+func (f *faqResolutionDAO) ListResolutionsByUser(ctx context.Context, userID, tableIdentify *string) ([]model.FAQResolution, error) {
 	if userID == nil || tableIdentify == nil {
 		return nil, errors.New("user_id or table_identify is nil")
 	}
 
 	var list []model.FAQResolution
-	err := f.db.
+	err := f.db.WithContext(ctx).
 		Where("user_id = ? AND table_identify = ?", userID, tableIdentify).
 		Find(&list).Error // 没有数据时 err = nil, list = []
 
 	return list, err
 }
 
-func (f *faqResolutionDAO) CreateOrUpsertFAQResolution(m *model.FAQResolution) error {
+func (f *faqResolutionDAO) CreateOrUpsertFAQResolution(ctx context.Context, m *model.FAQResolution) error {
 	// 逻辑层兜底校验
 	if m.UserID == nil || m.RecordID == nil {
 		return errors.New("user_id or record_id is nil")
 	}
 
 	// 存在时更新，不存在时插入
-	err := f.db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{
-			{Name: "user_id"},
-			{Name: "table_identify"},
-			{Name: "record_id"},
-		},
-		DoUpdates: clause.Assignments(map[string]interface{}{
-			"is_resolved": gorm.Expr("VALUES(is_resolved)"),
-			"frequency":   gorm.Expr("VALUES(frequency)"),
-			"updated_at":  gorm.Expr("NOW(3)"),
-		}),
-	}).Create(m).Error
+	err := f.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "user_id"},
+				{Name: "table_identify"},
+				{Name: "record_id"},
+			},
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"is_resolved": gorm.Expr("VALUES(is_resolved)"),
+				"frequency":   gorm.Expr("VALUES(frequency)"),
+				"updated_at":  gorm.Expr("NOW(3)"),
+			}),
+		}).Create(m).Error
 
 	return err
 }
