@@ -17,7 +17,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
+	"github.com/muxi-Infra/FeedBack-Backend/tools/retry"
 )
 
 const (

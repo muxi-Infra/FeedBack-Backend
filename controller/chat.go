@@ -10,10 +10,11 @@ import (
 	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
+	"github.com/muxi-Infra/FeedBack-Backend/tools/session"
 )
 
 type ChatHandler interface {
-	Query(c *gin.Context, req reqV1.ChatQueryReq) error
+	Query(c *gin.Context, req reqV1.ChatQueryReq, uc ijwt.UserClaims) error
 	Insert(c *gin.Context, req reqV1.InsertReq) (response.Response, error)
 	GetHistory(c *gin.Context, req reqV1.GetHistoryReq) (response.Response, error)
 	GetConversation(c *gin.Context, req reqV1.GetConversationReq, uc ijwt.UserClaims) (response.Response, error)
@@ -40,14 +41,14 @@ func NewChat(s service.ChatService) ChatHandler {
 //	@Param			Authorization	header		string											true	"Bearer Token"
 //	@Param			request			body		reqV1.ChatQueryReq								true	"Chat 查询请求参数"
 //	@Router			/api/v1/llm/query [post]
-func (a *Chat) Query(c *gin.Context, req reqV1.ChatQueryReq) error {
-
+func (a *Chat) Query(c *gin.Context, req reqV1.ChatQueryReq, uc ijwt.UserClaims) error {
+	session.SetTableIdentity(c, uc.TableIdentity)
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
 		return fmt.Errorf("stream not supported")
 	}
 
-	msgCh, errCh := a.s.Query(c.Request.Context(), req.Query, req.ConvID)
+	msgCh, errCh := a.s.Query(c, req.Query, req.ConvID)
 
 	// 流式消费
 	for {
@@ -96,7 +97,7 @@ func (a *Chat) Query(c *gin.Context, req reqV1.ChatQueryReq) error {
 //	@Router			/api/v1/llm/insert [post]
 func (a *Chat) Insert(c *gin.Context, req reqV1.InsertReq) (response.Response, error) {
 	// 调用 ChatService 执行 Agent 逻辑
-	err := a.s.Insert(c.Request.Context(), req.TableIdentify)
+	err := a.s.Insert(c, req.TableIdentify)
 	if err != nil {
 		// 这里可以直接返回错误，由 Gin 的中间件或上层统一处理 errs
 		return response.Response{}, err

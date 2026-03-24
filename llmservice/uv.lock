@@ -308,6 +308,27 @@ wheels = [
 ]
 
 [[package]]
+name = "llmservice"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "onnxruntime" },
+    { name = "optimum", extra = ["onnxruntime"] },
+    { name = "transformers" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "onnxruntime", specifier = ">=1.19.0" },
+    { name = "optimum", extras = ["onnxruntime"], specifier = ">=1.20.0" },
+    { name = "transformers", specifier = "==4.47.1" },
+    { name = "uvicorn", specifier = ">=0.30.0" },
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
