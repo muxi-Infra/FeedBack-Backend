@@ -25,9 +25,5 @@ test:
 
 run_py:
 	@echo "🐍 Running Python service (llmservice)..."
-	@cd llmservice && \
-		uv venv --python 3.12 .venv && \
-		. .venv/bin/activate && \
-		uv sync && \
-		uv run main.py
+	@cd llmservice && uv run main.py
 	@echo "✅ Python service exited"

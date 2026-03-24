@@ -73,10 +73,14 @@ func NewCustomerServiceReact(
 		Middlewares: []adk.AgentMiddleware{
 			{
 				BeforeChatModel: func(ctx context.Context, input *adk.ChatModelAgentState) error {
+					if len(input.Messages) > 0 && input.Messages[0].Role == schema.System {
+						return nil
+					}
 					input.Messages = append(input.Messages, schema.SystemMessage(prompts.CustomerServicePersona))
 					appName := session.GetTableIdentity(ctx)
-					if appName != "" {
-						input.Messages = append(input.Messages, schema.SystemMessage("当前接入的应用是："+appName))
+					appPrompts, ok := prompts.GetAppPrompts(appName)
+					if ok {
+						input.Messages = append(input.Messages, schema.SystemMessage("当前 系统/应用 介绍如下："+appPrompts))
 					}
 					return nil
 				},
