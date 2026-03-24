@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -12,9 +12,6 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
-        libgomp1 \
-        libstdc++6 \
-        libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -Ls https://astral.sh/uv/install.sh | sh
@@ -33,20 +30,22 @@ RUN pyinstaller \
     main.py \
     && mkdir -p /runtime \
     && mv /app/dist/app /runtime/app \
-    && mv /app/models /runtime/models \
-    && rm -rf \
-        /app \
-        /root/.cache \
-        /root/.local/bin/uv \
-        /root/.local/bin/uvx \
-    && apt-get update \
-    && apt-get purge -y --auto-remove \
-        build-essential \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
+    && mv /app/models /runtime/models
 
-EXPOSE 8000
+FROM debian:bookworm-slim
 
 WORKDIR /runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgomp1 \
+        libstdc++6 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /runtime/app ./app
+COPY --from=builder /runtime/models ./models
+
+EXPOSE 8000
 
 CMD ["./app"]
