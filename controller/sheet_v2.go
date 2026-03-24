@@ -303,7 +303,7 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Summary		标记FAQ问题解决状态
 //	@Description	用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
 //	@Tags			SheetV2
-//	@ID				update-faq-resolution
+//	@ID				update-faq-resolution-v2
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"

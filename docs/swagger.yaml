@@ -473,6 +473,11 @@ paths:
       description: 根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话
       operationId: llm-get-conversation
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - in: query
         name: user_id
         required: true
@@ -509,6 +514,11 @@ paths:
       description: 根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文
       operationId: llm-get-history
       parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - in: query
         name: conv_id
         required: true
@@ -1030,7 +1040,7 @@ paths:
       consumes:
       - application/json
       description: 用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
-      operationId: update-faq-resolution
+      operationId: update-faq-resolution-v2
       parameters:
       - description: Bearer Token
         in: header

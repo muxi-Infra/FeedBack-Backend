@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/cloudwego/eino/adk"
@@ -197,7 +198,7 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 				break
 			}
 			if event.Err != nil {
-				errCh <- fmt.Errorf("Agent 运行异常: %w", event.Err)
+				errCh <- fmt.Errorf("agent 运行异常: %w", event.Err)
 				return
 			}
 
@@ -241,8 +242,12 @@ func (s *ChatServiceImpl) Query(ctx context.Context, query string, convID uint) 
 			}
 		}
 
+		// 正则过滤掉 <think> 标签及其内容
+		re := regexp.MustCompile(`(?s)<think>.*?</think>`)
+		filtered := re.ReplaceAllString(sb.String(), "")
+
 		// 6. 最终结果持久化
-		output := schema.AssistantMessage(sb.String(), nil)
+		output := schema.AssistantMessage(filtered, nil)
 
 		// 写入 Redis
 		if err = s.cache.PushMessages(ctx, conversation.ID, cache.PositionTail, userMSG, output); err != nil {

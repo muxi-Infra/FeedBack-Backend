@@ -123,10 +123,10 @@ paths:
       summary: 系统健康检查
       tags:
         - Health
-  /api/v1/llm/chat:
-    post:
-      description: 提交用户问题，由 AI 助理结合历史 FAQ 数据库进行分析并返回解答。
-      operationId: llm-chat
+  /api/v1/llm/conversation:
+    get:
+      description: 根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话
+      operationId: llm-get-conversation
       parameters:
         - description: Bearer Token
           in: header
@@ -134,28 +134,93 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        $ref: "#/components/requestBodies/v1.ChatQueryReq"
+        - in: query
+          name: user_id
+          required: true
+          schema:
+            type: string
       responses:
         "200":
-          description: 成功返回 Chat 答复
+          description: 返回会话元数据
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/response.Response"
-        "400":
-          description: 请求参数错误
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v1.GetConversationResp"
+                    type: object
+        "401":
+          description: 未授权
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
         "500":
-          description: 服务器内部错误
+          description: 查询异常
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
-      summary: AI 客服咨询
+      security:
+        - ApiKeyAuth: []
+      summary: 获取/激活会话
+      tags:
+        - Chat
+  /api/v1/llm/history:
+    get:
+      description: 根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文
+      operationId: llm-get-history
+      parameters:
+        - description: Bearer Token
+          in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: conv_id
+          required: true
+          schema:
+            type: integer
+        - description: 向上滑动用的游标
+          in: query
+          name: last_id
+          schema:
+            type: integer
+        - description: 每次会向上拉取更早的 limit 条记录
+          in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: 返回完整的 Conversation 对象（含 Messages）
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/response.Response"
+                  - properties:
+                      data:
+                        $ref: "#/components/schemas/v1.GetHistoryResp"
+                    type: object
+        "404":
+          description: 会话已过期或不存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "500":
+          description: 缓存查询异常
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+      security:
+        - ApiKeyAuth: []
+      summary: 查询聊天历史
       tags:
         - Chat
   /api/v1/llm/insert:
@@ -210,31 +275,13 @@ paths:
           schema:
             type: string
       requestBody:
-        $ref: "#/components/requestBodies/v1.ChatQueryReq"
-      responses:
-        "200":
-          description: 成功返回 Chat 答复
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/response.Response"
-                  - properties:
-                      data:
-                        $ref: "#/components/schemas/v1.ChatQueryResp"
-                    type: object
-        "400":
-          description: 请求参数错误
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/response.Response"
-        "500":
-          description: 服务器内部错误
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/response.Response"
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/v1.ChatQueryReq"
+        description: Chat 查询请求参数
+        required: true
+      responses: {}
       summary: AI 客服咨询
       tags:
         - Chat
@@ -712,7 +759,7 @@ paths:
         - SheetV2
     post:
       description: 用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
-      operationId: update-faq-resolution
+      operationId: update-faq-resolution-v2
       parameters:
         - description: Bearer Token
           in: header
@@ -921,15 +968,18 @@ paths:
 servers:
   - url: //localhost:8080
 components:
-  requestBodies:
-    v1.ChatQueryReq:
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/v1.ChatQueryReq"
-      description: Chat 查询请求参数
-      required: true
   schemas:
+    domain.Conversation:
+      properties:
+        created_at:
+          type: string
+        id:
+          type: integer
+        updated_at:
+          type: string
+        user_id:
+          type: string
+      type: object
     domain.FAQTableRecord:
       properties:
         is_resolved:
@@ -938,6 +988,22 @@ components:
           additionalProperties: {}
           type: object
         record_id:
+          type: string
+      type: object
+    domain.Message:
+      properties:
+        content:
+          type: string
+        conversation_id:
+          type: integer
+        created_at:
+          type: string
+        id:
+          type: integer
+        role:
+          description: user, assistant, system
+          type: string
+        updated_at:
           type: string
       type: object
     domain.TableRecord:
@@ -958,20 +1024,14 @@ components:
       type: object
     v1.ChatQueryReq:
       properties:
+        conv_id:
+          type: integer
         query:
           description: 用户的问题描述
           type: string
-        user_id:
-          type: string
       required:
+        - conv_id
         - query
-        - user_id
-      type: object
-    v1.ChatQueryResp:
-      properties:
-        answer:
-          description: 回答的结果
-          type: string
       type: object
     v1.CreatTableRecordReg:
       properties:
@@ -1045,6 +1105,18 @@ components:
         access_token:
           type: string
       type: object
+    v1.GetConversationResp:
+      properties:
+        conversation:
+          $ref: "#/components/schemas/domain.Conversation"
+      type: object
+    v1.GetHistoryResp:
+      properties:
+        messages:
+          items:
+            $ref: "#/components/schemas/domain.Message"
+          type: array
+      type: object
     v1.GetTableRecordByRecordIdResp:
       properties:
         record:
@@ -1084,7 +1156,6 @@ components:
     v1.InsertReq:
       properties:
         tableIdentify:
-          description: 用户的问题描述
           type: string
       required:
         - tableIdentify

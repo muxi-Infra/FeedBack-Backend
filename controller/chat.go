@@ -38,8 +38,8 @@ func NewChat(s service.ChatService) ChatHandler {
 //	@ID				llm-query
 //	@Accept			json
 //	@Produce		json
-//	@Param			Authorization	header		string											true	"Bearer Token"
-//	@Param			request			body		reqV1.ChatQueryReq								true	"Chat 查询请求参数"
+//	@Param			Authorization	header	string				true	"Bearer Token"
+//	@Param			request			body	reqV1.ChatQueryReq	true	"Chat 查询请求参数"
 //	@Router			/api/v1/llm/query [post]
 func (a *Chat) Query(c *gin.Context, req reqV1.ChatQueryReq, uc ijwt.UserClaims) error {
 	session.SetTableIdentity(c, uc.TableIdentity)
@@ -110,18 +110,20 @@ func (a *Chat) Insert(c *gin.Context, req reqV1.InsertReq) (response.Response, e
 }
 
 // GetHistory 获取会话历史记录
-// @Summary      查询聊天历史
-// @Description  根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文
-// @Tags         Chat
-// @ID           llm-get-history
-// @Accept       json
-// @Produce      json
-// @Security     ApiKeyAuth
-// @Param        request   query      reqV1.GetHistoryReq  true  "查询参数（ConvID）"
-// @Success      200       {object}  response.Response{data=respV1.GetHistoryResp} "返回完整的 Conversation 对象（含 Messages）"
-// @Failure      404       {object}  response.Response    "会话已过期或不存在"
-// @Failure      500       {object}  response.Response    "缓存查询异常"
-// @Router       /api/v1/llm/history [get]
+//
+//	@Summary		查询聊天历史
+//	@Description	根据当前用户的身份标识和请求的 ConvID，从 Redis 缓存（或 DB）中拉取完整的对话上下文
+//	@Tags			Chat
+//	@ID				llm-get-history
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			Authorization	header		string											true	"Bearer Token"
+//	@Param			request			query		reqV1.GetHistoryReq								true	"查询参数（ConvID）"
+//	@Success		200				{object}	response.Response{data=respV1.GetHistoryResp}	"返回完整的 Conversation 对象（含 Messages）"
+//	@Failure		404				{object}	response.Response								"会话已过期或不存在"
+//	@Failure		500				{object}	response.Response								"缓存查询异常"
+//	@Router			/api/v1/llm/history [get]
 func (a *Chat) GetHistory(c *gin.Context, req reqV1.GetHistoryReq) (response.Response, error) {
 	history, err := a.s.GetHistory(c, req.ConvID, req.LastID, req.Limit)
 	if err != nil {
@@ -136,18 +138,20 @@ func (a *Chat) GetHistory(c *gin.Context, req reqV1.GetHistoryReq) (response.Res
 }
 
 // GetConversation 获取或创建会话
-// @Summary      获取/激活会话
-// @Description  根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话
-// @Tags         Chat
-// @ID           llm-get-conversation
-// @Accept       json
-// @Produce      json
-// @Security     ApiKeyAuth
-// @Param        request   query     reqV1.GetConversationReq true  "查询参数（UserID）"
-// @Success      200       {object}  response.Response{data=respV1.GetConversationResp} "返回会话元数据"
-// @Failure      401       {object}  response.Response "未授权"
-// @Failure      500       {object}  response.Response "查询异常"
-// @Router       /api/v1/llm/conversation [get]
+//
+//	@Summary		获取/激活会话
+//	@Description	根据用户 ID 和业务标识获取最近一小时内活跃的会话，如果不存在会自动创建一个新的会话
+//	@Tags			Chat
+//	@ID				llm-get-conversation
+//	@Accept			json
+//	@Produce		json
+//	@Security		ApiKeyAuth
+//	@Param			Authorization	header		string												true	"Bearer Token"
+//	@Param			request			query		reqV1.GetConversationReq							true	"查询参数（UserID）"
+//	@Success		200				{object}	response.Response{data=respV1.GetConversationResp}	"返回会话元数据"
+//	@Failure		401				{object}	response.Response									"未授权"
+//	@Failure		500				{object}	response.Response									"查询异常"
+//	@Router			/api/v1/llm/conversation [get]
 func (a *Chat) GetConversation(c *gin.Context, req reqV1.GetConversationReq, uc ijwt.UserClaims) (response.Response, error) {
 	conversation, err := a.s.GetConversation(c, uc.TableIdentity, req.UserID)
 	if err != nil {

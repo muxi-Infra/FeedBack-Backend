@@ -228,6 +228,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "name": "user_id",
                         "in": "query",
                         "required": true
@@ -287,6 +294,13 @@ const docTemplate = `{
                 "summary": "查询聊天历史",
                 "operationId": "llm-get-history",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "name": "conv_id",
@@ -1093,7 +1107,7 @@ const docTemplate = `{
                     "SheetV2"
                 ],
                 "summary": "标记FAQ问题解决状态",
-                "operationId": "update-faq-resolution",
+                "operationId": "update-faq-resolution-v2",
                 "parameters": [
                     {
                         "type": "string",
