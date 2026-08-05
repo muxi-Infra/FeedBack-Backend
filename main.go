@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/casbin/casbin/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/spf13/pflag"
@@ -33,7 +34,8 @@ func main() {
 }
 
 type App struct {
-	r *gin.Engine
+	r        *gin.Engine
+	enforcer *casbin.Enforcer
 }
 
 func initViper() {

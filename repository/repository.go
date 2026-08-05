@@ -30,6 +30,7 @@ func InitTables(db *gorm.DB) error {
 		&model.FeedbackProjectKey{},
 		&model.FeedbackProjectTable{},
 		&model.FeedbackProjectScope{},
+		&model.AdminUser{},
 	}
 
 	return db.AutoMigrate(models...)

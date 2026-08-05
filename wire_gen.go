@@ -62,8 +62,13 @@ func InitApp() (*App, error) {
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler)
+	enforcer, err := ioc.InitCasbin(db)
+	if err != nil {
+		return nil, err
+	}
 	app := &App{
-		r: engine,
+		r:        engine,
+		enforcer: enforcer,
 	}
 	return app, nil
 }
