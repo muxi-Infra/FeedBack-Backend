@@ -14,6 +14,7 @@ var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
 	dao.NewSheetDAO,
 	dao.NewFAQDAO,
+	dao.NewIntegrationDAO,
 )
 
 var CacheSet = wire.NewSet(
