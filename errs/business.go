@@ -39,6 +39,10 @@ const (
 	SyncFAQRecordPartialFailedCode                          // 同步 FAQ 记录部分失败
 	IntegrationTokenInvalidCode                             // 项目身份 Token 无效
 	IntegrationScopeDeniedCode                              // 项目身份 Token 权限不足
+	IntegrationProjectInvalidCode                           // 项目配置无效
+	IntegrationProjectNotFoundCode                          // 项目不存在
+	IntegrationProjectAlreadyExistsCode                     // 项目已存在
+	IntegrationProjectDatabaseCode                          // 项目配置数据库错误
 )
 
 var (
@@ -125,5 +129,17 @@ var (
 	}
 	IntegrationScopeDeniedError = func(err error) error {
 		return errorx.New(http.StatusForbidden, IntegrationScopeDeniedCode, "项目身份 Token 权限不足", err)
+	}
+	IntegrationProjectInvalidError = func(err error) error {
+		return errorx.New(http.StatusBadRequest, IntegrationProjectInvalidCode, "项目配置无效", err)
+	}
+	IntegrationProjectNotFoundError = func(err error) error {
+		return errorx.New(http.StatusNotFound, IntegrationProjectNotFoundCode, "项目不存在", err)
+	}
+	IntegrationProjectAlreadyExistsError = func(err error) error {
+		return errorx.New(http.StatusConflict, IntegrationProjectAlreadyExistsCode, "项目已存在", err)
+	}
+	IntegrationProjectDatabaseError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, IntegrationProjectDatabaseCode, "项目配置数据库错误", err)
 	}
 )
