@@ -199,6 +199,71 @@
                 }
             }
         },
+        "/api/v1/integrations/token/exchange": {
+            "post": {
+                "description": "校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "项目身份换取反馈 Token",
+                "operationId": "integration-token-exchange",
+                "parameters": [
+                    {
+                        "description": "项目身份断言",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.ExchangeIntegrationTokenReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ExchangeIntegrationTokenResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/message/trigger": {
             "post": {
                 "description": "将 `table_identify` 写入通知通道以触发下游消费",
@@ -1232,6 +1297,39 @@
             "type": "object",
             "properties": {
                 "record_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ExchangeIntegrationTokenReq": {
+            "type": "object",
+            "required": [
+                "assertion",
+                "key_id",
+                "project_id"
+            ],
+            "properties": {
+                "assertion": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ExchangeIntegrationTokenResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "token_type": {
                     "type": "string"
                 }
             }

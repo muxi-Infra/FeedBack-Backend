@@ -109,6 +109,10 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync [post]
 func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:sync") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
@@ -162,6 +166,10 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 //	@Failure		500				{object}	response.Response												"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/user [post]
 func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUserTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:sync") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
@@ -213,6 +221,10 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/force [post]
 func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:sync") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
@@ -313,6 +325,10 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [post]
 func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:write") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:write scope is required"))
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -359,6 +375,10 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/faq [post]
 func (s *SheetV2) SyncFAQRecord(c *gin.Context, r reqV2.SyncFaqRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:sync") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err

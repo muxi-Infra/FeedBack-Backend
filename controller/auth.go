@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	reqV1 "github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
@@ -13,6 +16,7 @@ import (
 
 type AuthHandler interface {
 	GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error)
+	ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegrationTokenReq) (response.Response, error)
 	RefreshTableConfig(c *gin.Context) (response.Response, error)
 	GetTenantToken(c *gin.Context) (response.Response, error)
 }
@@ -31,6 +35,38 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 	}
 }
 
+// ExchangeIntegrationToken validates a trusted project's signed identity
+// assertion and issues a feedback-service access token.
+//
+//	@Summary		项目身份换取反馈 Token
+//	@Description	校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
+//	@Tags			Auth
+//	@ID				integration-token-exchange
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		reqV1.ExchangeIntegrationTokenReq	true	"项目身份断言"
+//	@Success		200		{object}	response.Response{data=respV1.ExchangeIntegrationTokenResp}
+//	@Failure		400		{object}	response.Response
+//	@Failure		401		{object}	response.Response
+//	@Failure		500		{object}	response.Response
+//	@Router			/api/v1/integrations/token/exchange [post]
+func (o Auth) ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegrationTokenReq) (response.Response, error) {
+	token, expiresIn, err := o.s.ExchangeIntegrationToken(req.ProjectID, req.KeyID, req.Assertion)
+	if err != nil {
+		return response.Response{}, err
+	}
+
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data: respV1.ExchangeIntegrationTokenResp{
+			AccessToken: token,
+			TokenType:   "Bearer",
+			ExpiresIn:   expiresIn,
+		},
+	}, nil
+}
+
 // GetTableToken 获取表格访问令牌
 //
 //	@Summary		获取表格访问令牌
@@ -45,6 +81,10 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 //	@Failure		500		{object}	response.Response										"服务器内部错误"
 //	@Router			/api/v1/auth/table-config/token [post]
 func (o Auth) GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error) {
+	if strings.HasSuffix(strings.TrimSpace(req.TableIdentify), "-faq") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("FAQ table tokens must be issued through project integration"))
+	}
+
 	tableCfg, err := o.s.GetTableConfig(&req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err

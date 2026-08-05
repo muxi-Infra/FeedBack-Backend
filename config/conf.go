@@ -25,6 +25,7 @@ var ProviderSet = wire.NewSet(
 	NewBaseTable,
 	NewLarkMessageConfig,
 	NewCCNUBoxMessageConfig,
+	NewIntegrationAuthConfig,
 	NewMysqlConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
@@ -35,19 +36,33 @@ var ProviderSet = wire.NewSet(
 var vp *viper.Viper
 
 func InitNacos() error {
-	// 从 nacos 获取
-	content, err := getConfigFromNacos()
-	if err != nil {
-		log.Println(err)
-		// 本地兜底获取
-		localPath := "./config/config.yaml"
-		fileContent, err := os.ReadFile(localPath)
-		if err != nil {
-			// 如果本地文件也读取失败，则彻底失败
-			log.Fatalf("无法读取本地配置文件 %s，且 Nacos 配置获取失败: %v", localPath, err)
-			return err
+	localPath := "./config/config.yaml"
+	source := strings.ToLower(strings.TrimSpace(os.Getenv("FEEDBACK_CONFIG_SOURCE")))
+	if source == "" {
+		source = "auto"
+	}
+
+	var (
+		content string
+		err     error
+	)
+	switch source {
+	case "local":
+		content, err = readLocalConfig(localPath)
+	case "nacos":
+		content, err = getConfigFromNacos()
+	case "auto":
+		// 本地配置存在时优先使用本地配置；本地文件不存在时再读取 Nacos。
+		content, err = readLocalConfig(localPath)
+		if errors.Is(err, os.ErrNotExist) {
+			log.Println("本地配置不存在，尝试从 Nacos 获取")
+			content, err = getConfigFromNacos()
 		}
-		content = string(fileContent)
+	default:
+		return fmt.Errorf("不支持的 FEEDBACK_CONFIG_SOURCE: %q，可选值为 local、nacos、auto", source)
+	}
+	if err != nil {
+		return fmt.Errorf("加载配置失败，source=%s: %w", source, err)
 	}
 
 	vp = viper.New()
@@ -58,6 +73,14 @@ func InitNacos() error {
 	}
 
 	return nil
+}
+
+func readLocalConfig(path string) (string, error) {
+	fileContent, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(fileContent), nil
 }
 
 func getConfigFromNacos() (string, error) {
@@ -88,7 +111,7 @@ func getConfigFromNacos() (string, error) {
 		"clientConfig":  clientConfig,
 	})
 	if err != nil {
-		log.Fatal("初始化失败:", err)
+		return "", fmt.Errorf("初始化 Nacos 客户端失败: %w", err)
 	}
 
 	content, err := configClient.GetConfig(vo.ConfigParam{
@@ -96,7 +119,7 @@ func getConfigFromNacos() (string, error) {
 		Group:  group,
 	})
 	if err != nil {
-		log.Fatal("拉取配置失败:", err)
+		return "", fmt.Errorf("拉取 Nacos 配置失败: %w", err)
 	}
 	return content, nil
 }
@@ -165,6 +188,40 @@ type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
 	EncKey    string `yaml:"encKey"`
 	Timeout   int    `yaml:"timeout"` //过期时间
+}
+
+// IntegrationProjectConfig describes a trusted project that can exchange a
+// signed identity assertion for a feedback-service token.
+type IntegrationProjectConfig struct {
+	ProjectID     string                   `mapstructure:"project_id" yaml:"project_id"`
+	Issuer        string                   `mapstructure:"issuer" yaml:"issuer"`
+	KeyID         string                   `mapstructure:"key_id" yaml:"key_id"`
+	PublicKey     string                   `mapstructure:"public_key" yaml:"public_key"`
+	PublicKeyFile string                   `mapstructure:"public_key_file" yaml:"public_key_file"`
+	TableIdentity string                   `mapstructure:"table_identity" yaml:"table_identity"` // legacy single-table config
+	Scopes        []string                 `mapstructure:"scopes" yaml:"scopes"`                 // legacy single-table config
+	Tables        []IntegrationTableConfig `mapstructure:"tables" yaml:"tables"`
+}
+
+type IntegrationTableConfig struct {
+	TableIdentity string   `mapstructure:"table_identity" yaml:"table_identity"`
+	Scopes        []string `mapstructure:"scopes" yaml:"scopes"`
+}
+
+type IntegrationAuthConfig struct {
+	AccessTokenTTL int                        `mapstructure:"access_token_ttl" yaml:"access_token_ttl"`
+	Projects       []IntegrationProjectConfig `mapstructure:"projects" yaml:"projects"`
+}
+
+func NewIntegrationAuthConfig() *IntegrationAuthConfig {
+	cfg := &IntegrationAuthConfig{}
+	if err := vp.UnmarshalKey("integration", cfg); err != nil {
+		panic(fmt.Sprintf("无法解析 integration 配置: %v", err))
+	}
+	if cfg.AccessTokenTTL <= 0 {
+		cfg.AccessTokenTTL = 3600
+	}
+	return cfg
 }
 
 func NewJWTConfig() JWTConfig {

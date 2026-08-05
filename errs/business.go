@@ -37,6 +37,8 @@ const (
 	MarkRecordNoticedErrorCode                              // 标记表格记录已通知错误
 	GetFAQRecordByTableErrorCode                            // 根据表格标识获取 FAQ 记录错误
 	SyncFAQRecordPartialFailedCode                          // 同步 FAQ 记录部分失败
+	IntegrationTokenInvalidCode                             // 项目身份 Token 无效
+	IntegrationScopeDeniedCode                              // 项目身份 Token 权限不足
 )
 
 var (
@@ -117,5 +119,11 @@ var (
 	}
 	SyncFAQRecordPartialFailedError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, SyncFAQRecordPartialFailedCode, "同步 FAQ 记录部分失败", err)
+	}
+	IntegrationTokenInvalidError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, IntegrationTokenInvalidCode, "项目身份 Token 无效", err)
+	}
+	IntegrationScopeDeniedError = func(err error) error {
+		return errorx.New(http.StatusForbidden, IntegrationScopeDeniedCode, "项目身份 Token 权限不足", err)
 	}
 )

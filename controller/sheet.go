@@ -52,6 +52,10 @@ func NewSheet(s service.SheetService, m service.MessageService) SheetV1Handler {
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [post]
 func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:create") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:create scope is required"))
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -296,6 +300,10 @@ func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTa
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [post]
 func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:write") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:write scope is required"))
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err

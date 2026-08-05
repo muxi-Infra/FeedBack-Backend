@@ -58,6 +58,28 @@ definitions:
       record_id:
         type: string
     type: object
+  v1.ExchangeIntegrationTokenReq:
+    properties:
+      assertion:
+        type: string
+      key_id:
+        type: string
+      project_id:
+        type: string
+    required:
+    - assertion
+    - key_id
+    - project_id
+    type: object
+  v1.ExchangeIntegrationTokenResp:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+    type: object
   v1.FAQResolutionUpdateReq:
     properties:
       is_resolved:
@@ -409,6 +431,46 @@ paths:
       summary: 系统健康检查
       tags:
       - Health
+  /api/v1/integrations/token/exchange:
+    post:
+      consumes:
+      - application/json
+      description: 校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
+      operationId: integration-token-exchange
+      parameters:
+      - description: 项目身份断言
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.ExchangeIntegrationTokenReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.ExchangeIntegrationTokenResp'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 项目身份换取反馈 Token
+      tags:
+      - Auth
   /api/v1/message/trigger:
     post:
       consumes:

@@ -1,4 +1,7 @@
 # 飞书 app
+# 配置来源由环境变量 FEEDBACK_CONFIG_SOURCE 控制：
+# local：只读取 ./config/config.yaml；nacos：只读取 Nacos；auto：本地文件存在时优先本地，否则读取 Nacos。
+
 client:
   appID: "cli_a123456789012345"               # 飞书应用 AppID
   appSecret: "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOo" # 飞书应用 AppSecret
@@ -8,6 +11,24 @@ jwt:
   secretKey: "your-jwt-secret-key-here"       # JWT 签名密钥
   encKey: "your-encryption-key-here"          # 敏感数据加密密钥
   timeout: 2592000                            # 过期时间（秒），默认一个月
+
+# 项目身份换 Token 配置
+# 公钥用于验证已登记项目签发的身份断言；正式环境建议使用挂载文件。
+integration:
+  access_token_ttl: 3600
+  projects:
+    - project_id: "forum-be"
+      issuer: "forum-be"
+      key_id: "forum-be-key-example"
+      public_key_file: "/etc/secrets/forum-be-feedback-public.pem"
+      tables:
+        - table_identity: "forum"
+          scopes:
+            - "feedback:create"
+            - "feedback:read:self"
+        - table_identity: "forum-faq"
+          scopes:
+            - "feedback:read"
 
 # 中间件配置
 middleware:

@@ -14,4 +14,5 @@ func RegisterAuthRouter(r *gin.RouterGroup, ah controller.AuthHandler) {
 		c.GET("/table-config/refresh", ginx.Wrap(ah.RefreshTableConfig))
 		c.POST("/tenant/token", ginx.Wrap(ah.GetTenantToken))
 	}
+	r.POST("/integrations/token/exchange", ginx.WrapReq(ah.ExchangeIntegrationToken))
 }

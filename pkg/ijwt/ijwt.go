@@ -32,15 +32,40 @@ func NewJWT(conf config.JWTConfig) *JWT {
 }
 
 type UserClaims struct {
-	jwt.RegisteredClaims        // 内嵌标准的声明
-	TableIdentity        string `json:"table_identity"` // 人为规定的用于区分不同的飞书表格的唯一标识
-	TableName            string `json:"table_name"`     // 人为规定的用于展示的表格名称
-	TableToken           string `json:"table_token"`    // 用于和 tableId , viewId 确定飞书表格
-	TableId              string `json:"table_id"`
-	ViewId               string `json:"view_id"`
+	jwt.RegisteredClaims          // 内嵌标准的声明
+	TableIdentity        string   `json:"table_identity"` // 人为规定的用于区分不同的飞书表格的唯一标识
+	TableName            string   `json:"table_name"`     // 人为规定的用于展示的表格名称
+	TableToken           string   `json:"table_token"`    // 用于和 tableId , viewId 确定飞书表格
+	TableId              string   `json:"table_id"`
+	ViewId               string   `json:"view_id"`
+	ProjectID            string   `json:"project_id,omitempty"`
+	StudentID            string   `json:"student_id,omitempty"`
+	Scope                []string `json:"scope,omitempty"`
+}
+
+func (u UserClaims) HasScope(scope string) bool {
+	if len(u.Scope) == 0 {
+		return true // 兼容旧版表级 Token
+	}
+	for _, item := range u.Scope {
+		if item == scope {
+			return true
+		}
+	}
+	return false
 }
 
 func (j *JWT) SetJWTToken(tableIdentify, tableName, tableToken, tableId, viewId string) (string, error) {
+	return j.setJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, "", "", nil, j.rcExpiration)
+}
+
+// SetIntegrationJWTToken creates a short-lived feedback token bound to a
+// trusted integration project and student identity.
+func (j *JWT) SetIntegrationJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, projectID, studentID string, scopes []string, ttl time.Duration) (string, error) {
+	return j.setJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, projectID, studentID, scopes, ttl)
+}
+
+func (j *JWT) setJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, projectID, studentID string, scopes []string, ttl time.Duration) (string, error) {
 	enTableToken, err := j.encryptString(tableToken)
 	if err != nil {
 		return "", fmt.Errorf("tableToken 加密失败：%w", err)
@@ -62,7 +87,11 @@ func (j *JWT) SetJWTToken(tableIdentify, tableName, tableToken, tableId, viewId 
 		TableToken:    enTableToken,
 		TableId:       enTableId,
 		ViewId:        enViewId,
+		ProjectID:     projectID,
+		StudentID:     studentID,
+		Scope:         scopes,
 	}
+	uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(ttl))
 
 	token := jwt.NewWithClaims(j.signingMethod, uc)
 	// 使用指定的secret签名并获得完整的编码后的字符串token
