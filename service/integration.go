@@ -28,23 +28,12 @@ const (
 var projectIDPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{1,63}$`)
 
 type IntegrationService interface {
-	RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (*ProjectConfig, error)
-	GetProject(ctx context.Context, projectID string) (*ProjectConfig, error)
-	ListProjects(ctx context.Context) ([]model.FeedbackProject, error)
+	RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (*domain.ProjectConfig, error)
+	GetProject(ctx context.Context, projectID string) (*domain.ProjectConfig, error)
+	ListProjects(ctx context.Context) ([]domain.ProjectSummary, error)
 	UpdateProject(ctx context.Context, projectID string, input domain.UpdateProjectInput) error
 	DeleteProject(ctx context.Context, projectID string) error
 	RestoreProject(ctx context.Context, projectID string) error
-}
-
-type ProjectConfig struct {
-	Project *model.FeedbackProject
-	Keys    []model.FeedbackProjectKey
-	Tables  []ProjectTableConfig
-}
-
-type ProjectTableConfig struct {
-	Table  model.FeedbackProjectTable
-	Scopes []string
 }
 
 type integrationService struct {
@@ -55,7 +44,7 @@ func NewIntegrationService(integrationDAO dao.IntegrationDAO) IntegrationService
 	return &integrationService{dao: integrationDAO}
 }
 
-func (s *integrationService) RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (*ProjectConfig, error) {
+func (s *integrationService) RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (*domain.ProjectConfig, error) {
 	if err := validateRegisterProjectInput(input); err != nil {
 		return nil, err
 	}
@@ -117,7 +106,7 @@ func (s *integrationService) RegisterProject(ctx context.Context, input domain.R
 	return s.GetProject(ctx, project.ProjectID)
 }
 
-func (s *integrationService) GetProject(ctx context.Context, projectID string) (*ProjectConfig, error) {
+func (s *integrationService) GetProject(ctx context.Context, projectID string) (*domain.ProjectConfig, error) {
 	projectID = strings.TrimSpace(projectID)
 	if projectID == "" {
 		return nil, invalidProjectError("project_id is required")
@@ -140,10 +129,20 @@ func (s *integrationService) GetProject(ctx context.Context, projectID string) (
 		return nil, errs.IntegrationProjectDatabaseError(err)
 	}
 
-	config := &ProjectConfig{
-		Project: project,
-		Keys:    keys,
-		Tables:  make([]ProjectTableConfig, 0, len(tables)),
+	config := &domain.ProjectConfig{
+		Project: projectSummary(project),
+		Keys:    make([]domain.ProjectKeySummary, 0, len(keys)),
+		Tables:  make([]domain.ProjectTableConfig, 0, len(tables)),
+	}
+	for _, key := range keys {
+		config.Keys = append(config.Keys, domain.ProjectKeySummary{
+			ID:        key.ID,
+			ProjectID: key.ProjectID,
+			KeyID:     key.KeyID,
+			Issuer:    key.Issuer,
+			Status:    key.Status,
+			ExpiresAt: key.ExpiresAt,
+		})
 	}
 	for _, table := range tables {
 		scopes, err := s.dao.ListProjectScopes(ctx, projectID, table.TableIdentity)
@@ -155,21 +154,48 @@ func (s *integrationService) GetProject(ctx context.Context, projectID string) (
 		for _, scope := range scopes {
 			scopeNames = append(scopeNames, scope.Scope)
 		}
-		config.Tables = append(config.Tables, ProjectTableConfig{
-			Table:  table,
-			Scopes: scopeNames,
+		config.Tables = append(config.Tables, domain.ProjectTableConfig{
+			ID:            table.ID,
+			ProjectID:     table.ProjectID,
+			TableIdentity: table.TableIdentity,
+			TableName:     table.PhysicalName,
+			TableID:       table.TableID,
+			ViewID:        table.ViewID,
+			TableType:     table.TableType,
+			Notice:        table.Notice,
+			Status:        table.Status,
+			Scopes:        scopeNames,
 		})
 	}
 
 	return config, nil
 }
 
-func (s *integrationService) ListProjects(ctx context.Context) ([]model.FeedbackProject, error) {
+func (s *integrationService) ListProjects(ctx context.Context) ([]domain.ProjectSummary, error) {
 	projects, err := s.dao.ListProjects(ctx)
 	if err != nil {
 		return nil, errs.IntegrationProjectDatabaseError(err)
 	}
-	return projects, nil
+	result := make([]domain.ProjectSummary, 0, len(projects))
+	for _, project := range projects {
+		result = append(result, *projectSummary(&project))
+	}
+	return result, nil
+}
+
+func projectSummary(project *model.FeedbackProject) *domain.ProjectSummary {
+	if project == nil {
+		return nil
+	}
+	return &domain.ProjectSummary{
+		ID:          project.ID,
+		ProjectID:   project.ProjectID,
+		ProjectName: project.ProjectName,
+		School:      project.School,
+		Status:      project.Status,
+		CreatedAt:   project.CreatedAt,
+		UpdatedAt:   project.UpdatedAt,
+	}
 }
 
 func (s *integrationService) UpdateProject(ctx context.Context, projectID string, input domain.UpdateProjectInput) error {
@@ -352,7 +378,6 @@ func isProjectStatus(status string) bool {
 	return status == ProjectStatusActive || status == ProjectStatusDisabled
 }
 
-// todo 后续应该可以加一个 casbin
 func isSupportedScope(scope string) bool {
 	switch strings.TrimSpace(scope) {
 	case "feedback:create", "feedback:read:self", "feedback:read", "feedback:write", "feedback:sync":
