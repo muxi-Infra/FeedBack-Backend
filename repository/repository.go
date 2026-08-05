@@ -25,6 +25,10 @@ func InitTables(db *gorm.DB) error {
 		&model.FAQResolution{},
 		&model.Sheet{},
 		&model.FAQRecord{},
+		&model.FeedbackProject{},
+		&model.FeedbackProjectKey{},
+		&model.FeedbackProjectTable{},
+		&model.FeedbackProjectScope{},
 	}
 
 	return db.AutoMigrate(models...)
