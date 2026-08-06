@@ -70,13 +70,13 @@ func TestCreateAppTableRecord(t *testing.T) {
 					CreateLarkRecord(gomock.Any(), gomock.Any()).
 					Return(stringPtr("mock-record-id"), nil)
 
-				// Allow CreateDBRecord called by background goroutine
+				// 允许后台 goroutine 调用 CreateDBRecord
 				mockSheetSvc.EXPECT().
 					CreateDBRecord(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil).
 					AnyTimes()
 
-				// Mock the goroutine calls
+				// 模拟后台 goroutine 的调用
 				mockSheetSvc.EXPECT().
 					GetTableRecordReqByRecordID(gomock.Any(), gomock.Any()).
 					Return(map[string]any{}, stringPtr("http://mock-url.com"), nil).

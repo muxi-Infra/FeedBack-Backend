@@ -13,7 +13,7 @@ func InitPrometheus() *prometheus.Registry {
 
 	// 添加 Go 编译信息
 	reg.MustRegister(collectors.NewBuildInfoCollector())
-	// Go runtime metrics
+	// Go 运行时指标
 	reg.MustRegister(collectors.NewGoCollector(
 		collectors.WithGoCollectorRuntimeMetrics(
 			collectors.GoRuntimeMetricsRule{Matcher: regexp.MustCompile("/.*")},

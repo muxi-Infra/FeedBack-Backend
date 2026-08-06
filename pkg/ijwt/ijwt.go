@@ -59,8 +59,7 @@ func (j *JWT) SetJWTToken(tableIdentify, tableName, tableToken, tableId, viewId 
 	return j.setJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, "", "", nil, j.rcExpiration)
 }
 
-// SetIntegrationJWTToken creates a short-lived feedback token bound to a
-// trusted integration project and student identity.
+// SetIntegrationJWTToken 为已信任的接入项目和学生身份签发短期反馈 Token。
 func (j *JWT) SetIntegrationJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, projectID, studentID string, scopes []string, ttl time.Duration) (string, error) {
 	return j.setJWTToken(tableIdentify, tableName, tableToken, tableId, viewId, projectID, studentID, scopes, ttl)
 }

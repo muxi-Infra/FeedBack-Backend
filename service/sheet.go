@@ -101,7 +101,7 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 						logger.String("table_identity", *table.TableIdentity),
 					)
 					// 同步常见问题中 解决/未解决 数量
-					// redis -> 飞书
+					// Redis -> 飞书
 					err := s.SyncFAQRecord(&table)
 					if err != nil {
 						s.log.Error("SyncFAQResolutionCount 同步 FAQ 记录到飞书表格失败",
@@ -1155,13 +1155,13 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 
 	// 3 同步 record + 更新 Redis 计数器
 	for recordID, fields := range larkResp {
-		// Redis vote
+		// Redis 投票计数
 		resolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusResolved)
 		unresolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
 
 		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(resolvedKey, unresolvedKey)
 
-		// MySQL upsert
+		// MySQL 插入或更新
 		m := &model.FAQRecord{
 			TableIdentify:   tableConfig.TableIdentity,
 			RecordID:        &recordID,

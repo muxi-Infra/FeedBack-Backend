@@ -8,7 +8,6 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
-	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"golang.org/x/sync/singleflight"
@@ -16,7 +15,7 @@ import (
 
 type AuthHandler interface {
 	ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegrationTokenReq) (response.Response, error)
-	GetTenantToken(c *gin.Context) (response.Response, error)
+	GetTenantToken(c *gin.Context, claims ijwt.UserClaims) (response.Response, error)
 }
 
 type Auth struct {
@@ -33,8 +32,7 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 	}
 }
 
-// ExchangeIntegrationToken validates a trusted project's signed identity
-// assertion and issues a feedback-service access token.
+// ExchangeIntegrationToken 校验已登记项目签发的身份断言，并签发反馈服务访问 Token。
 //
 //	@Summary		项目身份换取反馈 Token
 //	@Description	校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
@@ -144,14 +142,10 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 //	@Failure		400	{object}	response.Response									"请求参数错误"
 //	@Failure		500	{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/auth/tenant/token [post]
-func (o Auth) GetTenantToken(c *gin.Context) (response.Response, error) {
+func (o Auth) GetTenantToken(_ *gin.Context, claims ijwt.UserClaims) (response.Response, error) {
 	// todo 这里暴露的权限实际上是比较大的，然后之后调研一下其他方法
 	// 比如使用七牛云，然后图片就保存那个url就可以了，获取七牛云的上传token比较好
 	// 申请一个高级服务器是不怎么可能（也不是没有可能）
-	claims, err := ginx.GetClaims(c)
-	if err != nil {
-		return response.Response{}, err
-	}
 	if claims.ProjectID == "" || claims.StudentID == "" {
 		return response.Response{}, errs.IntegrationTokenInvalidError(errors.New("tenant token requires an integration user token"))
 	}
