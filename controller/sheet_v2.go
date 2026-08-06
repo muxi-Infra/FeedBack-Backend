@@ -276,7 +276,7 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string														true	"Bearer Token"
-//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg						true	"查询记录请求参数"
+//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg							true	"查询记录请求参数"
 //	@Success		200				{object}	response.Response{data=respV2.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response											"服务器内部错误"

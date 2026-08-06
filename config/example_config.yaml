@@ -19,24 +19,6 @@ admin_jwt:
   audience: "feedback-admin-web"
   timeout: 7200                                # 过期时间（秒）
 
-# 项目身份换 Token 配置
-# 公钥用于验证已登记项目签发的身份断言；正式环境建议使用挂载文件。
-integration:
-  access_token_ttl: 3600
-  projects:
-    - project_id: "forum-be"
-      issuer: "forum-be"
-      key_id: "forum-be-key-example"
-      public_key_file: "/etc/secrets/forum-be-feedback-public.pem"
-      tables:
-        - table_identity: "forum"
-          scopes:
-            - "feedback:create"
-            - "feedback:read:self"
-        - table_identity: "forum-faq"
-          scopes:
-            - "feedback:read"
-
 # 中间件配置
 middleware:
   allowedOrigins:

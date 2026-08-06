@@ -2,22 +2,20 @@ package controller
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	reqV1 "github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/ginx"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"golang.org/x/sync/singleflight"
 )
 
 type AuthHandler interface {
-	GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (response.Response, error)
 	ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegrationTokenReq) (response.Response, error)
-	RefreshTableConfig(c *gin.Context) (response.Response, error)
 	GetTenantToken(c *gin.Context) (response.Response, error)
 }
 
@@ -67,6 +65,7 @@ func (o Auth) ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegra
 	}, nil
 }
 
+/*
 // GetTableToken 获取表格访问令牌
 //
 //	@Summary		获取表格访问令牌
@@ -131,6 +130,7 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 		Data:    tableCfgs,
 	}, nil
 }
+*/
 
 // GetTenantToken 获取租户访问令牌
 //
@@ -145,6 +145,14 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 //	@Failure		500	{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/auth/tenant/token [post]
 func (o Auth) GetTenantToken(c *gin.Context) (response.Response, error) {
+	claims, err := ginx.GetClaims(c)
+	if err != nil {
+		return response.Response{}, err
+	}
+	if claims.ProjectID == "" || claims.StudentID == "" {
+		return response.Response{}, errs.IntegrationTokenInvalidError(errors.New("tenant token requires an integration user token"))
+	}
+
 	token := o.s.GetTenantToken()
 
 	resp := respV1.GenerateTenantToken{

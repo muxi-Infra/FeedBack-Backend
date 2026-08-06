@@ -210,27 +210,8 @@ func NewAdminJWTConfig() AdminJWTConfig {
 	return cfg
 }
 
-// IntegrationProjectConfig describes a trusted project that can exchange a
-// signed identity assertion for a feedback-service token.
-type IntegrationProjectConfig struct {
-	ProjectID     string                   `mapstructure:"project_id" yaml:"project_id"`
-	Issuer        string                   `mapstructure:"issuer" yaml:"issuer"`
-	KeyID         string                   `mapstructure:"key_id" yaml:"key_id"`
-	PublicKey     string                   `mapstructure:"public_key" yaml:"public_key"`
-	PublicKeyFile string                   `mapstructure:"public_key_file" yaml:"public_key_file"`
-	TableIdentity string                   `mapstructure:"table_identity" yaml:"table_identity"` // legacy single-table config
-	Scopes        []string                 `mapstructure:"scopes" yaml:"scopes"`                 // legacy single-table config
-	Tables        []IntegrationTableConfig `mapstructure:"tables" yaml:"tables"`
-}
-
-type IntegrationTableConfig struct {
-	TableIdentity string   `mapstructure:"table_identity" yaml:"table_identity"`
-	Scopes        []string `mapstructure:"scopes" yaml:"scopes"`
-}
-
 type IntegrationAuthConfig struct {
-	AccessTokenTTL int                        `mapstructure:"access_token_ttl" yaml:"access_token_ttl"`
-	Projects       []IntegrationProjectConfig `mapstructure:"projects" yaml:"projects"`
+	AccessTokenTTL int `mapstructure:"access_token_ttl" yaml:"access_token_ttl"`
 }
 
 func NewIntegrationAuthConfig() *IntegrationAuthConfig {
