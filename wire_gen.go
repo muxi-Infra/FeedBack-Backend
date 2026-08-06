@@ -40,12 +40,20 @@ func InitApp() (*App, error) {
 	redisConfig := config.NewRedisConfig()
 	client := ioc.InitRedis(redisConfig)
 	limitMiddleware := middleware.NewLimitMiddleware(limiterConfig, client)
+	adminJWTConfig := config.NewAdminJWTConfig()
+	adminJWT := ijwt.NewAdminJWT(adminJWTConfig)
+	adminAuthMiddleware := middleware.NewAdminAuthMiddleware(adminJWT)
+	mysqlConfig := config.NewMysqlConfig()
+	db := ioc.InitMysql(mysqlConfig)
+	enforcer, err := ioc.InitCasbin(db)
+	if err != nil {
+		return nil, err
+	}
+	adminPermissionMiddleware := middleware.NewAdminPermissionMiddleware(enforcer)
 	swagHandler := controller.NewSwag()
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
 	client2 := lark.NewClient(larkClient)
-	mysqlConfig := config.NewMysqlConfig()
-	db := ioc.InitMysql(mysqlConfig)
 	faqResolutionDAO := dao.NewFAQResolutionDAO(db)
 	sheetDAO := dao.NewSheetDAO(db)
 	faqdao := dao.NewFAQDAO(db)
@@ -60,15 +68,16 @@ func InitApp() (*App, error) {
 	authService := service.NewAuthService(baseTable, clientConfig, client2, loggerLogger, jwt, integrationAuthConfig)
 	authHandler := controller.NewAuth(jwt, authService)
 	messageHandler := controller.NewMessage(messageService)
+	adminUserDAO := dao.NewAdminUserDAO(db)
+	adminService := service.NewAdminService(adminUserDAO, adminJWT)
+	adminHandler := controller.NewAdmin(adminService)
+	integrationDAO := dao.NewIntegrationDAO(db)
+	integrationService := service.NewIntegrationService(integrationDAO)
+	integrationAdminHandler := controller.NewIntegrationAdmin(integrationService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler)
-	enforcer, err := ioc.InitCasbin(db)
-	if err != nil {
-		return nil, err
-	}
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, adminAuthMiddleware, adminPermissionMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, adminHandler, integrationAdminHandler, sheetV2Handler)
 	app := &App{
-		r:        engine,
-		enforcer: enforcer,
+		r: engine,
 	}
 	return app, nil
 }

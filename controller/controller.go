@@ -9,4 +9,5 @@ var ProviderSet = wire.NewSet(
 	NewSheetV2,
 	NewMessage,
 	NewIntegrationAdmin,
+	NewAdmin,
 )

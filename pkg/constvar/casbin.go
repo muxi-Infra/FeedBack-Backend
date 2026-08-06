@@ -19,6 +19,7 @@ const (
 // 管理后台资源。
 const (
 	AdminObjectProject = "project"
+	AdminObjectAdmin   = "admin"
 	AdminObjectKey     = "key"
 	AdminObjectTable   = "table"
 	AdminObjectScope   = "scope"

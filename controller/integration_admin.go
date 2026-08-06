@@ -26,6 +26,21 @@ func NewIntegrationAdmin(s service.IntegrationService) IntegrationAdminHandler {
 	return &IntegrationAdmin{s: s}
 }
 
+// RegisterProject 注册一个对接反馈中台的校园项目。
+//
+//	@Summary		注册反馈项目
+//	@Description	登记项目身份公钥、飞书反馈表和表级 scope。公钥和表格敏感配置不会在响应中返回。
+//	@Tags			Integration Admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string						true	"Bearer Admin JWT"
+//	@Param			request			body		reqV1.RegisterProjectReq	true	"项目配置"
+//	@Success		200				{object}	response.Response{data=respV1.ProjectConfigResponse}
+//	@Failure		400				{object}	response.Response
+//	@Failure		401				{object}	response.Response
+//	@Failure		403				{object}	response.Response
+//	@Failure		409				{object}	response.Response
+//	@Router			/api/v1/integrations/projects [post]
 func (h *IntegrationAdmin) RegisterProject(c *gin.Context, req reqV1.RegisterProjectReq) (response.Response, error) {
 	input := domain.RegisterProjectInput{
 		ProjectID:   req.ProjectID,
@@ -60,6 +75,18 @@ func (h *IntegrationAdmin) RegisterProject(c *gin.Context, req reqV1.RegisterPro
 	return response.Response{Code: 0, Message: "Success", Data: toProjectConfigResponse(project)}, nil
 }
 
+// GetProject 获取指定项目的配置摘要。
+//
+//	@Summary	获取项目配置
+//	@Tags		Integration Admin
+//	@Produce	json
+//	@Param		Authorization	header		string	true	"Bearer Admin JWT"
+//	@Param		project_id		path		string	true	"项目 ID"
+//	@Success	200				{object}	response.Response{data=respV1.ProjectConfigResponse}
+//	@Failure	401				{object}	response.Response
+//	@Failure	403				{object}	response.Response
+//	@Failure	404				{object}	response.Response
+//	@Router		/api/v1/integrations/projects/{project_id} [get]
 func (h *IntegrationAdmin) GetProject(c *gin.Context) (response.Response, error) {
 	project, err := h.s.GetProject(c.Request.Context(), c.Param("project_id"))
 	if err != nil {
@@ -68,6 +95,16 @@ func (h *IntegrationAdmin) GetProject(c *gin.Context) (response.Response, error)
 	return response.Response{Code: 0, Message: "Success", Data: toProjectConfigResponse(project)}, nil
 }
 
+// ListProjects 获取所有已登记项目。
+//
+//	@Summary	获取项目列表
+//	@Tags		Integration Admin
+//	@Produce	json
+//	@Param		Authorization	header		string	true	"Bearer Admin JWT"
+//	@Success	200				{object}	response.Response{data=[]respV1.ProjectResponse}
+//	@Failure	401				{object}	response.Response
+//	@Failure	403				{object}	response.Response
+//	@Router		/api/v1/integrations/projects [get]
 func (h *IntegrationAdmin) ListProjects(c *gin.Context) (response.Response, error) {
 	projects, err := h.s.ListProjects(c.Request.Context())
 	if err != nil {
@@ -81,6 +118,21 @@ func (h *IntegrationAdmin) ListProjects(c *gin.Context) (response.Response, erro
 	return response.Response{Code: 0, Message: "Success", Data: items}, nil
 }
 
+// UpdateProject 更新项目基本信息。
+//
+//	@Summary	更新项目
+//	@Tags		Integration Admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		Authorization	header		string					true	"Bearer Admin JWT"
+//	@Param		project_id		path		string					true	"项目 ID"
+//	@Param		request			body		reqV1.UpdateProjectReq	true	"项目基本信息"
+//	@Success	200				{object}	response.Response
+//	@Failure	400				{object}	response.Response
+//	@Failure	401				{object}	response.Response
+//	@Failure	403				{object}	response.Response
+//	@Failure	404				{object}	response.Response
+//	@Router		/api/v1/integrations/projects/{project_id} [put]
 func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProjectReq) (response.Response, error) {
 	err := h.s.UpdateProject(c.Request.Context(), c.Param("project_id"), domain.UpdateProjectInput{
 		ProjectName: req.ProjectName,
@@ -93,6 +145,18 @@ func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProject
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
 }
 
+// DeleteProject 软删除项目。
+//
+//	@Summary	删除项目
+//	@Tags		Integration Admin
+//	@Produce	json
+//	@Param		Authorization	header		string	true	"Bearer Admin JWT"
+//	@Param		project_id		path		string	true	"项目 ID"
+//	@Success	200				{object}	response.Response
+//	@Failure	401				{object}	response.Response
+//	@Failure	403				{object}	response.Response
+//	@Failure	404				{object}	response.Response
+//	@Router		/api/v1/integrations/projects/{project_id} [delete]
 func (h *IntegrationAdmin) DeleteProject(c *gin.Context) (response.Response, error) {
 	if err := h.s.DeleteProject(c.Request.Context(), c.Param("project_id")); err != nil {
 		return response.Response{}, err
@@ -100,6 +164,18 @@ func (h *IntegrationAdmin) DeleteProject(c *gin.Context) (response.Response, err
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
 }
 
+// RestoreProject 恢复已软删除的项目。
+//
+//	@Summary	恢复项目
+//	@Tags		Integration Admin
+//	@Produce	json
+//	@Param		Authorization	header		string	true	"Bearer Admin JWT"
+//	@Param		project_id		path		string	true	"项目 ID"
+//	@Success	200				{object}	response.Response
+//	@Failure	401				{object}	response.Response
+//	@Failure	403				{object}	response.Response
+//	@Failure	404				{object}	response.Response
+//	@Router		/api/v1/integrations/projects/{project_id}/restore [post]
 func (h *IntegrationAdmin) RestoreProject(c *gin.Context) (response.Response, error) {
 	if err := h.s.RestoreProject(c.Request.Context(), c.Param("project_id")); err != nil {
 		return response.Response{}, err
