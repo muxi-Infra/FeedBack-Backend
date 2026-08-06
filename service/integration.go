@@ -11,6 +11,8 @@ import (
 
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 )
@@ -37,11 +39,13 @@ type IntegrationService interface {
 }
 
 type integrationService struct {
-	dao dao.IntegrationDAO
+	dao          dao.IntegrationDAO
+	configEvents cache.ProjectConfigEventBus
+	log          logger.Logger
 }
 
-func NewIntegrationService(integrationDAO dao.IntegrationDAO) IntegrationService {
-	return &integrationService{dao: integrationDAO}
+func NewIntegrationService(integrationDAO dao.IntegrationDAO, configEvents cache.ProjectConfigEventBus, log logger.Logger) IntegrationService {
+	return &integrationService{dao: integrationDAO, configEvents: configEvents, log: log}
 }
 
 func (s *integrationService) RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (*domain.ProjectConfig, error) {
@@ -102,6 +106,7 @@ func (s *integrationService) RegisterProject(ctx context.Context, input domain.R
 	if err != nil {
 		return nil, err
 	}
+	s.publishProjectChanged(ctx, project.ProjectID)
 
 	return s.GetProject(ctx, project.ProjectID)
 }
@@ -227,6 +232,7 @@ func (s *integrationService) UpdateProject(ctx context.Context, projectID string
 	if err := s.dao.UpdateProject(ctx, project); err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
 	}
+	s.publishProjectChanged(ctx, projectID)
 	return nil
 }
 
@@ -238,6 +244,7 @@ func (s *integrationService) DeleteProject(ctx context.Context, projectID string
 	if err := s.dao.DeleteProject(ctx, projectID); err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
 	}
+	s.publishProjectChanged(ctx, projectID)
 	return nil
 }
 
@@ -249,7 +256,20 @@ func (s *integrationService) RestoreProject(ctx context.Context, projectID strin
 	if err := s.dao.RestoreProject(ctx, projectID); err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
 	}
+	s.publishProjectChanged(ctx, projectID)
 	return nil
+}
+
+func (s *integrationService) publishProjectChanged(ctx context.Context, projectID string) {
+	if s.configEvents == nil {
+		return
+	}
+	if err := s.configEvents.PublishProjectChanged(ctx, projectID); err != nil && s.log != nil {
+		s.log.Error("发布项目配置刷新事件失败",
+			logger.String("project_id", projectID),
+			logger.String("error", err.Error()),
+		)
+	}
 }
 
 func validateRegisterProjectInput(input domain.RegisterProjectInput) error {

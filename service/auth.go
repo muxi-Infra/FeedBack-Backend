@@ -22,13 +22,15 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
+	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 )
 
 const (
-	TenantRefreshInterval = time.Hour + 35*time.Minute
-	NoticeRefreshInterval = 10 * time.Minute
-	SyncRefreshInterval   = 4 * time.Hour
+	TenantRefreshInterval         = time.Hour + 35*time.Minute
+	NoticeRefreshInterval         = 10 * time.Minute
+	SyncRefreshInterval           = 4 * time.Hour
+	ConfigRefreshFallbackInterval = 5 * time.Minute
 )
 
 //go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
@@ -47,9 +49,10 @@ type AuthServiceImpl struct {
 	jwtHandler     *ijwt.JWT
 	integration    *config.IntegrationAuthConfig
 	integrationDAO dao.IntegrationDAO
+	configEvents   cache.ProjectConfigEventBus
 }
 
-func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandler *ijwt.JWT, integration *config.IntegrationAuthConfig, integrationDAO dao.IntegrationDAO) AuthService {
+func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandler *ijwt.JWT, integration *config.IntegrationAuthConfig, integrationDAO dao.IntegrationDAO, configEvents cache.ProjectConfigEventBus) AuthService {
 	s := &AuthServiceImpl{
 		tenantToken:    "",
 		clientCfg:      clientCfg,
@@ -58,6 +61,7 @@ func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandle
 		jwtHandler:     jwtHandler,
 		integration:    integration,
 		integrationDAO: integrationDAO,
+		configEvents:   configEvents,
 	}
 	// 启动时同步刷新一次表配置，失败只记录日志
 	if _, err := s.RefreshTableConfig(); err != nil {
@@ -68,8 +72,31 @@ func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandle
 	s.startTenantTokenRefresher()
 	s.startNotifiableTableScanner()
 	s.startSyncTableScanner()
+	s.startProjectConfigRefreshers()
 
 	return s
+}
+
+func (t *AuthServiceImpl) startProjectConfigRefreshers() {
+	if t.configEvents != nil {
+		go t.configEvents.ConsumeProjectChanged(context.Background(), func(projectID string) error {
+			_, err := t.RefreshTableConfig()
+			if err == nil {
+				t.log.Info("项目配置缓存已刷新", logger.String("project_id", projectID))
+			}
+			return err
+		})
+	}
+
+	go func() {
+		ticker := time.NewTicker(ConfigRefreshFallbackInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			if _, err := t.RefreshTableConfig(); err != nil {
+				t.log.Error("项目配置兜底刷新失败", logger.String("error", err.Error()))
+			}
+		}
+	}()
 }
 
 func (t *AuthServiceImpl) RefreshTableConfig() ([]domain.TableConfig, error) {
