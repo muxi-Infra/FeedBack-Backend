@@ -21,6 +21,7 @@ import (
 var ProviderSet = wire.NewSet(
 	NewClientConfig,
 	NewJWTConfig,
+	NewAdminJWTConfig,
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewLarkMessageConfig,
@@ -188,6 +189,25 @@ type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
 	EncKey    string `yaml:"encKey"`
 	Timeout   int    `yaml:"timeout"` //过期时间
+}
+
+// AdminJWTConfig 管理后台 JWT 配置，与反馈接口 JWT 分离，避免两类令牌互相复用。
+type AdminJWTConfig struct {
+	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
+	Issuer    string `mapstructure:"issuer" yaml:"issuer"`
+	Audience  string `mapstructure:"audience" yaml:"audience"`
+	Timeout   int    `mapstructure:"timeout" yaml:"timeout"`
+}
+
+func NewAdminJWTConfig() AdminJWTConfig {
+	cfg := AdminJWTConfig{}
+	if err := vp.UnmarshalKey("admin_jwt", &cfg); err != nil {
+		panic(fmt.Sprintf("无法解析 admin_jwt 配置: %v", err))
+	}
+	if cfg.SecretKey == "" || cfg.Issuer == "" || cfg.Audience == "" || cfg.Timeout <= 0 {
+		panic("admin_jwt 配置无效: secret_key、issuer、audience 不能为空，timeout 必须大于 0")
+	}
+	return cfg
 }
 
 // IntegrationProjectConfig describes a trusted project that can exchange a
