@@ -91,14 +91,10 @@ definitions:
         items:
           type: string
         type: array
-      student_id:
-        description: 学号，用于标记用户身份
-        type: string
       table_identify:
         type: string
     required:
     - content
-    - student_id
     - table_identify
     type: object
   v1.CreatTableRecordResp:
@@ -152,15 +148,12 @@ definitions:
         type: string
       unresolved_field_name:
         type: string
-      user_id:
-        type: string
     required:
     - is_resolved
     - record_id
     - resolved_field_name
     - table_identify
     - unresolved_field_name
-    - user_id
     type: object
   v1.GenerateTableTokenReq:
     properties:
@@ -425,13 +418,10 @@ definitions:
         type: string
       table_identify:
         type: string
-      user_id:
-        type: string
     required:
     - is_resolved
     - record_id
     - table_identify
-    - user_id
     type: object
   v2.ForceSyncTableRecordsReq:
     properties:
@@ -456,12 +446,9 @@ definitions:
     type: object
   v2.ForceSyncUserTableRecordsReq:
     properties:
-      student_id:
-        type: string
       table_identify:
         type: string
     required:
-    - student_id
     - table_identify
     type: object
   v2.ForceSyncUserTableRecordsResp:
@@ -1239,7 +1226,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。
+      description: 根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。
       operationId: get-table-record
       parameters:
       - description: Bearer Token
@@ -1247,14 +1234,9 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 用于查询记录的关键值，一般使用学号的字段名
+      - description: 用于查询记录的字段名，字段值由 JWT 中的学生身份决定
         in: query
         name: key_field
-        required: true
-        type: string
-      - description: 用于查询记录的关键值，一般使用学号的字段值
-        in: query
-        name: key_value
         required: true
         type: string
       - description: 分页参数,第一次不需要
@@ -1340,7 +1322,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据学号查询用户相关的常见问题记录及其解决状态。
+      description: 根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
       operationId: get-faq-resolution-record
       parameters:
       - description: Bearer Token
@@ -1356,11 +1338,6 @@ paths:
         name: record_names
         required: true
         type: array
-      - description: 学号，用于标记用户身份
-        in: query
-        name: student_id
-        required: true
-        type: string
       - in: query
         name: table_identify
         required: true
@@ -1427,7 +1404,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
+      description: 根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。
       operationId: get-table-record-by-user
       parameters:
       - description: Bearer Token
@@ -1441,11 +1418,6 @@ paths:
       - description: 分页参数,第一次不需要
         in: query
         name: page_token
-        type: string
-      - description: 学号，用于标记用户身份
-        in: query
-        name: student_id
-        required: true
         type: string
       - in: query
         name: table_identify
@@ -1478,17 +1450,12 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据学号查询用户相关的常见问题记录及其解决状态。
+      description: 根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
       operationId: get-faq-record
       parameters:
       - description: Bearer Token
         in: header
         name: Authorization
-        required: true
-        type: string
-      - description: 学号，用于标记用户身份
-        in: query
-        name: student_id
         required: true
         type: string
       - in: query

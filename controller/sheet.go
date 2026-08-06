@@ -62,7 +62,7 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 	}
 
 	// 组装参数
-	record, err := buildCreateTableRecord(r)
+	record, err := buildCreateTableRecord(r, uc.StudentID)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -125,7 +125,7 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 // GetTableRecordReqByKey 获取用户历史反馈记录
 //
 //	@Summary		查询历史反馈记录
-//	@Description	根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。
+//	@Description	根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。
 //	@Tags			Sheet
 //	@ID				get-table-record
 //	@Accept			json
@@ -145,7 +145,7 @@ func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordR
 	// 组装参数
 	keyField := domain.TableField{
 		FieldName: r.KeyFieldName,
-		Value:     r.KeyFieldValue,
+		Value:     &uc.StudentID,
 	}
 	tableConfig := domain.TableConfig{
 		TableIdentity: &uc.TableIdentity,
@@ -235,13 +235,13 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 // GetFAQResolutionRecord 获取常见问题及解决状态
 //
 //	@Summary		查询FAQ问题记录
-//	@Description	根据学号查询用户相关的常见问题记录及其解决状态。
+//	@Description	根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
 //	@Tags			Sheet
 //	@ID				get-faq-resolution-record
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string														true	"Bearer Token"
-//	@Param			request			query		reqV1.GetFAQProblemTableRecordReg							true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Param			request			query		reqV1.GetFAQProblemTableRecordReg						true	"查询记录请求参数"
 //	@Success		200				{object}	response.Response{data=respV1.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
@@ -261,7 +261,10 @@ func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTa
 		ViewID:        &uc.ViewId,
 	}
 
-	faqServiceResult, err := s.s.GetFAQProblemTableRecord(r.StudentID, r.RecordNames, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	faqServiceResult, err := s.s.GetFAQProblemTableRecord(&uc.StudentID, r.RecordNames, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -311,7 +314,7 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 
 	// 组装参数
 	FAQResolution := domain.FAQResolution{
-		UserID:              r.UserID,
+		UserID:              &uc.StudentID,
 		RecordID:            r.RecordID,
 		ResolvedFieldName:   r.ResolvedFieldName,
 		UnresolvedFieldName: r.UnresolvedFieldName,
@@ -376,7 +379,7 @@ func validateTableIdentify(a, b string) error {
 }
 
 // buildCreateTableRecord 组装以及校验创建记录的参数
-func buildCreateTableRecord(r reqV1.CreatTableRecordReg) (*domain.TableRecord, error) {
+func buildCreateTableRecord(r reqV1.CreatTableRecordReg, studentID string) (*domain.TableRecord, error) {
 	// 拷贝 ExtraRecord，避免修改调用方原始 map
 	totalRecord := make(map[string]any, len(r.ExtraRecord)+4)
 	for k, v := range r.ExtraRecord {
@@ -384,12 +387,10 @@ func buildCreateTableRecord(r reqV1.CreatTableRecordReg) (*domain.TableRecord, e
 	}
 
 	// 必填字段校验
-	if r.StudentID == nil {
-		return nil, errs.CreateRecordEmptyStudentIDError(errors.New("student_id is required"))
-	} else if len(*r.StudentID) != 10 { // 学号长度为10，后续可以追加校验真实学号
-		return nil, errs.CreateRecordInvalidStudentIDError(errors.New("student_id is invalid, length must be 10"))
+	if err := validateStudentID(studentID); err != nil {
+		return nil, err
 	}
-	totalRecord["学号"] = *r.StudentID
+	totalRecord["学号"] = studentID
 	if r.Content == nil {
 		return nil, errs.CreateRecordEmptyContentError(errors.New("content is required"))
 	} else if len(*r.Content) == 0 {
@@ -412,4 +413,15 @@ func buildCreateTableRecord(r reqV1.CreatTableRecordReg) (*domain.TableRecord, e
 		Record: totalRecord,
 	}
 	return record, nil
+}
+
+// validateStudentID 校验来自已验证 JWT 的学生身份，不接受前端传入的学号。
+func validateStudentID(studentID string) error {
+	if studentID == "" {
+		return errs.CreateRecordEmptyStudentIDError(errors.New("student_id is missing from token"))
+	}
+	if len(studentID) != 10 {
+		return errs.CreateRecordInvalidStudentIDError(errors.New("student_id is invalid, length must be 10"))
+	}
+	return nil
 }

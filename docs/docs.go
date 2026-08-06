@@ -1133,7 +1133,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/records": {
             "get": {
-                "description": "根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1155,15 +1155,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段名",
+                        "description": "用于查询记录的字段名，字段值由 JWT 中的学生身份决定",
                         "name": "key_field",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段值",
-                        "name": "key_value",
                         "in": "query",
                         "required": true
                     },
@@ -1291,7 +1284,7 @@ const docTemplate = `{
         },
         "/api/v1/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1319,13 +1312,6 @@ const docTemplate = `{
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
                         "in": "query",
                         "required": true
                     },
@@ -1424,7 +1410,7 @@ const docTemplate = `{
         },
         "/api/v2/sheet/records": {
             "get": {
-                "description": "根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1454,13 +1440,6 @@ const docTemplate = `{
                         "description": "分页参数,第一次不需要",
                         "name": "page_token",
                         "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
-                        "required": true
                     },
                     {
                         "type": "string",
@@ -1505,7 +1484,7 @@ const docTemplate = `{
         },
         "/api/v2/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1523,13 +1502,6 @@ const docTemplate = `{
                         "description": "Bearer Token",
                         "name": "Authorization",
                         "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
                         "required": true
                     },
                     {
@@ -1989,7 +1961,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "content",
-                "student_id",
                 "table_identify"
             ],
             "properties": {
@@ -2012,10 +1983,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                },
-                "student_id": {
-                    "description": "学号，用于标记用户身份",
-                    "type": "string"
                 },
                 "table_identify": {
                     "type": "string"
@@ -2088,8 +2055,7 @@ const docTemplate = `{
                 "record_id",
                 "resolved_field_name",
                 "table_identify",
-                "unresolved_field_name",
-                "user_id"
+                "unresolved_field_name"
             ],
             "properties": {
                 "is_resolved": {
@@ -2105,9 +2071,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "unresolved_field_name": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -2498,8 +2461,7 @@ const docTemplate = `{
             "required": [
                 "is_resolved",
                 "record_id",
-                "table_identify",
-                "user_id"
+                "table_identify"
             ],
             "properties": {
                 "is_resolved": {
@@ -2509,9 +2471,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "table_identify": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -2550,13 +2509,9 @@ const docTemplate = `{
         "v2.ForceSyncUserTableRecordsReq": {
             "type": "object",
             "required": [
-                "student_id",
                 "table_identify"
             ],
             "properties": {
-                "student_id": {
-                    "type": "string"
-                },
                 "table_identify": {
                     "type": "string"
                 }

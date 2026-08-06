@@ -38,6 +38,7 @@ var uc = ijwt.UserClaims{
 	TableToken:    "mock-table-token",
 	TableId:       "mock-table-id",
 	ViewId:        "mock-view-id",
+	StudentID:     "2021001234",
 }
 
 func TestCreateAppTableRecord(t *testing.T) {
@@ -55,7 +56,6 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record success",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr("测试反馈内容"),
 				Images:        []string{"token1", "token2"},
 				ContactInfo:   stringPtr("test@example.com"),
@@ -93,10 +93,13 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record with missing student id",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     nil,
 				Content:       stringPtr("测试反馈内容"),
 			},
-			uc:            uc,
+			uc: func() ijwt.UserClaims {
+				claims := uc
+				claims.StudentID = ""
+				return claims
+			}(),
 			setupMocks:    nil,
 			expectedCode:  0,
 			expectedError: true,
@@ -105,10 +108,13 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record with invalid student id length",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     stringPtr("123"),
 				Content:       stringPtr("测试反馈内容"),
 			},
-			uc:            uc,
+			uc: func() ijwt.UserClaims {
+				claims := uc
+				claims.StudentID = "123"
+				return claims
+			}(),
 			setupMocks:    nil,
 			expectedCode:  0,
 			expectedError: true,
@@ -117,7 +123,6 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record with missing content",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     stringPtr("2021001234"),
 				Content:       nil,
 			},
 			uc:            uc,
@@ -129,7 +134,6 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record with empty content",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr(""),
 			},
 			uc:            uc,
@@ -141,7 +145,6 @@ func TestCreateAppTableRecord(t *testing.T) {
 			name: "create record with table identify mismatch",
 			req: v1.CreatTableRecordReg{
 				TableIdentify: stringPtr("wrong-table-identity"),
-				StudentID:     stringPtr("2021001234"),
 				Content:       stringPtr("测试反馈内容"),
 			},
 			uc:            uc,
@@ -193,7 +196,6 @@ func TestGetTableRecordReqByKey(t *testing.T) {
 			req: v1.GetTableRecordReq{
 				TableIdentify: stringPtr("mock-table-identity"),
 				KeyFieldName:  stringPtr("mock-name"),
-				KeyFieldValue: stringPtr("mock-value"),
 				RecordNames:   []string{"field1", "field2"},
 			},
 			uc: uc,
@@ -250,7 +252,6 @@ func TestGetFAQResolutionRecord(t *testing.T) {
 			name: "get FAQ record success",
 			req: v1.GetFAQProblemTableRecordReg{
 				TableIdentify: stringPtr("mock-table-identity"),
-				StudentID:     stringPtr("mock-student-id"),
 				RecordNames:   []string{"mock-name-1"},
 			},
 			uc: uc,

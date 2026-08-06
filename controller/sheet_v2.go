@@ -41,7 +41,7 @@ func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler
 // GetTableRecordReqByUser 获取用户历史反馈记录
 //
 //	@Summary		查询用户历史反馈记录
-//	@Description	根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
+//	@Description	根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。
 //	@Tags			SheetV2
 //	@ID				get-table-record-by-user
 //	@Accept			json
@@ -67,7 +67,10 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 		ViewID:        &uc.ViewId,
 	}
 
-	serviceResult, err := s.s.GetTableRecordReqByUser(r.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	serviceResult, err := s.s.GetTableRecordReqByUser(&uc.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -184,7 +187,10 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 	}
 
 	// 调用 service 层
-	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(r.StudentID, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(&uc.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -264,13 +270,13 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 // GetFAQRecord 获取常见问题及解决状态
 //
 //	@Summary		查询FAQ问题记录
-//	@Description	根据学号查询用户相关的常见问题记录及其解决状态。
+//	@Description	根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
 //	@Tags			SheetV2
 //	@ID				get-faq-record
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string														true	"Bearer Token"
-//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg							true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg						true	"查询记录请求参数"
 //	@Success		200				{object}	response.Response{data=respV2.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
@@ -290,7 +296,10 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 		ViewID:        &uc.ViewId,
 	}
 
-	faqServiceResult, err := s.s.GetFAQResolutionRecord(r.StudentID, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	faqServiceResult, err := s.s.GetFAQResolutionRecord(&uc.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -336,7 +345,7 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 
 	// 组装参数
 	FAQResolution := domain.FAQResolutionV2{
-		UserID:   r.UserID,
+		UserID:   &uc.StudentID,
 		RecordID: r.RecordID,
 
 		IsResolved: r.IsResolved,

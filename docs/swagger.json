@@ -1126,7 +1126,7 @@
         },
         "/api/v1/sheet/records": {
             "get": {
-                "description": "根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1148,15 +1148,8 @@
                     },
                     {
                         "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段名",
+                        "description": "用于查询记录的字段名，字段值由 JWT 中的学生身份决定",
                         "name": "key_field",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段值",
-                        "name": "key_value",
                         "in": "query",
                         "required": true
                     },
@@ -1284,7 +1277,7 @@
         },
         "/api/v1/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1312,13 +1305,6 @@
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
                         "in": "query",
                         "required": true
                     },
@@ -1417,7 +1403,7 @@
         },
         "/api/v2/sheet/records": {
             "get": {
-                "description": "根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1447,13 +1433,6 @@
                         "description": "分页参数,第一次不需要",
                         "name": "page_token",
                         "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
-                        "required": true
                     },
                     {
                         "type": "string",
@@ -1498,7 +1477,7 @@
         },
         "/api/v2/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1516,13 +1495,6 @@
                         "description": "Bearer Token",
                         "name": "Authorization",
                         "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
                         "required": true
                     },
                     {
@@ -1982,7 +1954,6 @@
             "type": "object",
             "required": [
                 "content",
-                "student_id",
                 "table_identify"
             ],
             "properties": {
@@ -2005,10 +1976,6 @@
                     "items": {
                         "type": "string"
                     }
-                },
-                "student_id": {
-                    "description": "学号，用于标记用户身份",
-                    "type": "string"
                 },
                 "table_identify": {
                     "type": "string"
@@ -2081,8 +2048,7 @@
                 "record_id",
                 "resolved_field_name",
                 "table_identify",
-                "unresolved_field_name",
-                "user_id"
+                "unresolved_field_name"
             ],
             "properties": {
                 "is_resolved": {
@@ -2098,9 +2064,6 @@
                     "type": "string"
                 },
                 "unresolved_field_name": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -2491,8 +2454,7 @@
             "required": [
                 "is_resolved",
                 "record_id",
-                "table_identify",
-                "user_id"
+                "table_identify"
             ],
             "properties": {
                 "is_resolved": {
@@ -2502,9 +2464,6 @@
                     "type": "string"
                 },
                 "table_identify": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -2543,13 +2502,9 @@
         "v2.ForceSyncUserTableRecordsReq": {
             "type": "object",
             "required": [
-                "student_id",
                 "table_identify"
             ],
             "properties": {
-                "student_id": {
-                    "type": "string"
-                },
                 "table_identify": {
                     "type": "string"
                 }
