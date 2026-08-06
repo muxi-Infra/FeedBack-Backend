@@ -189,7 +189,7 @@ func (m *MessageServiceImpl) SendLarkNotification(tableName, content, url string
 }
 
 func (m *MessageServiceImpl) TriggerNotification(tableIdentify string) error {
-	table, ok := tableCfg[tableIdentify]
+	table, ok := runtimeTableConfigCache.Get(tableIdentify)
 	if !ok {
 		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify not found: %s", tableIdentify))
 	}

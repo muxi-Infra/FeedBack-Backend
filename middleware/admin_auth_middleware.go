@@ -12,6 +12,8 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 )
 
+// todo 项目如果禁用的话，已签发 Token 不能立即失效
+
 const (
 	AdminIDContextKey     = "admin_id"
 	AdminClaimsContextKey = "admin_claims"

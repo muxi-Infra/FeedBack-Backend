@@ -145,6 +145,9 @@ func (o Auth) RefreshTableConfig(c *gin.Context) (response.Response, error) {
 //	@Failure		500	{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/auth/tenant/token [post]
 func (o Auth) GetTenantToken(c *gin.Context) (response.Response, error) {
+	// todo 这里暴露的权限实际上是比较大的，然后之后调研一下其他方法
+	// 比如使用七牛云，然后图片就保存那个url就可以了，获取七牛云的上传token比较好
+	// 申请一个高级服务器是不怎么可能（也不是没有可能）
 	claims, err := ginx.GetClaims(c)
 	if err != nil {
 		return response.Response{}, err

@@ -39,6 +39,7 @@ var uc = ijwt.UserClaims{
 	TableId:       "mock-table-id",
 	ViewId:        "mock-view-id",
 	StudentID:     "2021001234",
+	Scope:         []string{"feedback:create", "feedback:read:self", "feedback:read", "feedback:write", "feedback:sync"},
 }
 
 func TestCreateAppTableRecord(t *testing.T) {

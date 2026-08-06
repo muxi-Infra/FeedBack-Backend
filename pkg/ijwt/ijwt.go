@@ -44,8 +44,8 @@ type UserClaims struct {
 }
 
 func (u UserClaims) HasScope(scope string) bool {
-	if len(u.Scope) == 0 {
-		return true // 兼容旧版表级 Token
+	if scope == "" || len(u.Scope) == 0 {
+		return false
 	}
 	for _, item := range u.Scope {
 		if item == scope {
@@ -112,7 +112,7 @@ func (j *JWT) ParseToken(tokenStr string) (UserClaims, error) {
 	uc := UserClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, &uc, func(token *jwt.Token) (interface{}, error) {
 		// 校验签名算法
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if token.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("签名检验算法错误")
 		}
 		return j.jwtKey, nil

@@ -224,22 +224,17 @@ func (t *AuthServiceImpl) refreshTableConfigFromDB() ([]domain.TableConfig, erro
 		}
 	}
 
-	t.mutex.Lock()
-	tableCfg = newTables
-	t.mutex.Unlock()
+	runtimeTableConfigCache.Replace(newTables)
 	return tables, nil
 }
 
 func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (domain.TableConfig, error) {
-	t.mutex.RLock()
-	defer t.mutex.RUnlock()
-
 	// 防止传入 nil 指针引起 panic
 	if tableIdentity == nil {
 		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
 	}
 
-	table, exists := tableCfg[*tableIdentity]
+	table, exists := runtimeTableConfigCache.Get(*tableIdentity)
 	if !exists {
 		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
 	}
@@ -564,8 +559,7 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 		for {
 			select {
 			case <-ticker.C:
-				t.mutex.RLock()
-				for tableID, table := range tableCfg {
+				for tableID, table := range runtimeTableConfigCache.Snapshot() {
 					if !table.Notice {
 						continue
 					}
@@ -582,7 +576,6 @@ func (t *AuthServiceImpl) startNotifiableTableScanner() {
 						)
 					}
 				}
-				t.mutex.RUnlock()
 			}
 		}
 	}()
@@ -596,8 +589,7 @@ func (t *AuthServiceImpl) startSyncTableScanner() {
 		for {
 			select {
 			case <-ticker.C:
-				t.mutex.RLock()
-				for tableID, table := range tableCfg {
+				for tableID, table := range runtimeTableConfigCache.Snapshot() {
 					select {
 					case syncTableCh <- table:
 						t.log.Info("sync table queued",
@@ -608,7 +600,6 @@ func (t *AuthServiceImpl) startSyncTableScanner() {
 							logger.String("table_id", tableID))
 					}
 				}
-				t.mutex.RUnlock()
 			}
 		}
 	}()

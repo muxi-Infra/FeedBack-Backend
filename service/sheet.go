@@ -20,6 +20,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
 const (
@@ -37,6 +38,7 @@ type SheetService interface {
 	UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	VerifyTableRecordOwnership(recordID, userID *string, tableConfig *domain.TableConfig) error
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
@@ -340,6 +342,26 @@ func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, li
 		HasMore:   &hasMore,
 		PageToken: nextToken,
 	}, nil
+}
+
+// VerifyTableRecordOwnership 确认记录属于当前学生和当前反馈表。
+// 未找到记录时统一返回“记录不存在”，避免泄露其他用户记录是否存在。
+func (s *SheetServiceImpl) VerifyTableRecordOwnership(recordID, userID *string, tableConfig *domain.TableConfig) error {
+	if recordID == nil || userID == nil || tableConfig == nil || tableConfig.TableIdentity == nil {
+		return errs.TableRecordNotFoundError(errors.New("record ownership parameters are incomplete"))
+	}
+	if *recordID == "" || *userID == "" || *tableConfig.TableIdentity == "" {
+		return errs.TableRecordNotFoundError(errors.New("record ownership parameters are empty"))
+	}
+
+	_, err := s.sheetDao.GetSheetRecordByRecordID(*tableConfig.TableIdentity, *userID, *recordID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errs.TableRecordNotFoundError(errors.New("record does not belong to current user"))
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {

@@ -47,7 +47,7 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterAdminRouter(apiV1, admin, adminAuthMiddleware, adminPermissionMiddleware)
 	RegisterIntegrationAdminRouter(apiV1, integrationAdmin, adminAuthMiddleware, adminPermissionMiddleware)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
-	RegisterMessageRouter(apiV1, mh)
+	RegisterMessageRouter(apiV1, mh, adminAuthMiddleware, adminPermissionMiddleware)
 
 	// V2 版本的路由
 	apiV2 := r.Group("/api/v2")

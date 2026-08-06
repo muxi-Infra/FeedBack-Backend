@@ -137,6 +137,9 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [get]
 func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:read:self") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -198,6 +201,9 @@ func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordR
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/record [get]
 func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:read:self") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -210,6 +216,10 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 		TableToken:    &uc.TableToken,
 		TableID:       &uc.TableId,
 		ViewID:        &uc.ViewId,
+	}
+
+	if err := s.s.VerifyTableRecordOwnership(r.RecordID, &uc.StudentID, &tableConfig); err != nil {
+		return response.Response{}, err
 	}
 
 	serviceResult, _, err := s.s.GetTableRecordReqByRecordID(r.RecordID, &tableConfig)
@@ -247,6 +257,9 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [get]
 func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:read") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read scope is required"))
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -355,6 +368,10 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v1/sheet/photos/url [get]
 func (s *SheetV1) GetPhotoUrl(c *gin.Context, r reqV1.GetPhotoUrlReq, uc ijwt.UserClaims) (response.Response, error) {
+	// todo 目前没有检测这张照片属于这个用户，属于目前这个登陆的项目，即图片 Token 没有归属校验
+	if !uc.HasScope("feedback:read:self") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	}
 	photoUrlResult, err := s.s.GetPhotoUrl(r.FileTokens)
 	if err != nil {
 		return response.Response{}, err

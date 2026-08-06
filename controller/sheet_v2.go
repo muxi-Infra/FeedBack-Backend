@@ -53,6 +53,9 @@ func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v2/sheet/records [get]
 func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecordByUserReq, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:read:self") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -282,6 +285,9 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [get]
 func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+	if !uc.HasScope("feedback:read") {
+		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read scope is required"))
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
