@@ -34,3 +34,12 @@ type UpdateProjectReq struct {
 	School      string `json:"school"`
 	Status      string `json:"status"`
 }
+
+// UpdateProjectConfigReq 全量更新项目配置请求。
+type UpdateProjectConfigReq struct {
+	ProjectName string                    `json:"project_name" binding:"required"`
+	School      string                    `json:"school" binding:"required"`
+	Status      string                    `json:"status" binding:"required"`
+	Key         RegisterProjectKeyReq     `json:"key" binding:"required"`
+	Tables      []RegisterProjectTableReq `json:"tables" binding:"required,min=1"`
+}

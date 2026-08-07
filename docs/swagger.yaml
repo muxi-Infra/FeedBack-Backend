@@ -394,6 +394,28 @@ definitions:
     required:
     - status
     type: object
+  v1.UpdateProjectConfigReq:
+    properties:
+      key:
+        $ref: '#/definitions/v1.RegisterProjectKeyReq'
+      project_name:
+        type: string
+      school:
+        type: string
+      status:
+        type: string
+      tables:
+        items:
+          $ref: '#/definitions/v1.RegisterProjectTableReq'
+        minItems: 1
+        type: array
+    required:
+    - key
+    - project_name
+    - school
+    - status
+    - tables
+    type: object
   v1.UpdateProjectReq:
     properties:
       project_name:
@@ -945,6 +967,54 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 更新项目
+      tags:
+      - Integration Admin
+  /api/v1/integrations/projects/{project_id}/config:
+    put:
+      consumes:
+      - application/json
+      description: 一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。
+      parameters:
+      - description: Bearer Admin JWT
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 项目 ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: 完整项目配置
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.UpdateProjectConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 全量更新项目配置
       tags:
       - Integration Admin
   /api/v1/integrations/token/exchange:

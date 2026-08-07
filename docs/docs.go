@@ -713,6 +713,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/integrations/projects/{project_id}/config": {
+            "put": {
+                "description": "一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "全量更新项目配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "完整项目配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateProjectConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/integrations/token/exchange": {
             "post": {
                 "description": "校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。",
@@ -2285,6 +2357,37 @@ const docTemplate = `{
             "properties": {
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "v1.UpdateProjectConfigReq": {
+            "type": "object",
+            "required": [
+                "key",
+                "project_name",
+                "school",
+                "status",
+                "tables"
+            ],
+            "properties": {
+                "key": {
+                    "$ref": "#/definitions/v1.RegisterProjectKeyReq"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tables": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/v1.RegisterProjectTableReq"
+                    }
                 }
             }
         },

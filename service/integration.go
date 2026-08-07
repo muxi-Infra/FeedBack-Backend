@@ -34,6 +34,7 @@ type IntegrationService interface {
 	GetProject(ctx context.Context, projectID string) (*domain.ProjectConfig, error)
 	ListProjects(ctx context.Context) ([]domain.ProjectSummary, error)
 	UpdateProject(ctx context.Context, projectID string, input domain.UpdateProjectInput) error
+	UpdateProjectConfig(ctx context.Context, input domain.UpdateProjectConfigInput) error
 	DeleteProject(ctx context.Context, projectID string) error
 }
 
@@ -232,6 +233,93 @@ func (s *integrationService) UpdateProject(ctx context.Context, projectID string
 	if err := s.dao.UpdateProject(ctx, project); err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
 	}
+	s.publishProjectChanged(ctx, projectID)
+	return nil
+}
+
+// UpdateProjectConfig 全量替换项目配置，保证基本信息、公钥、表配置和 Scope 在同一事务中更新。
+func (s *integrationService) UpdateProjectConfig(ctx context.Context, input domain.UpdateProjectConfigInput) error {
+	registerInput := domain.RegisterProjectInput{
+		ProjectID:   input.ProjectID,
+		ProjectName: input.ProjectName,
+		School:      input.School,
+		Status:      input.Status,
+		Key:         input.Key,
+		Tables:      input.Tables,
+	}
+	if err := validateRegisterProjectInput(registerInput); err != nil {
+		return err
+	}
+
+	projectID := strings.TrimSpace(input.ProjectID)
+	project, err := s.dao.GetProject(ctx, projectID)
+	if err != nil {
+		return errs.IntegrationProjectDatabaseError(err)
+	}
+	if project == nil {
+		return errs.IntegrationProjectNotFoundError(errors.New("project_id not found"))
+	}
+
+	if err := s.dao.Transaction(ctx, func(tx dao.IntegrationDAO) error {
+		project.ProjectName = strings.TrimSpace(input.ProjectName)
+		project.School = strings.TrimSpace(input.School)
+		project.Status = strings.TrimSpace(input.Status)
+		if err := tx.UpdateProject(ctx, project); err != nil {
+			return errs.IntegrationProjectDatabaseError(err)
+		}
+
+		key := &model.FeedbackProjectKey{
+			ProjectID: projectID,
+			KeyID:     strings.TrimSpace(input.Key.KeyID),
+			Issuer:    strings.TrimSpace(input.Key.Issuer),
+			PublicKey: strings.TrimSpace(input.Key.PublicKey),
+			ExpiresAt: input.Key.ExpiresAt,
+			Status:    ProjectStatusActive,
+		}
+		if err := tx.UpsertProjectKey(ctx, key); err != nil {
+			return errs.IntegrationProjectDatabaseError(err)
+		}
+
+		existingKeys, err := tx.ListProjectKeys(ctx, projectID)
+		if err != nil {
+			return errs.IntegrationProjectDatabaseError(err)
+		}
+		for _, existing := range existingKeys {
+			if existing.KeyID != key.KeyID {
+				if err := tx.DeleteProjectKey(ctx, projectID, existing.KeyID); err != nil {
+					return errs.IntegrationProjectDatabaseError(err)
+				}
+			}
+		}
+
+		existingTables, err := tx.ListProjectTables(ctx, projectID)
+		if err != nil {
+			return errs.IntegrationProjectDatabaseError(err)
+		}
+		requestedTables := make(map[string]struct{}, len(input.Tables))
+		for _, tableInput := range input.Tables {
+			table := buildProjectTable(projectID, tableInput)
+			requestedTables[table.TableIdentity] = struct{}{}
+			if err := tx.UpsertProjectTable(ctx, table); err != nil {
+				return errs.IntegrationProjectDatabaseError(err)
+			}
+			scopes := buildProjectScopes(projectID, table.TableIdentity, tableInput.Scopes)
+			if err := tx.ReplaceProjectScopes(ctx, projectID, table.TableIdentity, scopes); err != nil {
+				return errs.IntegrationProjectDatabaseError(err)
+			}
+		}
+		for _, existing := range existingTables {
+			if _, ok := requestedTables[existing.TableIdentity]; !ok {
+				if err := tx.DeleteProjectTable(ctx, projectID, existing.TableIdentity); err != nil {
+					return errs.IntegrationProjectDatabaseError(err)
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	s.publishProjectChanged(ctx, projectID)
 	return nil
 }

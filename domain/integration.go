@@ -35,6 +35,16 @@ type UpdateProjectInput struct {
 	Status      string
 }
 
+// UpdateProjectConfigInput 用于全量更新项目基本信息、公钥、飞书表配置和 Scope。
+type UpdateProjectConfigInput struct {
+	ProjectID   string
+	ProjectName string
+	School      string
+	Status      string
+	Key         ProjectKeyInput
+	Tables      []ProjectTableInput
+}
+
 type ProjectSummary struct {
 	ID          uint64
 	ProjectID   string

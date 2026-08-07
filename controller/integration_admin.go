@@ -14,6 +14,7 @@ type IntegrationAdminHandler interface {
 	GetProject(c *gin.Context) (response.Response, error)
 	ListProjects(c *gin.Context) (response.Response, error)
 	UpdateProject(c *gin.Context, req reqV1.UpdateProjectReq) (response.Response, error)
+	UpdateProjectConfig(c *gin.Context, req reqV1.UpdateProjectConfigReq) (response.Response, error)
 	DeleteProject(c *gin.Context) (response.Response, error)
 }
 
@@ -139,6 +140,55 @@ func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProject
 		Status:      req.Status,
 	})
 	if err != nil {
+		return response.Response{}, err
+	}
+	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
+}
+
+// UpdateProjectConfig 全量更新项目基本信息、公钥、飞书表配置和 Scope。
+//
+//	@Summary		全量更新项目配置
+//	@Description	一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。
+//	@Tags			Integration Admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			Authorization	header		string							true	"Bearer Admin JWT"
+//	@Param			project_id		path		string							true	"项目 ID"
+//	@Param			request			body		reqV1.UpdateProjectConfigReq	true	"完整项目配置"
+//	@Success		200				{object}	response.Response
+//	@Failure		400				{object}	response.Response
+//	@Failure		401				{object}	response.Response
+//	@Failure		403				{object}	response.Response
+//	@Failure		404				{object}	response.Response
+//	@Router			/api/v1/integrations/projects/{project_id}/config [put]
+func (h *IntegrationAdmin) UpdateProjectConfig(c *gin.Context, req reqV1.UpdateProjectConfigReq) (response.Response, error) {
+	input := domain.UpdateProjectConfigInput{
+		ProjectID:   c.Param("project_id"),
+		ProjectName: req.ProjectName,
+		School:      req.School,
+		Status:      req.Status,
+		Key: domain.ProjectKeyInput{
+			KeyID:     req.Key.KeyID,
+			Issuer:    req.Key.Issuer,
+			PublicKey: req.Key.PublicKey,
+			ExpiresAt: req.Key.ExpiresAt,
+		},
+		Tables: make([]domain.ProjectTableInput, 0, len(req.Tables)),
+	}
+	for _, table := range req.Tables {
+		input.Tables = append(input.Tables, domain.ProjectTableInput{
+			TableIdentity: table.TableIdentity,
+			TableName:     table.TableName,
+			TableToken:    table.TableToken,
+			TableID:       table.TableID,
+			ViewID:        table.ViewID,
+			TableType:     table.TableType,
+			Notice:        table.Notice,
+			Scopes:        table.Scopes,
+		})
+	}
+
+	if err := h.s.UpdateProjectConfig(c.Request.Context(), input); err != nil {
 		return response.Response{}, err
 	}
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
