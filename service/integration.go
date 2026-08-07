@@ -35,7 +35,6 @@ type IntegrationService interface {
 	ListProjects(ctx context.Context) ([]domain.ProjectSummary, error)
 	UpdateProject(ctx context.Context, projectID string, input domain.UpdateProjectInput) error
 	DeleteProject(ctx context.Context, projectID string) error
-	RestoreProject(ctx context.Context, projectID string) error
 }
 
 type integrationService struct {
@@ -241,19 +240,9 @@ func (s *integrationService) DeleteProject(ctx context.Context, projectID string
 	if projectID == "" {
 		return invalidProjectError("project_id is required")
 	}
-	if err := s.dao.DeleteProject(ctx, projectID); err != nil {
-		return errs.IntegrationProjectDatabaseError(err)
-	}
-	s.publishProjectChanged(ctx, projectID)
-	return nil
-}
-
-func (s *integrationService) RestoreProject(ctx context.Context, projectID string) error {
-	projectID = strings.TrimSpace(projectID)
-	if projectID == "" {
-		return invalidProjectError("project_id is required")
-	}
-	if err := s.dao.RestoreProject(ctx, projectID); err != nil {
+	if err := s.dao.Transaction(ctx, func(tx dao.IntegrationDAO) error {
+		return tx.DeleteProject(ctx, projectID)
+	}); err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
 	}
 	s.publishProjectChanged(ctx, projectID)

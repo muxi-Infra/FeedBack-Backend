@@ -713,59 +713,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/integrations/projects/{project_id}/restore": {
-            "post": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Integration Admin"
-                ],
-                "summary": "恢复项目",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer Admin JWT",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "项目 ID",
-                        "name": "project_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/integrations/token/exchange": {
             "post": {
                 "description": "校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。",

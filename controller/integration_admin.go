@@ -15,7 +15,6 @@ type IntegrationAdminHandler interface {
 	ListProjects(c *gin.Context) (response.Response, error)
 	UpdateProject(c *gin.Context, req reqV1.UpdateProjectReq) (response.Response, error)
 	DeleteProject(c *gin.Context) (response.Response, error)
-	RestoreProject(c *gin.Context) (response.Response, error)
 }
 
 type IntegrationAdmin struct {
@@ -159,25 +158,6 @@ func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProject
 //	@Router		/api/v1/integrations/projects/{project_id} [delete]
 func (h *IntegrationAdmin) DeleteProject(c *gin.Context) (response.Response, error) {
 	if err := h.s.DeleteProject(c.Request.Context(), c.Param("project_id")); err != nil {
-		return response.Response{}, err
-	}
-	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
-}
-
-// RestoreProject 恢复已软删除的项目。
-//
-//	@Summary	恢复项目
-//	@Tags		Integration Admin
-//	@Produce	json
-//	@Param		Authorization	header		string	true	"Bearer Admin JWT"
-//	@Param		project_id		path		string	true	"项目 ID"
-//	@Success	200				{object}	response.Response
-//	@Failure	401				{object}	response.Response
-//	@Failure	403				{object}	response.Response
-//	@Failure	404				{object}	response.Response
-//	@Router		/api/v1/integrations/projects/{project_id}/restore [post]
-func (h *IntegrationAdmin) RestoreProject(c *gin.Context) (response.Response, error) {
-	if err := h.s.RestoreProject(c.Request.Context(), c.Param("project_id")); err != nil {
 		return response.Response{}, err
 	}
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil

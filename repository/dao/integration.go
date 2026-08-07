@@ -18,7 +18,6 @@ type IntegrationDAO interface {
 	ListProjects(ctx context.Context, tx ...*gorm.DB) ([]model.FeedbackProject, error)
 	UpdateProject(ctx context.Context, project *model.FeedbackProject, tx ...*gorm.DB) error
 	DeleteProject(ctx context.Context, projectID string, tx ...*gorm.DB) error
-	RestoreProject(ctx context.Context, projectID string, tx ...*gorm.DB) error
 
 	// mdoel.FeedbackProjectKey
 	UpsertProjectKey(ctx context.Context, key *model.FeedbackProjectKey, tx ...*gorm.DB) error
@@ -144,20 +143,18 @@ func (d *integrationDAO) DeleteProject(ctx context.Context, projectID string, tx
 	if err != nil {
 		return err
 	}
-	return db.Where("project_id = ?", projectID).Delete(&model.FeedbackProject{}).Error
-}
-
-func (d *integrationDAO) RestoreProject(ctx context.Context, projectID string, tx ...*gorm.DB) error {
-	if projectID == "" {
-		return errors.New("project_id is required")
-	}
-	db, err := d.getDB(ctx, tx...)
-	if err != nil {
+	// 项目删除后允许管理员重新注册同一个 project_id，因此关联配置也必须一并软删除，
+	// 避免新项目读取到旧的公钥、飞书表配置或权限 Scope。
+	if err := db.Where("project_id = ?", projectID).Delete(&model.FeedbackProjectScope{}).Error; err != nil {
 		return err
 	}
-	return db.Unscoped().Model(&model.FeedbackProject{}).
-		Where("project_id = ?", projectID).
-		Update("deleted_at", 0).Error
+	if err := db.Where("project_id = ?", projectID).Delete(&model.FeedbackProjectTable{}).Error; err != nil {
+		return err
+	}
+	if err := db.Where("project_id = ?", projectID).Delete(&model.FeedbackProjectKey{}).Error; err != nil {
+		return err
+	}
+	return db.Where("project_id = ?", projectID).Delete(&model.FeedbackProject{}).Error
 }
 
 func (d *integrationDAO) UpsertProjectKey(ctx context.Context, key *model.FeedbackProjectKey, tx ...*gorm.DB) error {
