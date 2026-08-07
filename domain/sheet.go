@@ -17,12 +17,27 @@ type TableField struct {
 }
 
 type TableConfig struct {
-	TableIdentity *string `json:"identity"`
-	TableName     *string `json:"table_name"`
-	TableToken    *string `json:"table_token"`
-	TableID       *string `json:"table_id"`
-	ViewID        *string `json:"view_id"`
-	Notice        bool    `json:"notice"`
+	ProjectID     string   `json:"project_id"`
+	TableIdentity *string  `json:"identity"`
+	TableName     *string  `json:"table_name"`
+	TableToken    *string  `json:"table_token"`
+	TableID       *string  `json:"table_id"`
+	ViewID        *string  `json:"view_id"`
+	Notice        bool     `json:"notice"`
+	Scopes        []string `json:"-"`
+}
+
+// HasScope 判断当前服务端缓存中的表格配置是否拥有指定权限。
+func (c TableConfig) HasScope(scope string) bool {
+	if scope == "" {
+		return false
+	}
+	for _, item := range c.Scopes {
+		if item == scope {
+			return true
+		}
+	}
+	return false
 }
 
 // FAQTableRecords 定义多维表格记录及其解决状态的集合

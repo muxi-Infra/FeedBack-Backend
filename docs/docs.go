@@ -833,7 +833,7 @@ const docTemplate = `{
         },
         "/api/v1/message/trigger": {
             "post": {
-                "description": "将 ` + "`" + `table_identify` + "`" + ` 写入通知通道以触发下游消费",
+                "description": "根据项目和表格标识，将表格写入通知通道以触发下游消费",
                 "consumes": [
                     "application/json"
                 ],
@@ -1467,7 +1467,7 @@ const docTemplate = `{
                     "SheetV2"
                 ],
                 "summary": "标记FAQ问题解决状态",
-                "operationId": "update-faq-resolution",
+                "operationId": "update-faq-resolution-v2",
                 "parameters": [
                     {
                         "type": "string",
@@ -2313,9 +2313,14 @@ const docTemplate = `{
         "v1.TriggerNotificationReq": {
             "type": "object",
             "required": [
+                "project_id",
                 "table_identify"
             ],
             "properties": {
+                "project_id": {
+                    "description": "项目标识",
+                    "type": "string"
+                },
                 "table_identify": {
                     "description": "反馈表格 Identify，反馈表的唯一标识",
                     "type": "string"

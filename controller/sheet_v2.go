@@ -27,12 +27,14 @@ type SheetV2Handler interface {
 type SheetV2 struct {
 	s service.SheetService
 	m service.MessageService
+	a service.AuthService
 }
 
-func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler {
+func NewSheetV2(s service.SheetService, m service.MessageService, a service.AuthService) SheetV2Handler {
 	sheet := &SheetV2{
 		s: s,
 		m: m,
+		a: a,
 	}
 
 	return sheet
@@ -53,8 +55,8 @@ func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v2/sheet/records [get]
 func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecordByUserReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:read:self") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read:self"); err != nil {
+		return response.Response{}, err
 	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
@@ -62,12 +64,9 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	if err := validateStudentID(uc.StudentID); err != nil {
@@ -115,8 +114,8 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync [post]
 func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:sync") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
 	}
 
 	// 校验表权限
@@ -127,12 +126,9 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 		return response.Response{}, errs.TableIdentifierInvalidError(errors.New("FAQ 表格不支持增量同步"))
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
@@ -172,8 +168,8 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 //	@Failure		500				{object}	response.Response												"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/user [post]
 func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUserTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:sync") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
 	}
 
 	// 校验表权限
@@ -181,12 +177,9 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 		return response.Response{}, err
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
@@ -230,8 +223,8 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/force [post]
 func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:sync") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
 	}
 
 	// 校验表权限
@@ -239,12 +232,9 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 		return response.Response{}, err
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
@@ -285,8 +275,8 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [get]
 func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:read") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read"); err != nil {
+		return response.Response{}, err
 	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
@@ -294,12 +284,9 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	if err := validateStudentID(uc.StudentID); err != nil {
@@ -330,7 +317,7 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Summary		标记FAQ问题解决状态
 //	@Description	用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
 //	@Tags			SheetV2
-//	@ID				update-faq-resolution
+//	@ID				update-faq-resolution-v2
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"
@@ -340,8 +327,8 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [post]
 func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:write") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:write scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:write"); err != nil {
+		return response.Response{}, err
 	}
 
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
@@ -356,12 +343,9 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 
 		IsResolved: r.IsResolved,
 	}
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	err = s.s.UpdateFAQResolutionRecordV2(&FAQResolution, &tableConfig)
@@ -390,8 +374,8 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/faq [post]
 func (s *SheetV2) SyncFAQRecord(c *gin.Context, r reqV2.SyncFaqRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:sync") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:sync scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
 	}
 
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
@@ -399,13 +383,11 @@ func (s *SheetV2) SyncFAQRecord(c *gin.Context, r reqV2.SyncFaqRecordReq, uc ijw
 		return response.Response{}, err
 	}
 
-	tableConfig := &domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	resolvedTableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
+	tableConfig := &resolvedTableConfig
 
 	err = s.s.SyncFAQRecord(tableConfig)
 	if err != nil {

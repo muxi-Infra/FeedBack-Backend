@@ -9,7 +9,6 @@ client:
 # JWT 配置
 jwt:
   secretKey: "your-jwt-secret-key-here"       # JWT 签名密钥
-  encKey: "your-encryption-key-here"          # 敏感数据加密密钥
   timeout: 2592000                            # 过期时间（秒），默认一个月
 
 # 管理后台 JWT 配置。请使用独立于 jwt.secretKey 的随机密钥。

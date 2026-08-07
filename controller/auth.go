@@ -82,7 +82,7 @@ func (o Auth) GetTableToken(c *gin.Context, req reqV1.GenerateTableTokenReq) (re
 		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("FAQ table tokens must be issued through project integration"))
 	}
 
-	tableCfg, err := o.s.GetTableConfig(&req.TableIdentify)
+	tableCfg, err := o.s.GetTableConfig("legacy", req.TableIdentify)
 	if err != nil {
 		return response.Response{}, err
 	}

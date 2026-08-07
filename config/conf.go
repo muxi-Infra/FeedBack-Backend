@@ -187,8 +187,7 @@ func NewClientConfig() *ClientConfig {
 
 type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
-	EncKey    string `yaml:"encKey"`
-	Timeout   int    `yaml:"timeout"` //过期时间
+	Timeout   int    `yaml:"timeout"`   //过期时间
 }
 
 // AdminJWTConfig 管理后台 JWT 配置，与反馈接口 JWT 分离，避免两类令牌互相复用。
@@ -231,8 +230,8 @@ func NewJWTConfig() JWTConfig {
 	if err != nil {
 		panic(err)
 	}
-	if jwtConf.SecretKey == "" || jwtConf.EncKey == "" {
-		panic("jwt 配置无效: secretKey, encKey 不能为空")
+	if jwtConf.SecretKey == "" {
+		panic("jwt 配置无效: secretKey 不能为空")
 	}
 	if jwtConf.Timeout <= 0 {
 		panic("jwt 配置无效: timeout 必须大于 0")

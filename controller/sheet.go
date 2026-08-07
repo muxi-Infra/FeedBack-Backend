@@ -26,12 +26,14 @@ type SheetV1Handler interface {
 type SheetV1 struct {
 	s service.SheetService
 	m service.MessageService
+	a service.AuthService
 }
 
-func NewSheet(s service.SheetService, m service.MessageService) SheetV1Handler {
+func NewSheet(s service.SheetService, m service.MessageService, a service.AuthService) SheetV1Handler {
 	sheet := &SheetV1{
 		s: s,
 		m: m,
+		a: a,
 	}
 
 	return sheet
@@ -52,8 +54,8 @@ func NewSheet(s service.SheetService, m service.MessageService) SheetV1Handler {
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [post]
 func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:create") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:create scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:create"); err != nil {
+		return response.Response{}, err
 	}
 
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
@@ -72,12 +74,9 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 	record.Record["进度"] = "待处理"
 	record.Record["提交时间"] = t.UnixMilli()
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 发起请求
@@ -96,17 +95,19 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 
 	// TODO 后续想改成 kafka 异步处理
 	go func(recordID, content string, tc domain.TableConfig) {
-		// 发送消息通知
 		recordDate, url, err := s.s.GetTableRecordReqByRecordID(&recordID, &tc)
 		if err != nil || url == nil {
 			return
 		}
-		err = s.m.SendLarkNotification(*tc.TableName, content, *url)
+		// 先保存数据库，再根据表格配置决定是否发送通知，避免通知失败导致记录丢失。
+		err = s.s.CreateDBRecord(&recordID, url, recordDate, tc)
 		if err != nil {
 			return
 		}
-		err = s.s.CreateDBRecord(&recordID, url, recordDate, tc)
-		if err != nil {
+		if !tc.Notice {
+			return
+		}
+		if err = s.m.SendLarkNotification(*tc.TableName, content, *url); err != nil {
 			return
 		}
 	}(*createdRecordID, *r.Content, tableConfig)
@@ -137,8 +138,8 @@ func (s *SheetV1) CreateTableRecord(c *gin.Context, r reqV1.CreatTableRecordReg,
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v1/sheet/records [get]
 func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:read:self") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read:self"); err != nil {
+		return response.Response{}, err
 	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
@@ -150,12 +151,9 @@ func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordR
 		FieldName: r.KeyFieldName,
 		Value:     &uc.StudentID,
 	}
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	serviceResult, err := s.s.GetTableRecordReqByKey(&keyField, r.RecordNames, r.PageToken, &tableConfig)
@@ -201,8 +199,8 @@ func (s *SheetV1) GetTableRecordReqByKey(c *gin.Context, r reqV1.GetTableRecordR
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/record [get]
 func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRecordByRecordIDReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:read:self") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read:self"); err != nil {
+		return response.Response{}, err
 	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
@@ -210,12 +208,9 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	if err := s.s.VerifyTableRecordOwnership(r.RecordID, &uc.StudentID, &tableConfig); err != nil {
@@ -257,8 +252,8 @@ func (s *SheetV1) GetTableRecordReqByRecordID(c *gin.Context, r reqV1.GetTableRe
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [get]
 func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:read") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read"); err != nil {
+		return response.Response{}, err
 	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
@@ -266,12 +261,9 @@ func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTa
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	if err := validateStudentID(uc.StudentID); err != nil {
@@ -316,8 +308,8 @@ func (s *SheetV1) GetFAQResolutionRecord(c *gin.Context, r reqV1.GetFAQProblemTa
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v1/sheet/records/faq [post]
 func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
-	if !uc.HasScope("feedback:write") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:write scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:write"); err != nil {
+		return response.Response{}, err
 	}
 
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
@@ -333,12 +325,9 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 		UnresolvedFieldName: r.UnresolvedFieldName,
 		IsResolved:          r.IsResolved,
 	}
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	err = s.s.UpdateFAQResolutionRecord(&FAQResolution, &tableConfig)
@@ -369,8 +358,8 @@ func (s *SheetV1) UpdateFAQResolutionRecord(c *gin.Context, r reqV1.FAQResolutio
 //	@Router			/api/v1/sheet/photos/url [get]
 func (s *SheetV1) GetPhotoUrl(c *gin.Context, r reqV1.GetPhotoUrlReq, uc ijwt.UserClaims) (response.Response, error) {
 	// todo 目前没有检测这张照片属于这个用户，属于目前这个登陆的项目，即图片 Token 没有归属校验
-	if !uc.HasScope("feedback:read:self") {
-		return response.Response{}, errs.IntegrationScopeDeniedError(errors.New("feedback:read:self scope is required"))
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read:self"); err != nil {
+		return response.Response{}, err
 	}
 	photoUrlResult, err := s.s.GetPhotoUrl(r.FileTokens)
 	if err != nil {

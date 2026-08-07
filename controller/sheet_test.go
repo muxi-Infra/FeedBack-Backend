@@ -25,7 +25,32 @@ func NewMockSheet(crtl *gomock.Controller) (*SheetV1, *ServiceMock.MockSheetServ
 	return &SheetV1{
 		s: mockSheetService,
 		m: mockMessageService,
+		a: testAuthService{},
 	}, mockSheetService, mockMessageService
+}
+
+type testAuthService struct{}
+
+func (testAuthService) RefreshTableConfig() ([]domain.TableConfig, error) { return nil, nil }
+func (testAuthService) GetTableConfig(projectID, identity string) (domain.TableConfig, error) {
+	name := "mock-table-name"
+	token := "mock-table-token"
+	tableID := "mock-table-id"
+	viewID := "mock-view-id"
+	return domain.TableConfig{
+		ProjectID:     projectID,
+		TableIdentity: &identity,
+		TableName:     &name,
+		TableToken:    &token,
+		TableID:       &tableID,
+		ViewID:        &viewID,
+		Notice:        true,
+		Scopes:        []string{"feedback:create", "feedback:read:self", "feedback:read", "feedback:write", "feedback:sync"},
+	}, nil
+}
+func (testAuthService) GetTenantToken() string { return "" }
+func (testAuthService) ExchangeIntegrationToken(_, _, _ string) (string, int64, error) {
+	return "", 0, nil
 }
 
 // uc
@@ -34,12 +59,7 @@ var uc = ijwt.UserClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)), // 这里mock 1小时过期
 	},
 	TableIdentity: "mock-table-identity",
-	TableName:     "mock-table-name",
-	TableToken:    "mock-table-token",
-	TableId:       "mock-table-id",
-	ViewId:        "mock-view-id",
 	StudentID:     "2021001234",
-	Scope:         []string{"feedback:create", "feedback:read:self", "feedback:read", "feedback:write", "feedback:sync"},
 }
 
 func TestCreateAppTableRecord(t *testing.T) {

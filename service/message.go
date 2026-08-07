@@ -29,7 +29,7 @@ var (
 //go:generate mockgen -destination=./mock/message_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service MessageService
 type MessageService interface {
 	SendLarkNotification(tableName, content, url string) error
-	TriggerNotification(tableIdentify string) error
+	TriggerNotification(projectID, tableIdentify string) error
 	GetPendingNotifications(tableConfig *domain.TableConfig) ([]domain.NotificationRecipient, error)
 	SendCCNUBoxNotification(studentID, recordID *string) error
 	MarkRecordNoticed(recordID *string, tableConfig *domain.TableConfig) error
@@ -188,10 +188,10 @@ func (m *MessageServiceImpl) SendLarkNotification(tableName, content, url string
 	return nil
 }
 
-func (m *MessageServiceImpl) TriggerNotification(tableIdentify string) error {
-	table, ok := runtimeTableConfigCache.Get(tableIdentify)
+func (m *MessageServiceImpl) TriggerNotification(projectID, tableIdentify string) error {
+	table, ok := runtimeTableConfigCache.Get(tableConfigCacheKey(projectID, tableIdentify))
 	if !ok {
-		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify not found: %s", tableIdentify))
+		return errs.TableIdentifierInvalidError(fmt.Errorf("table identify not found for project %s: %s", projectID, tableIdentify))
 	}
 	if !table.Notice {
 		return errs.TableNotificationNotConfiguredError(fmt.Errorf("table notification not configured: %s", tableIdentify))

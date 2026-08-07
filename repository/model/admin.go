@@ -8,7 +8,7 @@ import (
 
 type AdminUser struct {
 	ID           uint64     `gorm:"primaryKey;autoIncrement"`
-	Username     string     `gorm:"column:username;type:varchar(64);not null;uniqueIndex:uk_admin_user_username"`
+	Username     string     `gorm:"column:username;type:varchar(64);not null;uniqueIndex:uk_admin_user_username,priority:1"`
 	DisplayName  string     `gorm:"column:display_name;type:varchar(128);not null"`
 	PasswordHash string     `gorm:"column:password_hash;type:varchar(255);not null"`
 	Status       string     `gorm:"column:status;type:varchar(32);not null;default:active;index:idx_admin_user_status"`
@@ -16,7 +16,7 @@ type AdminUser struct {
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`
-	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_admin_user_username,priority:2"`
 }
 
 func (AdminUser) TableName() string {

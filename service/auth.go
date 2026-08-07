@@ -36,7 +36,7 @@ const (
 //go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
 type AuthService interface {
 	RefreshTableConfig() ([]domain.TableConfig, error)
-	GetTableConfig(tableIdentity *string) (domain.TableConfig, error)
+	GetTableConfig(projectID, tableIdentity string) (domain.TableConfig, error)
 	GetTenantToken() string
 	ExchangeIntegrationToken(projectID, keyID, assertion string) (string, int64, error)
 }
@@ -207,20 +207,31 @@ func (t *AuthServiceImpl) refreshTableConfigFromDB() ([]domain.TableConfig, erro
 				continue
 			}
 			identity := projectTable.TableIdentity
+			projectID := project.ProjectID
 			name := projectTable.PhysicalName
 			token := projectTable.TableToken
 			tableID := projectTable.TableID
 			viewID := projectTable.ViewID
+			scopeModels, err := t.integrationDAO.ListProjectScopes(ctx, project.ProjectID, projectTable.TableIdentity)
+			if err != nil {
+				return nil, errs.IntegrationProjectDatabaseError(err)
+			}
+			scopes := make([]string, 0, len(scopeModels))
+			for _, scope := range scopeModels {
+				scopes = append(scopes, scope.Scope)
+			}
 			table := domain.TableConfig{
+				ProjectID:     projectID,
 				TableIdentity: &identity,
 				TableName:     &name,
 				TableToken:    &token,
 				TableID:       &tableID,
 				ViewID:        &viewID,
 				Notice:        projectTable.Notice,
+				Scopes:        scopes,
 			}
 			tables = append(tables, table)
-			newTables[identity] = table
+			newTables[tableConfigCacheKey(projectID, identity)] = table
 		}
 	}
 
@@ -228,15 +239,16 @@ func (t *AuthServiceImpl) refreshTableConfigFromDB() ([]domain.TableConfig, erro
 	return tables, nil
 }
 
-func (t *AuthServiceImpl) GetTableConfig(tableIdentity *string) (domain.TableConfig, error) {
-	// 防止传入 nil 指针引起 panic
-	if tableIdentity == nil {
-		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity is nil"))
+func (t *AuthServiceImpl) GetTableConfig(projectID, tableIdentity string) (domain.TableConfig, error) {
+	projectID = strings.TrimSpace(projectID)
+	tableIdentity = strings.TrimSpace(tableIdentity)
+	if projectID == "" || tableIdentity == "" {
+		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("project id and table identity are required"))
 	}
 
-	table, exists := runtimeTableConfigCache.Get(*tableIdentity)
+	table, exists := runtimeTableConfigCache.Get(tableConfigCacheKey(projectID, tableIdentity))
 	if !exists {
-		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found", *tableIdentity))
+		return domain.TableConfig{}, errs.TableIdentifyNotFoundError(fmt.Errorf("table identity %s not found for project %s", tableIdentity, projectID))
 	}
 	return table, nil
 }
@@ -318,7 +330,7 @@ func (t *AuthServiceImpl) ExchangeIntegrationToken(projectID, keyID, assertion s
 			return "", 0, errs.IntegrationTokenInvalidError(errors.New("table is not allowed for integration project"))
 		}
 
-		tableCfg, err := t.GetTableConfig(&tableIdentity)
+		tableCfg, err := t.GetTableConfig(project.ProjectID, tableIdentity)
 		if err != nil {
 			return "", 0, err
 		}
@@ -409,14 +421,6 @@ func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, asser
 	if table == nil || table.Status != ProjectStatusActive {
 		return "", 0, errs.IntegrationTokenInvalidError(errors.New("table is not allowed for integration project"))
 	}
-	scopeModels, err := t.integrationDAO.ListProjectScopes(context.Background(), projectID, table.TableIdentity)
-	if err != nil {
-		return "", 0, errs.IntegrationProjectDatabaseError(err)
-	}
-	scopes := make([]string, 0, len(scopeModels))
-	for _, scope := range scopeModels {
-		scopes = append(scopes, scope.Scope)
-	}
 	if t.jwtHandler == nil || t.integration == nil {
 		return "", 0, errors.New("jwt handler or integration config is not configured")
 	}
@@ -426,13 +430,8 @@ func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, asser
 	}
 	accessToken, err := t.jwtHandler.SetIntegrationJWTToken(
 		table.TableIdentity,
-		table.PhysicalName,
-		table.TableToken,
-		table.TableID,
-		table.ViewID,
 		project.ProjectID,
 		claims.StudentID,
-		scopes,
 		time.Duration(ttlSeconds)*time.Second,
 	)
 	if err != nil {

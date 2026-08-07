@@ -375,10 +375,14 @@ definitions:
     type: object
   v1.TriggerNotificationReq:
     properties:
+      project_id:
+        description: 项目标识
+        type: string
       table_identify:
         description: 反馈表格 Identify，反馈表的唯一标识
         type: string
     required:
+    - project_id
     - table_identify
     type: object
   v1.UpdateAdminStatusReq:
@@ -1020,7 +1024,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 将 `table_identify` 写入通知通道以触发下游消费
+      description: 根据项目和表格标识，将表格写入通知通道以触发下游消费
       operationId: trigger-notification
       parameters:
       - description: 触发通知请求参数
@@ -1420,7 +1424,7 @@ paths:
       consumes:
       - application/json
       description: 用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
-      operationId: update-faq-resolution
+      operationId: update-faq-resolution-v2
       parameters:
       - description: Bearer Token
         in: header

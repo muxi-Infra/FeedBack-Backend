@@ -9,7 +9,7 @@ import (
 // FeedbackProject 存储已集成校园项目的基本注册信息。
 type FeedbackProject struct {
 	ID          uint64 `gorm:"primaryKey;autoIncrement"`
-	ProjectID   string `gorm:"column:project_id;type:varchar(64);not null;uniqueIndex:uk_feedback_project_project_id"`
+	ProjectID   string `gorm:"column:project_id;type:varchar(64);not null;uniqueIndex:uk_feedback_project_project_id,priority:1"`
 	ProjectName string `gorm:"column:project_name;type:varchar(128);not null"`
 	// 期望可以出华师
 	School string `gorm:"column:school;type:varchar(128);not null"`
@@ -17,7 +17,7 @@ type FeedbackProject struct {
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`
-	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_feedback_project_project_id,priority:2"`
 }
 
 func (FeedbackProject) TableName() string {
@@ -29,7 +29,7 @@ func (FeedbackProject) TableName() string {
 type FeedbackProjectKey struct {
 	ID        uint64     `gorm:"primaryKey;autoIncrement"`
 	ProjectID string     `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_key_project"`
-	KeyID     string     `gorm:"column:key_id;type:varchar(128);not null;uniqueIndex:uk_feedback_project_key_id"`
+	KeyID     string     `gorm:"column:key_id;type:varchar(128);not null;uniqueIndex:uk_feedback_project_key_id,priority:1"`
 	Issuer    string     `gorm:"column:issuer;type:varchar(128);not null"`
 	PublicKey string     `gorm:"column:public_key;type:text;not null"`
 	Status    string     `gorm:"column:status;type:varchar(32);not null;default:active;index:idx_feedback_project_key_status"`
@@ -37,7 +37,7 @@ type FeedbackProjectKey struct {
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`
-	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_feedback_project_key_id,priority:2"`
 }
 
 func (FeedbackProjectKey) TableName() string {
@@ -48,8 +48,8 @@ func (FeedbackProjectKey) TableName() string {
 // TableToken 属于敏感信息，进行静态加密存储。
 type FeedbackProjectTable struct {
 	ID            uint64 `gorm:"primaryKey;autoIncrement"`
-	ProjectID     string `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_table_project"`
-	TableIdentity string `gorm:"column:table_identity;type:varchar(128);not null;uniqueIndex:uk_feedback_project_table"`
+	ProjectID     string `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_table_project;uniqueIndex:uk_feedback_project_table,priority:1"`
+	TableIdentity string `gorm:"column:table_identity;type:varchar(128);not null;uniqueIndex:uk_feedback_project_table,priority:2"`
 	PhysicalName  string `gorm:"column:table_name;type:varchar(128);not null"`
 	TableToken    string `gorm:"column:table_token;type:varchar(512);not null"`
 	TableID       string `gorm:"column:table_id;type:varchar(128);not null"`
@@ -60,7 +60,7 @@ type FeedbackProjectTable struct {
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`
-	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_feedback_project_table,priority:3"`
 }
 
 func (FeedbackProjectTable) TableName() string {
@@ -76,7 +76,7 @@ type FeedbackProjectScope struct {
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`
-	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index"`
+	DeletedAt soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_feedback_project_scope,priority:4"`
 }
 
 func (FeedbackProjectScope) TableName() string {

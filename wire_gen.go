@@ -62,11 +62,11 @@ func InitApp() (*App, error) {
 	larkMessage := config.NewLarkMessageConfig()
 	ccnuBoxMessage := config.NewCCNUBoxMessageConfig()
 	messageService := service.NewMessageService(client2, loggerLogger, larkMessage, ccnuBoxMessage, sheetDAO)
-	sheetV1Handler := controller.NewSheet(sheetService, messageService)
 	integrationAuthConfig := config.NewIntegrationAuthConfig()
 	integrationDAO := dao.NewIntegrationDAO(db)
 	projectConfigEventBus := cache.NewProjectConfigEventBus(client, loggerLogger)
 	authService := service.NewAuthService(clientConfig, loggerLogger, jwt, integrationAuthConfig, integrationDAO, projectConfigEventBus)
+	sheetV1Handler := controller.NewSheet(sheetService, messageService, authService)
 	authHandler := controller.NewAuth(jwt, authService)
 	messageHandler := controller.NewMessage(messageService)
 	adminUserDAO := dao.NewAdminUserDAO(db)
@@ -74,7 +74,7 @@ func InitApp() (*App, error) {
 	adminHandler := controller.NewAdmin(adminService)
 	integrationService := service.NewIntegrationService(integrationDAO, projectConfigEventBus, loggerLogger)
 	integrationAdminHandler := controller.NewIntegrationAdmin(integrationService)
-	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
+	sheetV2Handler := controller.NewSheetV2(sheetService, messageService, authService)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, adminAuthMiddleware, adminPermissionMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, adminHandler, integrationAdminHandler, sheetV2Handler)
 	app := &App{
 		r: engine,

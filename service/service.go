@@ -1,11 +1,16 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/google/wire"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 )
+
+func tableConfigCacheKey(projectID, tableIdentity string) string {
+	return fmt.Sprintf("%s:%s", projectID, tableIdentity)
+}
 
 var ProviderSet = wire.NewSet(
 	NewAuthService,
