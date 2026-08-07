@@ -14,6 +14,7 @@ type IntegrationAdminHandler interface {
 	GetProject(c *gin.Context) (response.Response, error)
 	ListProjects(c *gin.Context) (response.Response, error)
 	UpdateProject(c *gin.Context, req reqV1.UpdateProjectReq) (response.Response, error)
+	// todo 单独一个全量更新耗时有点长，后续根据需要添加单独的更新
 	UpdateProjectConfig(c *gin.Context, req reqV1.UpdateProjectConfigReq) (response.Response, error)
 	DeleteProject(c *gin.Context) (response.Response, error)
 }
