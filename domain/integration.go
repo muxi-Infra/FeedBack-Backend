@@ -59,6 +59,7 @@ type ProjectTableConfig struct {
 	ProjectID     string
 	TableIdentity string
 	TableName     string
+	TableToken    string
 	TableID       string
 	ViewID        string
 	TableType     string

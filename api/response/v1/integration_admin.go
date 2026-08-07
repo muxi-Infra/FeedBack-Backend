@@ -26,6 +26,7 @@ type ProjectTableResponse struct {
 	ProjectID     string   `json:"project_id"`
 	TableIdentity string   `json:"table_identity"`
 	TableName     string   `json:"table_name"`
+	TableToken    string   `json:"table_token"`
 	TableID       string   `json:"table_id"`
 	ViewID        string   `json:"view_id"`
 	TableType     string   `json:"table_type"`

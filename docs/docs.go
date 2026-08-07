@@ -453,7 +453,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "登记项目身份公钥、飞书反馈表和表级 scope。公钥和表格敏感配置不会在响应中返回。",
+                "description": "登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2117,6 +2117,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "table_name": {
+                    "type": "string"
+                },
+                "table_token": {
                     "type": "string"
                 },
                 "table_type": {

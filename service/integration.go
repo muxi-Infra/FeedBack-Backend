@@ -163,6 +163,7 @@ func (s *integrationService) GetProject(ctx context.Context, projectID string) (
 			ProjectID:     table.ProjectID,
 			TableIdentity: table.TableIdentity,
 			TableName:     table.PhysicalName,
+			TableToken:    table.TableToken,
 			TableID:       table.TableID,
 			ViewID:        table.ViewID,
 			TableType:     table.TableType,

@@ -276,6 +276,8 @@ definitions:
         type: string
       table_name:
         type: string
+      table_token:
+        type: string
       table_type:
         type: string
       view_id:
@@ -781,7 +783,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 登记项目身份公钥、飞书反馈表和表级 scope。公钥和表格敏感配置不会在响应中返回。
+      description: 登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。
       parameters:
       - description: Bearer Admin JWT
         in: header

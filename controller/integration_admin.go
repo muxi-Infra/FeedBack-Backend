@@ -28,7 +28,7 @@ func NewIntegrationAdmin(s service.IntegrationService) IntegrationAdminHandler {
 // RegisterProject 注册一个对接反馈中台的校园项目。
 //
 //	@Summary		注册反馈项目
-//	@Description	登记项目身份公钥、飞书反馈表和表级 scope。公钥和表格敏感配置不会在响应中返回。
+//	@Description	登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。
 //	@Tags			Integration Admin
 //	@Accept			json
 //	@Produce		json
@@ -186,6 +186,7 @@ func toProjectConfigResponse(config *domain.ProjectConfig) respV1.ProjectConfigR
 			ProjectID:     table.ProjectID,
 			TableIdentity: table.TableIdentity,
 			TableName:     table.TableName,
+			TableToken:    table.TableToken,
 			TableID:       table.TableID,
 			ViewID:        table.ViewID,
 			TableType:     table.TableType,
