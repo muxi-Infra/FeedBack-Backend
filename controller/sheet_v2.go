@@ -27,12 +27,14 @@ type SheetV2Handler interface {
 type SheetV2 struct {
 	s service.SheetService
 	m service.MessageService
+	a service.AuthService
 }
 
-func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler {
+func NewSheetV2(s service.SheetService, m service.MessageService, a service.AuthService) SheetV2Handler {
 	sheet := &SheetV2{
 		s: s,
 		m: m,
+		a: a,
 	}
 
 	return sheet
@@ -41,7 +43,7 @@ func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler
 // GetTableRecordReqByUser 获取用户历史反馈记录
 //
 //	@Summary		查询用户历史反馈记录
-//	@Description	根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
+//	@Description	根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。
 //	@Tags			SheetV2
 //	@ID				get-table-record-by-user
 //	@Accept			json
@@ -53,21 +55,24 @@ func NewSheetV2(s service.SheetService, m service.MessageService) SheetV2Handler
 //	@Failure		500				{object}	response.Response									"服务器内部错误"
 //	@Router			/api/v2/sheet/records [get]
 func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecordByUserReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read:self"); err != nil {
+		return response.Response{}, err
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
-	serviceResult, err := s.s.GetTableRecordReqByUser(r.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	serviceResult, err := s.s.GetTableRecordReqByUser(&uc.StudentID, r.PageToken, *r.LimitSize, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -109,6 +114,10 @@ func (s *SheetV2) GetTableRecordReqByUser(c *gin.Context, r reqV2.GetTableRecord
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync [post]
 func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
@@ -117,12 +126,9 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 		return response.Response{}, errs.TableIdentifierInvalidError(errors.New("FAQ 表格不支持增量同步"))
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
@@ -162,21 +168,25 @@ func (s *SheetV2) SyncUnsyncedTableRecords(c *gin.Context, r reqV2.SyncUnsyncedT
 //	@Failure		500				{object}	response.Response												"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/user [post]
 func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUserTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
-	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(r.StudentID, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	recordIDs, total, full, err := s.s.ForceSyncUserTableRecords(&uc.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -213,17 +223,18 @@ func (s *SheetV2) ForceSyncUserTableRecords(c *gin.Context, r reqV2.ForceSyncUse
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/force [post]
 func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRecordsReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
+	}
+
 	// 校验表权限
 	if err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity); err != nil {
 		return response.Response{}, err
 	}
 
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	// 调用 service 层
@@ -252,33 +263,36 @@ func (s *SheetV2) ForceSyncTableRecords(c *gin.Context, r reqV2.ForceSyncTableRe
 // GetFAQRecord 获取常见问题及解决状态
 //
 //	@Summary		查询FAQ问题记录
-//	@Description	根据学号查询用户相关的常见问题记录及其解决状态。
+//	@Description	根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
 //	@Tags			SheetV2
 //	@ID				get-faq-record
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string														true	"Bearer Token"
-//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg							true	"查询记录请求参数，包含 record_id 和 table_identify"
+//	@Param			request			query		reqV2.GetFAQProblemTableRecordReg							true	"查询记录请求参数"
 //	@Success		200				{object}	response.Response{data=respV2.GetTableRecordByRecordIdResp}	"成功返回单条记录的字段键值对"
 //	@Failure		400				{object}	response.Response											"请求参数错误或飞书接口调用失败"
 //	@Failure		500				{object}	response.Response											"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [get]
 func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordReg, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:read"); err != nil {
+		return response.Response{}, err
+	}
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
 	}
 
 	// 组装参数
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
-	faqServiceResult, err := s.s.GetFAQResolutionRecord(r.StudentID, &tableConfig)
+	if err := validateStudentID(uc.StudentID); err != nil {
+		return response.Response{}, err
+	}
+	faqServiceResult, err := s.s.GetFAQResolutionRecord(&uc.StudentID, &tableConfig)
 	if err != nil {
 		return response.Response{}, err
 	}
@@ -303,7 +317,7 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Summary		标记FAQ问题解决状态
 //	@Description	用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
 //	@Tags			SheetV2
-//	@ID				update-faq-resolution
+//	@ID				update-faq-resolution-v2
 //	@Accept			json
 //	@Produce		json
 //	@Param			Authorization	header		string							true	"Bearer Token"
@@ -313,6 +327,10 @@ func (s *SheetV2) GetFAQRecord(c *gin.Context, r reqV2.GetFAQProblemTableRecordR
 //	@Failure		500				{object}	response.Response				"服务器内部错误"
 //	@Router			/api/v2/sheet/records/faq [post]
 func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutionUpdateReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:write"); err != nil {
+		return response.Response{}, err
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
@@ -320,17 +338,14 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 
 	// 组装参数
 	FAQResolution := domain.FAQResolutionV2{
-		UserID:   r.UserID,
+		UserID:   &uc.StudentID,
 		RecordID: r.RecordID,
 
 		IsResolved: r.IsResolved,
 	}
-	tableConfig := domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	tableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
 
 	err = s.s.UpdateFAQResolutionRecordV2(&FAQResolution, &tableConfig)
@@ -359,18 +374,20 @@ func (s *SheetV2) UpdateFAQResolutionRecord(c *gin.Context, r reqV2.FAQResolutio
 //	@Failure		500				{object}	response.Response		"服务器内部错误"
 //	@Router			/api/v2/sheet/sync/faq [post]
 func (s *SheetV2) SyncFAQRecord(c *gin.Context, r reqV2.SyncFaqRecordReq, uc ijwt.UserClaims) (response.Response, error) {
+	if _, err := tableConfigWithScope(s.a, uc, "feedback:sync"); err != nil {
+		return response.Response{}, err
+	}
+
 	err := validateTableIdentify(*r.TableIdentify, uc.TableIdentity)
 	if err != nil {
 		return response.Response{}, err
 	}
 
-	tableConfig := &domain.TableConfig{
-		TableIdentity: &uc.TableIdentity,
-		TableName:     &uc.TableName,
-		TableToken:    &uc.TableToken,
-		TableID:       &uc.TableId,
-		ViewID:        &uc.ViewId,
+	resolvedTableConfig, err := tableConfigFromClaims(s.a, uc)
+	if err != nil {
+		return response.Response{}, err
 	}
+	tableConfig := &resolvedTableConfig
 
 	err = s.s.SyncFAQRecord(tableConfig)
 	if err != nil {

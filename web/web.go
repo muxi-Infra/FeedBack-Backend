@@ -16,8 +16,11 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	logMiddleware *middleware.LoggerMiddleware,
 	prometheusMiddleware *middleware.PrometheusMiddleware,
 	limitMiddleware *middleware.LimitMiddleware,
+	adminAuthMiddleware *middleware.AdminAuthMiddleware,
+	adminPermissionMiddleware *middleware.AdminPermissionMiddleware,
 	swag controller.SwagHandler,
 	sh controller.SheetV1Handler, ah controller.AuthHandler, mh controller.MessageHandler,
+	admin controller.AdminHandler, integrationAdmin controller.IntegrationAdminHandler,
 	shV2 controller.SheetV2Handler,
 ) *gin.Engine {
 	gin.ForceConsoleColor()
@@ -40,9 +43,11 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	RegisterHealthCheckHandler(apiV1)
 
 	// 业务路由
-	RegisterAuthRouter(apiV1, ah)
+	RegisterAuthRouter(apiV1, ah, authMiddleware.MiddlewareFunc())
+	RegisterAdminRouter(apiV1, admin, adminAuthMiddleware, adminPermissionMiddleware)
+	RegisterIntegrationAdminRouter(apiV1, integrationAdmin, adminAuthMiddleware, adminPermissionMiddleware)
 	RegisterSheetHandler(apiV1, sh, authMiddleware.MiddlewareFunc())
-	RegisterMessageRouter(apiV1, mh)
+	RegisterMessageRouter(apiV1, mh, adminAuthMiddleware, adminPermissionMiddleware)
 
 	// V2 版本的路由
 	apiV2 := r.Group("/api/v2")

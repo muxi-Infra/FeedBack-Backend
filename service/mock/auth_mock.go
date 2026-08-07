@@ -34,19 +34,35 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 	return m.recorder
 }
 
-// GetTableConfig mocks base method.
-func (m *MockAuthService) GetTableConfig(arg0 *string) (domain.TableConfig, error) {
+// ExchangeIntegrationToken mocks base method.
+func (m *MockAuthService) ExchangeIntegrationToken(arg0, arg1, arg2 string) (string, int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTableConfig", arg0)
+	ret := m.ctrl.Call(m, "ExchangeIntegrationToken", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ExchangeIntegrationToken indicates an expected call of ExchangeIntegrationToken.
+func (mr *MockAuthServiceMockRecorder) ExchangeIntegrationToken(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExchangeIntegrationToken", reflect.TypeOf((*MockAuthService)(nil).ExchangeIntegrationToken), arg0, arg1, arg2)
+}
+
+// GetTableConfig mocks base method.
+func (m *MockAuthService) GetTableConfig(arg0, arg1 string) (domain.TableConfig, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTableConfig", arg0, arg1)
 	ret0, _ := ret[0].(domain.TableConfig)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTableConfig indicates an expected call of GetTableConfig.
-func (mr *MockAuthServiceMockRecorder) GetTableConfig(arg0 interface{}) *gomock.Call {
+func (mr *MockAuthServiceMockRecorder) GetTableConfig(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableConfig", reflect.TypeOf((*MockAuthService)(nil).GetTableConfig), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableConfig", reflect.TypeOf((*MockAuthService)(nil).GetTableConfig), arg0, arg1)
 }
 
 // GetTenantToken mocks base method.

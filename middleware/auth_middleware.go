@@ -45,7 +45,7 @@ func (am *AuthMiddleware) MiddlewareFunc() gin.HandlerFunc {
 			})
 			return
 		}
-		// Bearer Token 处理
+		// 处理 Bearer Token
 		segs := strings.Split(authCode, " ")
 		if len(segs) != 2 || segs[0] != "Bearer" {
 			ctx.Error(errors.New("请求头格式错误"))

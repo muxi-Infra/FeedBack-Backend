@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
+	v1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"

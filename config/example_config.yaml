@@ -1,4 +1,7 @@
 # 飞书 app
+# 配置来源由环境变量 FEEDBACK_CONFIG_SOURCE 控制：
+# local：只读取 ./config/config.yaml；nacos：只读取 Nacos；auto：本地文件存在时优先本地，否则读取 Nacos。
+
 client:
   appID: "cli_a123456789012345"               # 飞书应用 AppID
   appSecret: "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOo" # 飞书应用 AppSecret
@@ -6,8 +9,14 @@ client:
 # JWT 配置
 jwt:
   secretKey: "your-jwt-secret-key-here"       # JWT 签名密钥
-  encKey: "your-encryption-key-here"          # 敏感数据加密密钥
   timeout: 2592000                            # 过期时间（秒），默认一个月
+
+# 管理后台 JWT 配置。请使用独立于 jwt.secretKey 的随机密钥。
+admin_jwt:
+  secret_key: "replace-with-a-separate-admin-jwt-secret"
+  issuer: "feedback-admin"
+  audience: "feedback-admin-web"
+  timeout: 7200                                # 过期时间（秒）
 
 # 中间件配置
 middleware:

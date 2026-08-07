@@ -8,39 +8,9 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
-        "/api/v1/auth/table-config/refresh": {
-            "get": {
-                "description": "刷新并重新加载系统中所有支持的表格配置信息，返回当前可用的表格列表及其基本信息。通常用于配置更新后的缓存刷新。",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "刷新表格配置缓存",
-                "operationId": "refresh-table-config",
-                "responses": {
-                    "200": {
-                        "description": "成功返回目前支持索引的表格的公开配置",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器内部错误",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/auth/table-config/token": {
+        "/api/v1/admin/login": {
             "post": {
-                "description": "根据表格标识符生成JWT访问令牌，用于后续的表格数据操作。该令牌包含表格配置信息和访问权限。",
+                "description": "校验管理员账号和密码，返回 Admin JWT。",
                 "consumes": [
                     "application/json"
                 ],
@@ -48,24 +18,23 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Auth"
+                    "Admin Auth"
                 ],
-                "summary": "获取表格访问令牌",
-                "operationId": "get-table-token",
+                "summary": "管理员登录",
                 "parameters": [
                     {
-                        "description": "获取Token请求参数",
+                        "description": "管理员登录信息",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/v1.GenerateTableTokenReq"
+                            "$ref": "#/definitions/v1.AdminLoginReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "成功返回 JWT 令牌",
+                        "description": "OK",
                         "schema": {
                             "allOf": [
                                 {
@@ -75,7 +44,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/v1.GenerateTableTokenResp"
+                                            "$ref": "#/definitions/v1.AdminLoginResponse"
                                         }
                                     }
                                 }
@@ -83,13 +52,236 @@
                         }
                     },
                     "400": {
-                        "description": "请求参数错误",
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
                     },
-                    "500": {
-                        "description": "服务器内部错误",
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users": {
+            "post": {
+                "description": "创建新的管理后台账号，需要具备 admin:create 权限。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "创建管理员",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "管理员信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.CreateAdminReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.AdminUserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{admin_id}": {
+            "get": {
+                "description": "根据管理员 ID 查询账号信息，需要具备 admin:read 权限。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "查询管理员",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "管理员 ID",
+                        "name": "admin_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.AdminUserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/admin/users/{admin_id}/status": {
+            "patch": {
+                "description": "启用、锁定或禁用管理员账号，需要具备 admin:update 权限。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "修改管理员状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "format": "int64",
+                        "description": "管理员 ID",
+                        "name": "admin_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "管理员状态",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateAdminStatusReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -199,9 +391,461 @@
                 }
             }
         },
+        "/api/v1/integrations/projects": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "获取项目列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/v1.ProjectResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "注册反馈项目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "项目配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.RegisterProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ProjectConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/integrations/projects/{project_id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "获取项目配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ProjectConfigResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "更新项目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "项目基本信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "删除项目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/integrations/projects/{project_id}/config": {
+            "put": {
+                "description": "一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "全量更新项目配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "完整项目配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.UpdateProjectConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/integrations/token/exchange": {
+            "post": {
+                "description": "校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "项目身份换取反馈 Token",
+                "operationId": "integration-token-exchange",
+                "parameters": [
+                    {
+                        "description": "项目身份断言",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v1.ExchangeIntegrationTokenReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.ExchangeIntegrationTokenResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/message/trigger": {
             "post": {
-                "description": "将 `table_identify` 写入通知通道以触发下游消费",
+                "description": "根据项目和表格标识，将表格写入通知通道以触发下游消费",
                 "consumes": [
                     "application/json"
                 ],
@@ -412,7 +1056,7 @@
         },
         "/api/v1/sheet/records": {
             "get": {
-                "description": "根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -434,15 +1078,8 @@
                     },
                     {
                         "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段名",
+                        "description": "用于查询记录的字段名，字段值由 JWT 中的学生身份决定",
                         "name": "key_field",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "用于查询记录的关键值，一般使用学号的字段值",
-                        "name": "key_value",
                         "in": "query",
                         "required": true
                     },
@@ -570,7 +1207,7 @@
         },
         "/api/v1/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -598,13 +1235,6 @@
                         "collectionFormat": "csv",
                         "description": "需要查询的字段名",
                         "name": "record_names",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
                         "in": "query",
                         "required": true
                     },
@@ -703,7 +1333,7 @@
         },
         "/api/v2/sheet/records": {
             "get": {
-                "description": "根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。",
+                "description": "根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。",
                 "consumes": [
                     "application/json"
                 ],
@@ -733,13 +1363,6 @@
                         "description": "分页参数,第一次不需要",
                         "name": "page_token",
                         "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
-                        "required": true
                     },
                     {
                         "type": "string",
@@ -784,7 +1407,7 @@
         },
         "/api/v2/sheet/records/faq": {
             "get": {
-                "description": "根据学号查询用户相关的常见问题记录及其解决状态。",
+                "description": "根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。",
                 "consumes": [
                     "application/json"
                 ],
@@ -802,13 +1425,6 @@
                         "description": "Bearer Token",
                         "name": "Authorization",
                         "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "学号，用于标记用户身份",
-                        "name": "student_id",
-                        "in": "query",
                         "required": true
                     },
                     {
@@ -863,7 +1479,7 @@
                     "SheetV2"
                 ],
                 "summary": "标记FAQ问题解决状态",
-                "operationId": "update-faq-resolution",
+                "operationId": "update-faq-resolution-v2",
                 "parameters": [
                     {
                         "type": "string",
@@ -1191,11 +1807,83 @@
                 }
             }
         },
+        "v1.AdminLoginReq": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.AdminLoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "token_type": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/v1.AdminUserResponse"
+                }
+            }
+        },
+        "v1.AdminUserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_login_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ChangeAdminPasswordReq": {
+            "type": "object",
+            "required": [
+                "current_password",
+                "new_password"
+            ],
+            "properties": {
+                "current_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.CreatTableRecordReg": {
             "type": "object",
             "required": [
                 "content",
-                "student_id",
                 "table_identify"
             ],
             "properties": {
@@ -1219,10 +1907,6 @@
                         "type": "string"
                     }
                 },
-                "student_id": {
-                    "description": "学号，用于标记用户身份",
-                    "type": "string"
-                },
                 "table_identify": {
                     "type": "string"
                 }
@@ -1236,6 +1920,57 @@
                 }
             }
         },
+        "v1.CreateAdminReq": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ExchangeIntegrationTokenReq": {
+            "type": "object",
+            "required": [
+                "assertion",
+                "key_id",
+                "project_id"
+            ],
+            "properties": {
+                "assertion": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ExchangeIntegrationTokenResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.FAQResolutionUpdateReq": {
             "type": "object",
             "required": [
@@ -1243,8 +1978,7 @@
                 "record_id",
                 "resolved_field_name",
                 "table_identify",
-                "unresolved_field_name",
-                "user_id"
+                "unresolved_field_name"
             ],
             "properties": {
                 "is_resolved": {
@@ -1260,29 +1994,6 @@
                     "type": "string"
                 },
                 "unresolved_field_name": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "v1.GenerateTableTokenReq": {
-            "type": "object",
-            "required": [
-                "table_identify"
-            ],
-            "properties": {
-                "table_identify": {
-                    "description": "反馈表格 Identify，反馈表的唯一标识",
-                    "type": "string"
-                }
-            }
-        },
-        "v1.GenerateTableTokenResp": {
-            "type": "object",
-            "properties": {
-                "access_token": {
                     "type": "string"
                 }
             }
@@ -1374,6 +2085,213 @@
                 }
             }
         },
+        "v1.ProjectConfigResponse": {
+            "type": "object",
+            "properties": {
+                "keys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.ProjectKeyResponse"
+                    }
+                },
+                "project": {
+                    "$ref": "#/definitions/v1.ProjectResponse"
+                },
+                "tables": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.ProjectTableResponse"
+                    }
+                }
+            }
+        },
+        "v1.ProjectKeyResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ProjectResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.ProjectTableResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "notice": {
+                    "type": "boolean"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "table_id": {
+                    "type": "string"
+                },
+                "table_identity": {
+                    "type": "string"
+                },
+                "table_name": {
+                    "type": "string"
+                },
+                "table_token": {
+                    "type": "string"
+                },
+                "table_type": {
+                    "type": "string"
+                },
+                "view_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.RegisterProjectKeyReq": {
+            "type": "object",
+            "required": [
+                "issuer",
+                "key_id",
+                "public_key"
+            ],
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "issuer": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "public_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.RegisterProjectReq": {
+            "type": "object",
+            "required": [
+                "key",
+                "project_id",
+                "project_name",
+                "school",
+                "tables"
+            ],
+            "properties": {
+                "key": {
+                    "$ref": "#/definitions/v1.RegisterProjectKeyReq"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tables": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/v1.RegisterProjectTableReq"
+                    }
+                }
+            }
+        },
+        "v1.RegisterProjectTableReq": {
+            "type": "object",
+            "required": [
+                "scopes",
+                "table_id",
+                "table_identity",
+                "table_name",
+                "table_token",
+                "view_id"
+            ],
+            "properties": {
+                "notice": {
+                    "type": "boolean"
+                },
+                "scopes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "table_id": {
+                    "type": "string"
+                },
+                "table_identity": {
+                    "type": "string"
+                },
+                "table_name": {
+                    "type": "string"
+                },
+                "table_token": {
+                    "type": "string"
+                },
+                "table_type": {
+                    "type": "string"
+                },
+                "view_id": {
+                    "type": "string"
+                }
+            }
+        },
         "v1.SystemStats": {
             "type": "object",
             "properties": {
@@ -1410,11 +2328,72 @@
         "v1.TriggerNotificationReq": {
             "type": "object",
             "required": [
+                "project_id",
                 "table_identify"
             ],
             "properties": {
+                "project_id": {
+                    "description": "项目标识",
+                    "type": "string"
+                },
                 "table_identify": {
                     "description": "反馈表格 Identify，反馈表的唯一标识",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.UpdateAdminStatusReq": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.UpdateProjectConfigReq": {
+            "type": "object",
+            "required": [
+                "key",
+                "project_name",
+                "school",
+                "status",
+                "tables"
+            ],
+            "properties": {
+                "key": {
+                    "$ref": "#/definitions/v1.RegisterProjectKeyReq"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "tables": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/v1.RegisterProjectTableReq"
+                    }
+                }
+            }
+        },
+        "v1.UpdateProjectReq": {
+            "type": "object",
+            "properties": {
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -1424,8 +2403,7 @@
             "required": [
                 "is_resolved",
                 "record_id",
-                "table_identify",
-                "user_id"
+                "table_identify"
             ],
             "properties": {
                 "is_resolved": {
@@ -1435,9 +2413,6 @@
                     "type": "string"
                 },
                 "table_identify": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }
@@ -1476,13 +2451,9 @@
         "v2.ForceSyncUserTableRecordsReq": {
             "type": "object",
             "required": [
-                "student_id",
                 "table_identify"
             ],
             "properties": {
-                "student_id": {
-                    "type": "string"
-                },
                 "table_identify": {
                     "type": "string"
                 }

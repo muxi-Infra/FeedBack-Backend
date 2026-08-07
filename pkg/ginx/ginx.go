@@ -58,7 +58,7 @@ func WrapClaimsAndReq[Req any](fn func(*gin.Context, Req, ijwt.UserClaims) (resp
 	}
 }
 
-// WrapReq .
+// WrapReq 包装带请求参数的 Gin 处理函数。
 func WrapReq[Req any](fn func(*gin.Context, Req) (response.Response, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if len(ctx.Errors) > 0 {
@@ -92,7 +92,7 @@ func WrapReq[Req any](fn func(*gin.Context, Req) (response.Response, error)) gin
 	}
 }
 
-// Wrap .
+// Wrap 包装不带请求参数的 Gin 处理函数。
 func Wrap(fn func(*gin.Context) (response.Response, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if len(ctx.Errors) > 0 {
@@ -116,7 +116,7 @@ func Wrap(fn func(*gin.Context) (response.Response, error)) gin.HandlerFunc {
 	}
 }
 
-// WrapClaims .
+// WrapClaims 包装需要读取用户 JWT 声明的 Gin 处理函数。
 func WrapClaims(fn func(*gin.Context, ijwt.UserClaims) (response.Response, error)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		if len(ctx.Errors) > 0 {

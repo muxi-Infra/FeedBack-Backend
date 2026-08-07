@@ -20,6 +20,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
 const (
@@ -37,6 +38,7 @@ type SheetService interface {
 	UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	VerifyTableRecordOwnership(recordID, userID *string, tableConfig *domain.TableConfig) error
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
@@ -99,7 +101,7 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 						logger.String("table_identity", *table.TableIdentity),
 					)
 					// 同步常见问题中 解决/未解决 数量
-					// redis -> 飞书
+					// Redis -> 飞书
 					err := s.SyncFAQRecord(&table)
 					if err != nil {
 						s.log.Error("SyncFAQResolutionCount 同步 FAQ 记录到飞书表格失败",
@@ -129,6 +131,21 @@ func NewSheetService(c lark.Client, log logger.Logger, resolutionDAO dao.FAQReso
 }
 
 func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error) {
+	if record == nil || tableConfig == nil || record.Record == nil ||
+		tableConfig.TableToken == nil || tableConfig.TableID == nil || tableConfig.TableIdentity == nil {
+		s.log.Error("CreateAppTableRecord 参数不完整",
+			logger.Bool("record_nil", record == nil),
+			logger.Bool("table_config_nil", tableConfig == nil),
+		)
+		return nil, errs.LarkRequestError(errors.New("创建飞书记录参数不完整"))
+	}
+
+	s.log.Info("CreateAppTableRecord 开始请求",
+		logger.String("table_identity", *tableConfig.TableIdentity),
+		logger.String("table_id", *tableConfig.TableID),
+		logger.Int("field_count", len(record.Record)),
+	)
+
 	// 创建请求对象
 	req := larkbitable.NewCreateAppTableRecordReqBuilder().
 		AppToken(*tableConfig.TableToken).
@@ -146,6 +163,8 @@ func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableCon
 	// 处理错误
 	if err != nil {
 		s.log.Error("CreateAppTableRecord 调用失败",
+			logger.String("table_identity", *tableConfig.TableIdentity),
+			logger.String("table_id", *tableConfig.TableID),
 			logger.String("error", err.Error()),
 		)
 		return nil, errs.LarkRequestError(err)
@@ -154,11 +173,22 @@ func (s *SheetServiceImpl) CreateLarkRecord(record *domain.TableRecord, tableCon
 	// 服务端错误处理
 	if !resp.Success() {
 		s.log.Error("CreateAppTableRecord Lark 接口错误",
+			logger.String("table_identity", *tableConfig.TableIdentity),
+			logger.String("table_id", *tableConfig.TableID),
 			logger.String("request_id", resp.RequestId()),
+			logger.Int("lark_code", resp.CodeError.Code),
+			logger.String("lark_message", resp.CodeError.Msg),
 			logger.String("error", larkcore.Prettify(resp.CodeError)),
 		)
-		return nil, errs.LarkResponseError(err)
+		return nil, errs.LarkResponseError(resp.CodeError)
 	}
+
+	s.log.Info("CreateAppTableRecord 请求成功",
+		logger.String("table_identity", *tableConfig.TableIdentity),
+		logger.String("table_id", *tableConfig.TableID),
+		logger.String("request_id", resp.RequestId()),
+		logger.String("record_id", *resp.Data.Record.RecordId),
+	)
 
 	return resp.Data.Record.RecordId, nil
 }
@@ -340,6 +370,26 @@ func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, li
 		HasMore:   &hasMore,
 		PageToken: nextToken,
 	}, nil
+}
+
+// VerifyTableRecordOwnership 确认记录属于当前学生和当前反馈表。
+// 未找到记录时统一返回“记录不存在”，避免泄露其他用户记录是否存在。
+func (s *SheetServiceImpl) VerifyTableRecordOwnership(recordID, userID *string, tableConfig *domain.TableConfig) error {
+	if recordID == nil || userID == nil || tableConfig == nil || tableConfig.TableIdentity == nil {
+		return errs.TableRecordNotFoundError(errors.New("record ownership parameters are incomplete"))
+	}
+	if *recordID == "" || *userID == "" || *tableConfig.TableIdentity == "" {
+		return errs.TableRecordNotFoundError(errors.New("record ownership parameters are empty"))
+	}
+
+	_, err := s.sheetDao.GetSheetRecordByRecordID(*tableConfig.TableIdentity, *userID, *recordID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errs.TableRecordNotFoundError(errors.New("record does not belong to current user"))
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {
@@ -1133,13 +1183,13 @@ func (s *SheetServiceImpl) SyncFAQRecord(tableConfig *domain.TableConfig) error 
 
 	// 3 同步 record + 更新 Redis 计数器
 	for recordID, fields := range larkResp {
-		// Redis vote
+		// Redis 投票计数
 		resolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusResolved)
 		unresolvedKey := fmt.Sprintf("%s:%s:%s", *tableConfig.TableIdentity, recordID, StatusUnresolved)
 
 		resolvedNum, unresolvedNum, _ := s.cache.GetAAndGetB(resolvedKey, unresolvedKey)
 
-		// MySQL upsert
+		// MySQL 插入或更新
 		m := &model.FAQRecord{
 			TableIdentify:   tableConfig.TableIdentity,
 			RecordID:        &recordID,

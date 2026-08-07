@@ -7,11 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAuthRouter(r *gin.RouterGroup, ah controller.AuthHandler) {
+func RegisterAuthRouter(r *gin.RouterGroup, ah controller.AuthHandler, authMiddleware gin.HandlerFunc) {
 	c := r.Group("/auth")
 	{
-		c.POST("/table-config/token", ginx.WrapReq(ah.GetTableToken))
-		c.GET("/table-config/refresh", ginx.Wrap(ah.RefreshTableConfig))
-		c.POST("/tenant/token", ginx.Wrap(ah.GetTenantToken))
+		// 租户 Token 仅允许已通过反馈 JWT 认证的用户获取，用于上传图片等应用级操作。
+		c.POST("/tenant/token", authMiddleware, ginx.WrapClaims(ah.GetTenantToken))
 	}
+	r.POST("/integrations/token/exchange", ginx.WrapReq(ah.ExchangeIntegrationToken))
 }

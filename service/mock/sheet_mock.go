@@ -173,6 +173,20 @@ func (mr *MockSheetServiceMockRecorder) GetTableRecordReqByRecordID(arg0, arg1 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTableRecordReqByRecordID", reflect.TypeOf((*MockSheetService)(nil).GetTableRecordReqByRecordID), arg0, arg1)
 }
 
+// VerifyTableRecordOwnership mocks base method.
+func (m *MockSheetService) VerifyTableRecordOwnership(arg0, arg1 *string, arg2 *domain.TableConfig) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyTableRecordOwnership", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VerifyTableRecordOwnership indicates an expected call of VerifyTableRecordOwnership.
+func (mr *MockSheetServiceMockRecorder) VerifyTableRecordOwnership(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyTableRecordOwnership", reflect.TypeOf((*MockSheetService)(nil).VerifyTableRecordOwnership), arg0, arg1, arg2)
+}
+
 // GetTableRecordReqByUser mocks base method.
 func (m *MockSheetService) GetTableRecordReqByUser(arg0, arg1 *string, arg2 int, arg3 *domain.TableConfig) (*domain.TableRecords, error) {
 	m.ctrl.T.Helper()

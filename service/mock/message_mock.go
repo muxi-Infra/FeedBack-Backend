@@ -92,15 +92,15 @@ func (mr *MockMessageServiceMockRecorder) SendLarkNotification(arg0, arg1, arg2 
 }
 
 // TriggerNotification mocks base method.
-func (m *MockMessageService) TriggerNotification(arg0 string) error {
+func (m *MockMessageService) TriggerNotification(arg0, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TriggerNotification", arg0)
+	ret := m.ctrl.Call(m, "TriggerNotification", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TriggerNotification indicates an expected call of TriggerNotification.
-func (mr *MockMessageServiceMockRecorder) TriggerNotification(arg0 interface{}) *gomock.Call {
+func (mr *MockMessageServiceMockRecorder) TriggerNotification(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerNotification", reflect.TypeOf((*MockMessageService)(nil).TriggerNotification), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TriggerNotification", reflect.TypeOf((*MockMessageService)(nil).TriggerNotification), arg0, arg1)
 }

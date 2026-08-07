@@ -1,7 +1,6 @@
 package logger
 
-// Logger is logger interface.
-// 定义通用接口，可以使用不同的日志库实现
+// Logger 是日志接口，允许底层替换不同的日志实现。
 type Logger interface {
 	Debug(msg string, fields ...Field)
 	Info(msg string, fields ...Field)

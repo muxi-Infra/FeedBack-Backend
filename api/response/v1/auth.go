@@ -12,6 +12,12 @@ type GenerateTenantToken struct {
 	AccessToken string `json:"access_token"`
 }
 
+type ExchangeIntegrationTokenResp struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int64  `json:"expires_in"`
+}
+
 type RefreshTableConfigResp struct {
 	TableConfig []domain.TableConfig `json:"table_config"`
 }

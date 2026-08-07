@@ -14,10 +14,13 @@ var DaoSet = wire.NewSet(
 	dao.NewFAQResolutionDAO,
 	dao.NewSheetDAO,
 	dao.NewFAQDAO,
+	dao.NewIntegrationDAO,
+	dao.NewAdminUserDAO,
 )
 
 var CacheSet = wire.NewSet(
 	cache.NewFAQResolutionStateCache,
+	cache.NewProjectConfigEventBus,
 )
 
 func InitTables(db *gorm.DB) error {
@@ -25,6 +28,11 @@ func InitTables(db *gorm.DB) error {
 		&model.FAQResolution{},
 		&model.Sheet{},
 		&model.FAQRecord{},
+		&model.FeedbackProject{},
+		&model.FeedbackProjectKey{},
+		&model.FeedbackProjectTable{},
+		&model.FeedbackProjectScope{},
+		&model.AdminUser{},
 	}
 
 	return db.AutoMigrate(models...)

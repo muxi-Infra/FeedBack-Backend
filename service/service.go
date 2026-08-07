@@ -1,25 +1,65 @@
 package service
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/google/wire"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 )
 
+func tableConfigCacheKey(projectID, tableIdentity string) string {
+	return fmt.Sprintf("%s:%s", projectID, tableIdentity)
+}
+
 var ProviderSet = wire.NewSet(
 	NewAuthService,
 	NewSheetService,
 	NewMessageService,
+	NewIntegrationService,
+	NewAdminService,
 )
 
 var (
-	tableCfg    map[string]domain.TableConfig
-	noticeCh    chan domain.TableConfig // 通知通道，传递需要发送通知的表格配置
-	syncTableCh chan domain.TableConfig // 同步表格通道，传递需要同步的表格配置
-	syncCh      chan SyncMsg            // 同步通道，控制数据库与飞书数据的同步
-	once        sync.Once
+	runtimeTableConfigCache = newTableConfigCache()
+	noticeCh                chan domain.TableConfig // 通知通道，传递需要发送通知的表格配置
+	syncTableCh             chan domain.TableConfig // 同步表格通道，传递需要同步的表格配置
+	syncCh                  chan SyncMsg            // 同步通道，控制数据库与飞书数据的同步
+	once                    sync.Once
 )
+
+// tableConfigCache 统一管理运行时表格配置，保证刷新时不会和通知、同步扫描并发读写。
+type tableConfigCache struct {
+	mu      sync.RWMutex
+	configs map[string]domain.TableConfig
+}
+
+func newTableConfigCache() *tableConfigCache {
+	return &tableConfigCache{configs: make(map[string]domain.TableConfig)}
+}
+
+func (c *tableConfigCache) Replace(configs map[string]domain.TableConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.configs = configs
+}
+
+func (c *tableConfigCache) Get(identity string) (domain.TableConfig, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	config, ok := c.configs[identity]
+	return config, ok
+}
+
+func (c *tableConfigCache) Snapshot() map[string]domain.TableConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	configs := make(map[string]domain.TableConfig, len(c.configs))
+	for identity, config := range c.configs {
+		configs[identity] = config
+	}
+	return configs
+}
 
 type ProgressMsg struct {
 	RecordID    string
@@ -34,7 +74,6 @@ type SyncMsg struct {
 func init() {
 	// 初始化通知通道，只执行一次
 	once.Do(func() {
-		tableCfg = make(map[string]domain.TableConfig)
 		noticeCh = make(chan domain.TableConfig, 10)
 		syncTableCh = make(chan domain.TableConfig, 10)
 		syncCh = make(chan SyncMsg, 50)
