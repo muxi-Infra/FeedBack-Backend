@@ -3,10 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -15,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/apikey"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/retry"
@@ -33,12 +30,12 @@ const (
 	ConfigRefreshFallbackInterval = 5 * time.Minute
 )
 
-//go:generate mockgen -destination=./mock/auth_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service AuthService
+//go:generate mockgen -source=auth.go -destination=./mock/auth_mock.go -package=mocks
 type AuthService interface {
 	RefreshTableConfig() ([]domain.TableConfig, error)
 	GetTableConfig(projectID, tableIdentity string) (domain.TableConfig, error)
 	GetTenantToken() string
-	ExchangeIntegrationToken(projectID, keyID, assertion string) (string, int64, error)
+	ExchangeIntegrationToken(ctx context.Context, input domain.ExchangeIntegrationTokenInput) (string, int64, error)
 }
 
 type AuthServiceImpl struct {
@@ -50,9 +47,10 @@ type AuthServiceImpl struct {
 	integration    *config.IntegrationAuthConfig
 	integrationDAO dao.IntegrationDAO
 	configEvents   cache.ProjectConfigEventBus
+	nonceStore     cache.IntegrationNonceStore
 }
 
-func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandler *ijwt.JWT, integration *config.IntegrationAuthConfig, integrationDAO dao.IntegrationDAO, configEvents cache.ProjectConfigEventBus) AuthService {
+func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandler *ijwt.JWT, integration *config.IntegrationAuthConfig, integrationDAO dao.IntegrationDAO, configEvents cache.ProjectConfigEventBus, nonceStore cache.IntegrationNonceStore) AuthService {
 	s := &AuthServiceImpl{
 		tenantToken:    "",
 		clientCfg:      clientCfg,
@@ -62,6 +60,7 @@ func NewAuthService(clientCfg *config.ClientConfig, log logger.Logger, jwtHandle
 		integration:    integration,
 		integrationDAO: integrationDAO,
 		configEvents:   configEvents,
+		nonceStore:     nonceStore,
 	}
 	// 启动时同步刷新一次表配置，失败只记录日志
 	if _, err := s.RefreshTableConfig(); err != nil {
@@ -260,120 +259,34 @@ func (t *AuthServiceImpl) GetTenantToken() string {
 	return t.tenantToken
 }
 
-type integrationIdentityClaims struct {
-	StudentID string `json:"student_id"`
-	ProjectID string `json:"project_id"`
-	TableID   string `json:"table_identity"`
-	jwt.RegisteredClaims
+func (t *AuthServiceImpl) ExchangeIntegrationToken(ctx context.Context, input domain.ExchangeIntegrationTokenInput) (string, int64, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return t.exchangeIntegrationTokenFromDB(ctx, input)
 }
 
-func (t *AuthServiceImpl) ExchangeIntegrationToken(projectID, keyID, assertion string) (string, int64, error) {
-	return t.exchangeIntegrationTokenFromDB(projectID, keyID, assertion)
-	/*
-		if t.integration == nil || len(t.integration.Projects) == 0 {
-			return "", 0, errors.New("integration projects are not configured")
-		}
-
-		projectID = strings.TrimSpace(projectID)
-		keyID = strings.TrimSpace(keyID)
-		assertion = strings.TrimSpace(assertion)
-		if projectID == "" || keyID == "" || assertion == "" {
-			return "", 0, errs.IntegrationTokenInvalidError(errors.New("project_id, key_id and assertion are required"))
-		}
-
-		var project *config.IntegrationProjectConfig
-		for i := range t.integration.Projects {
-			candidate := &t.integration.Projects[i]
-			if candidate.ProjectID == projectID && candidate.KeyID == keyID {
-				project = candidate
-				break
-			}
-		}
-		if project == nil {
-			return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration project or key is not registered"))
-		}
-		if project.Issuer == "" {
-			project.Issuer = project.ProjectID
-		}
-		publicKey, err := loadIntegrationPublicKey(project)
-		if err != nil {
-			return "", 0, err
-		}
-
-		claims := &integrationIdentityClaims{}
-		parser := jwt.NewParser(
-			jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
-			jwt.WithIssuer(project.Issuer),
-			jwt.WithAudience("feedback-center"),
-			jwt.WithExpirationRequired(),
-			jwt.WithIssuedAt(),
-		)
-		token, err := parser.ParseWithClaims(assertion, claims, func(token *jwt.Token) (any, error) {
-			if token.Header["kid"] != keyID {
-				return nil, errors.New("assertion key id mismatch")
-			}
-			return publicKey, nil
-		})
-		if err != nil {
-			return "", 0, errs.IntegrationTokenInvalidError(err)
-		}
-		if token == nil || !token.Valid {
-			return "", 0, errs.IntegrationTokenInvalidError(errors.New("invalid integration assertion"))
-		}
-		if claims.ProjectID != project.ProjectID || claims.StudentID == "" || claims.ID == "" || claims.TableID == "" {
-			return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration assertion claims are invalid"))
-		}
-		tableIdentity := claims.TableID
-
-		tableConfig := findIntegrationTable(project, tableIdentity)
-		if tableConfig == nil {
-			return "", 0, errs.IntegrationTokenInvalidError(errors.New("table is not allowed for integration project"))
-		}
-
-		tableCfg, err := t.GetTableConfig(project.ProjectID, tableIdentity)
-		if err != nil {
-			return "", 0, err
-		}
-		if t.jwtHandler == nil {
-			return "", 0, errors.New("jwt handler is not configured")
-		}
-
-		ttl := time.Duration(t.integration.AccessTokenTTL) * time.Second
-		accessToken, err := t.jwtHandler.SetIntegrationJWTToken(
-			tableIdentity,
-			valueOrEmpty(tableCfg.TableName),
-			valueOrEmpty(tableCfg.TableToken),
-			valueOrEmpty(tableCfg.TableID),
-			valueOrEmpty(tableCfg.ViewID),
-			project.ProjectID,
-			claims.StudentID,
-			tableConfig.Scopes,
-			ttl,
-		)
-		if err != nil {
-			return "", 0, errs.TokenGeneratedError(err)
-		}
-	*/
-}
-
-func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, assertion string) (string, int64, error) {
-	projectID = strings.TrimSpace(projectID)
-	keyID = strings.TrimSpace(keyID)
-	assertion = strings.TrimSpace(assertion)
-	if projectID == "" || keyID == "" || assertion == "" {
-		return "", 0, errs.IntegrationTokenInvalidError(errors.New("project_id, key_id and assertion are required"))
+func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(ctx context.Context, input domain.ExchangeIntegrationTokenInput) (string, int64, error) {
+	input.ProjectID = strings.TrimSpace(input.ProjectID)
+	input.KeyID = strings.TrimSpace(input.KeyID)
+	input.StudentID = strings.TrimSpace(input.StudentID)
+	input.TableIdentity = strings.TrimSpace(input.TableIdentity)
+	input.Nonce = strings.TrimSpace(input.Nonce)
+	input.Signature = strings.TrimSpace(input.Signature)
+	if input.ProjectID == "" || input.KeyID == "" || input.StudentID == "" || input.TableIdentity == "" || input.Timestamp <= 0 || input.Nonce == "" || input.Signature == "" {
+		return "", 0, errs.IntegrationTokenInvalidError(errors.New("project_id, key_id, student_id, table_identity, timestamp, nonce and signature are required"))
 	}
 	if t.integrationDAO == nil {
 		return "", 0, errs.IntegrationProjectDatabaseError(errors.New("integration dao is not configured"))
 	}
-	project, err := t.integrationDAO.GetProject(context.Background(), projectID)
+	project, err := t.integrationDAO.GetProject(ctx, input.ProjectID)
 	if err != nil {
 		return "", 0, errs.IntegrationProjectDatabaseError(err)
 	}
 	if project == nil || project.Status != ProjectStatusActive {
 		return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration project is not registered or disabled"))
 	}
-	key, err := t.integrationDAO.GetProjectKey(context.Background(), projectID, keyID)
+	key, err := t.integrationDAO.GetProjectKey(ctx, input.ProjectID, input.KeyID)
 	if err != nil {
 		return "", 0, errs.IntegrationProjectDatabaseError(err)
 	}
@@ -383,38 +296,24 @@ func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, asser
 	if key.ExpiresAt != nil && !key.ExpiresAt.After(time.Now()) {
 		return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration project key has expired"))
 	}
-	publicKey, err := loadIntegrationPublicKeyPEM(key.PublicKey)
+	if time.Since(time.Unix(input.Timestamp, 0)) > 5*time.Minute || time.Until(time.Unix(input.Timestamp, 0)) > 5*time.Minute {
+		return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration request timestamp is expired"))
+	}
+	payload := integrationSignaturePayload(input)
+	if err := apikey.Verify(key.APIKeyHash, payload, input.Signature); err != nil {
+		return "", 0, errs.IntegrationTokenInvalidError(err)
+	}
+	if t.nonceStore == nil {
+		return "", 0, errors.New("nonce store is required for replay protection")
+	}
+	accepted, err := t.nonceStore.MarkUsed(ctx, fmt.Sprintf("feedback:integration:nonce:%s:%s:%s", input.ProjectID, input.KeyID, input.Nonce), 5*time.Minute)
 	if err != nil {
-		return "", 0, errs.IntegrationTokenInvalidError(err)
+		return "", 0, errs.IntegrationProjectDatabaseError(err)
 	}
-	issuer := strings.TrimSpace(key.Issuer)
-	if issuer == "" {
-		issuer = project.ProjectID
+	if !accepted {
+		return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration request nonce has already been used"))
 	}
-	claims := &integrationIdentityClaims{}
-	parser := jwt.NewParser(
-		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}),
-		jwt.WithIssuer(issuer),
-		jwt.WithAudience("feedback-center"),
-		jwt.WithExpirationRequired(),
-		jwt.WithIssuedAt(),
-	)
-	token, err := parser.ParseWithClaims(assertion, claims, func(token *jwt.Token) (any, error) {
-		if token.Header["kid"] != keyID {
-			return nil, errors.New("assertion key id mismatch")
-		}
-		return publicKey, nil
-	})
-	if err != nil || token == nil || !token.Valid {
-		if err == nil {
-			err = errors.New("invalid integration assertion")
-		}
-		return "", 0, errs.IntegrationTokenInvalidError(err)
-	}
-	if claims.ProjectID != project.ProjectID || claims.StudentID == "" || claims.ID == "" || claims.TableID == "" {
-		return "", 0, errs.IntegrationTokenInvalidError(errors.New("integration assertion claims are invalid"))
-	}
-	table, err := t.integrationDAO.GetProjectTable(context.Background(), projectID, claims.TableID)
+	table, err := t.integrationDAO.GetProjectTable(ctx, input.ProjectID, input.TableIdentity)
 	if err != nil {
 		return "", 0, errs.IntegrationProjectDatabaseError(err)
 	}
@@ -431,7 +330,7 @@ func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, asser
 	accessToken, err := t.jwtHandler.SetIntegrationJWTToken(
 		table.TableIdentity,
 		project.ProjectID,
-		claims.StudentID,
+		input.StudentID,
 		time.Duration(ttlSeconds)*time.Second,
 	)
 	if err != nil {
@@ -440,25 +339,8 @@ func (t *AuthServiceImpl) exchangeIntegrationTokenFromDB(projectID, keyID, asser
 	return accessToken, int64(ttlSeconds), nil
 }
 
-func loadIntegrationPublicKeyPEM(publicKey string) (*rsa.PublicKey, error) {
-	keyData := []byte(strings.TrimSpace(publicKey))
-	if len(keyData) == 0 {
-		return nil, errors.New("integration project public key is not configured")
-	}
-	block, _ := pem.Decode(keyData)
-	if block == nil {
-		return nil, errors.New("项目公钥不是有效 PEM")
-	}
-	if key, err := x509.ParsePKIXPublicKey(block.Bytes); err == nil {
-		if rsaKey, ok := key.(*rsa.PublicKey); ok {
-			return rsaKey, nil
-		}
-	}
-	key, err := x509.ParsePKCS1PublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("解析项目公钥失败: %w", err)
-	}
-	return key, nil
+func integrationSignaturePayload(input domain.ExchangeIntegrationTokenInput) string {
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%d\n%s", input.ProjectID, input.KeyID, input.StudentID, input.TableIdentity, input.Timestamp, input.Nonce)
 }
 
 func (t *AuthServiceImpl) refreshTenantToken() (*string, error) {

@@ -24,16 +24,16 @@ func (FeedbackProject) TableName() string {
 	return "feedback_projects"
 }
 
-// FeedbackProjectKey 存储用于验证项目声明的公钥。
-// 对应的私钥必须保存在集成项目中。
+// FeedbackProjectKey 存储项目 API Key 的摘要。
+// API Key 明文只保存在接入项目后端，不写入反馈中台数据库。
 type FeedbackProjectKey struct {
-	ID        uint64     `gorm:"primaryKey;autoIncrement"`
-	ProjectID string     `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_key_project"`
-	KeyID     string     `gorm:"column:key_id;type:varchar(128);not null;uniqueIndex:uk_feedback_project_key_id,priority:1"`
-	Issuer    string     `gorm:"column:issuer;type:varchar(128);not null"`
-	PublicKey string     `gorm:"column:public_key;type:text;not null"`
-	Status    string     `gorm:"column:status;type:varchar(32);not null;default:active;index:idx_feedback_project_key_status"`
-	ExpiresAt *time.Time `gorm:"column:expires_at"`
+	ID         uint64     `gorm:"primaryKey;autoIncrement"`
+	ProjectID  string     `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_key_project"`
+	KeyID      string     `gorm:"column:key_id;type:varchar(128);not null;uniqueIndex:uk_feedback_project_key_id,priority:1"`
+	Issuer     string     `gorm:"column:issuer;type:varchar(128);not null"`
+	APIKeyHash string     `gorm:"column:api_key_hash;type:char(64);not null"`
+	Status     string     `gorm:"column:status;type:varchar(32);not null;default:active;index:idx_feedback_project_key_status"`
+	ExpiresAt  *time.Time `gorm:"column:expires_at"`
 
 	CreatedAt time.Time             `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time             `gorm:"column:updated_at;not null"`

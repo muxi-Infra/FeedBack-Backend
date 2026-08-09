@@ -116,16 +116,28 @@ definitions:
     type: object
   v1.ExchangeIntegrationTokenReq:
     properties:
-      assertion:
-        type: string
       key_id:
+        type: string
+      nonce:
         type: string
       project_id:
         type: string
+      signature:
+        type: string
+      student_id:
+        type: string
+      table_identity:
+        type: string
+      timestamp:
+        type: integer
     required:
-    - assertion
     - key_id
+    - nonce
     - project_id
+    - signature
+    - student_id
+    - table_identity
+    - timestamp
     type: object
   v1.ExchangeIntegrationTokenResp:
     properties:
@@ -226,6 +238,8 @@ definitions:
     type: object
   v1.ProjectKeyResponse:
     properties:
+      api_key:
+        type: string
       expires_at:
         type: string
       id:
@@ -285,18 +299,17 @@ definitions:
     type: object
   v1.RegisterProjectKeyReq:
     properties:
+      api_key:
+        type: string
       expires_at:
         type: string
       issuer:
         type: string
       key_id:
         type: string
-      public_key:
-        type: string
     required:
     - issuer
     - key_id
-    - public_key
     type: object
   v1.RegisterProjectReq:
     properties:
@@ -805,7 +818,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。
+      description: 登记项目 API Key、飞书反馈表和表级 scope。接口仅允许管理员访问；新生成的 API Key 只在注册响应中返回一次。
       parameters:
       - description: Bearer Admin JWT
         in: header
@@ -973,7 +986,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: 一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。
+      description: 一次性替换项目基本信息、API Key、飞书表配置和表级 Scope。未提交的旧 API Key 或表配置会被软删除。
       parameters:
       - description: Bearer Admin JWT
         in: header
@@ -1021,7 +1034,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: 校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
+      description: 校验项目 API Key 生成的 HMAC 签名，签发绑定项目和学生身份的短期反馈访问 Token。
       operationId: integration-token-exchange
       parameters:
       - description: 项目身份断言

@@ -14,7 +14,7 @@ type RegisterProjectReq struct {
 type RegisterProjectKeyReq struct {
 	KeyID     string     `json:"key_id" binding:"required"`
 	Issuer    string     `json:"issuer" binding:"required"`
-	PublicKey string     `json:"public_key" binding:"required"`
+	APIKey    string     `json:"api_key"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -49,7 +50,7 @@ func (testAuthService) GetTableConfig(projectID, identity string) (domain.TableC
 	}, nil
 }
 func (testAuthService) GetTenantToken() string { return "" }
-func (testAuthService) ExchangeIntegrationToken(_, _, _ string) (string, int64, error) {
+func (testAuthService) ExchangeIntegrationToken(context.Context, domain.ExchangeIntegrationTokenInput) (string, int64, error) {
 	return "", 0, nil
 }
 

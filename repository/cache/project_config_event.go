@@ -18,7 +18,7 @@ const (
 )
 
 // ProjectConfigEventBus 负责通过 Redis Stream 传递项目配置变更通知。
-// 事件只携带 project_id，不携带公钥、table_token 等敏感配置。
+// 事件只携带 project_id，不携带 API Key、table_token 等敏感配置。
 // todo 后续可以加一个任务队列统一处理所有任务
 type ProjectConfigEventBus interface {
 	PublishProjectChanged(ctx context.Context, projectID string) error

@@ -7,6 +7,7 @@ import (
 	reqV1 "github.com/muxi-Infra/FeedBack-Backend/api/request/v1"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
 	respV1 "github.com/muxi-Infra/FeedBack-Backend/api/response/v1"
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
@@ -32,10 +33,10 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 	}
 }
 
-// ExchangeIntegrationToken 校验已登记项目签发的身份断言，并签发反馈服务访问 Token。
+// ExchangeIntegrationToken 校验项目 API Key 生成的 HMAC 签名，并签发反馈服务访问 Token。
 //
 //	@Summary		项目身份换取反馈 Token
-//	@Description	校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
+//	@Description	校验项目 API Key 生成的 HMAC 签名，签发绑定项目和学生身份的短期反馈访问 Token。
 //	@Tags			Auth
 //	@ID				integration-token-exchange
 //	@Accept			json
@@ -47,7 +48,15 @@ func NewAuth(jwtHandler *ijwt.JWT, s service.AuthService) AuthHandler {
 //	@Failure		500		{object}	response.Response
 //	@Router			/api/v1/integrations/token/exchange [post]
 func (o Auth) ExchangeIntegrationToken(c *gin.Context, req reqV1.ExchangeIntegrationTokenReq) (response.Response, error) {
-	token, expiresIn, err := o.s.ExchangeIntegrationToken(req.ProjectID, req.KeyID, req.Assertion)
+	token, expiresIn, err := o.s.ExchangeIntegrationToken(c.Request.Context(), domain.ExchangeIntegrationTokenInput{
+		ProjectID:     req.ProjectID,
+		KeyID:         req.KeyID,
+		StudentID:     req.StudentID,
+		TableIdentity: req.TableIdentity,
+		Timestamp:     req.Timestamp,
+		Nonce:         req.Nonce,
+		Signature:     req.Signature,
+	})
 	if err != nil {
 		return response.Response{}, err
 	}

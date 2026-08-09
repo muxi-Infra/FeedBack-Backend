@@ -453,7 +453,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。",
+                "description": "登记项目 API Key、飞书反馈表和表级 scope。接口仅允许管理员访问；新生成的 API Key 只在注册响应中返回一次。",
                 "consumes": [
                     "application/json"
                 ],
@@ -715,7 +715,7 @@ const docTemplate = `{
         },
         "/api/v1/integrations/projects/{project_id}/config": {
             "put": {
-                "description": "一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。",
+                "description": "一次性替换项目基本信息、API Key、飞书表配置和表级 Scope。未提交的旧 API Key 或表配置会被软删除。",
                 "consumes": [
                     "application/json"
                 ],
@@ -787,7 +787,7 @@ const docTemplate = `{
         },
         "/api/v1/integrations/token/exchange": {
             "post": {
-                "description": "校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。",
+                "description": "校验项目 API Key 生成的 HMAC 签名，签发绑定项目和学生身份的短期反馈访问 Token。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1948,19 +1948,35 @@ const docTemplate = `{
         "v1.ExchangeIntegrationTokenReq": {
             "type": "object",
             "required": [
-                "assertion",
                 "key_id",
-                "project_id"
+                "nonce",
+                "project_id",
+                "signature",
+                "student_id",
+                "table_identity",
+                "timestamp"
             ],
             "properties": {
-                "assertion": {
+                "key_id": {
                     "type": "string"
                 },
-                "key_id": {
+                "nonce": {
                     "type": "string"
                 },
                 "project_id": {
                     "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "table_identity": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "integer"
                 }
             }
         },
@@ -2115,6 +2131,9 @@ const docTemplate = `{
         "v1.ProjectKeyResponse": {
             "type": "object",
             "properties": {
+                "api_key": {
+                    "type": "string"
+                },
                 "expires_at": {
                     "type": "string"
                 },
@@ -2206,10 +2225,12 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "issuer",
-                "key_id",
-                "public_key"
+                "key_id"
             ],
             "properties": {
+                "api_key": {
+                    "type": "string"
+                },
                 "expires_at": {
                     "type": "string"
                 },
@@ -2217,9 +2238,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "key_id": {
-                    "type": "string"
-                },
-                "public_key": {
                     "type": "string"
                 }
             }

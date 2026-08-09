@@ -4,34 +4,26 @@ package feedback
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
-
-const defaultAudience = "feedback-center"
 
 // Config 配置校园项目与反馈中台之间的服务端身份交换。
 type Config struct {
-	Endpoint     string
-	ProjectID    string
-	KeyID        string
-	Issuer       string
-	PrivateKey   []byte
-	Audience     string
-	HTTPClient   *http.Client
-	AssertionTTL time.Duration
+	Endpoint   string
+	ProjectID  string
+	KeyID      string
+	APIKey     string
+	HTTPClient *http.Client
 }
 
 // Identity 表示已经由校园项目后端确认的用户身份。
@@ -40,7 +32,7 @@ type Identity struct {
 	TableIdentity string
 }
 
-// Token 是反馈中台返回的短期访问令牌。
+// Token 反馈中台返回的短期访问令牌。
 type Token struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
@@ -48,9 +40,13 @@ type Token struct {
 }
 
 type exchangeRequest struct {
-	ProjectID string `json:"project_id"`
-	KeyID     string `json:"key_id"`
-	Assertion string `json:"assertion"`
+	ProjectID     string `json:"project_id"`
+	KeyID         string `json:"key_id"`
+	StudentID     string `json:"student_id"`
+	TableIdentity string `json:"table_identity"`
+	Timestamp     int64  `json:"timestamp"`
+	Nonce         string `json:"nonce"`
+	Signature     string `json:"signature"`
 }
 
 type exchangeResponse struct {
@@ -59,53 +55,31 @@ type exchangeResponse struct {
 	Data    Token  `json:"data"`
 }
 
-// Client 负责生成身份断言并向反馈中台兑换反馈 JWT。
+// Client 负责使用 API Key 生成 HMAC 请求签名并兑换反馈 JWT。
 type Client struct {
-	endpoint     string
-	projectID    string
-	keyID        string
-	issuer       string
-	audience     string
-	privateKey   *rsa.PrivateKey
-	httpClient   *http.Client
-	assertionTTL time.Duration
+	endpoint   string
+	projectID  string
+	keyID      string
+	apiKey     string
+	httpClient *http.Client
 }
 
-// NewClient 创建 SDK 客户端。私钥只保存在当前进程内，不会写入请求日志或发送给反馈中台。
+// NewClient 创建 SDK 客户端。API Key 只应保存在校园项目后端。
 func NewClient(config Config) (*Client, error) {
 	endpoint := strings.TrimRight(strings.TrimSpace(config.Endpoint), "/")
-	if endpoint == "" || strings.TrimSpace(config.ProjectID) == "" || strings.TrimSpace(config.KeyID) == "" || strings.TrimSpace(config.Issuer) == "" {
-		return nil, errors.New("endpoint、project_id、key_id 和 issuer 不能为空")
-	}
-	privateKey, err := parsePrivateKey(config.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	audience := strings.TrimSpace(config.Audience)
-	if audience == "" {
-		audience = defaultAudience
-	}
-	ttl := config.AssertionTTL
-	if ttl <= 0 {
-		ttl = time.Minute
-	}
-	if ttl > 5*time.Minute {
-		return nil, errors.New("assertion 有效期不能超过 5 分钟")
+	if endpoint == "" || strings.TrimSpace(config.ProjectID) == "" || strings.TrimSpace(config.KeyID) == "" || strings.TrimSpace(config.APIKey) == "" {
+		return nil, errors.New("endpoint、project_id、key_id 和 api_key 不能为空")
 	}
 	httpClient := config.HTTPClient
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 10 * time.Second}
 	}
-	return &Client{
-		endpoint: endpoint, projectID: strings.TrimSpace(config.ProjectID), keyID: strings.TrimSpace(config.KeyID),
-		issuer: strings.TrimSpace(config.Issuer), audience: audience, privateKey: privateKey,
-		httpClient: httpClient, assertionTTL: ttl,
-	}, nil
+	return &Client{endpoint: endpoint, projectID: strings.TrimSpace(config.ProjectID), keyID: strings.TrimSpace(config.KeyID), apiKey: strings.TrimSpace(config.APIKey), httpClient: httpClient}, nil
 }
 
 // Exchange 为当前学生和指定反馈表兑换反馈平台 JWT。
 func (c *Client) Exchange(ctx context.Context, identity Identity) (Token, error) {
-	if c == nil || c.privateKey == nil {
+	if c == nil || c.apiKey == "" {
 		return Token{}, errors.New("feedback client 未初始化")
 	}
 	studentID := strings.TrimSpace(identity.StudentID)
@@ -113,23 +87,22 @@ func (c *Client) Exchange(ctx context.Context, identity Identity) (Token, error)
 	if studentID == "" || tableIdentity == "" {
 		return Token{}, errors.New("student_id 和 table_identity 不能为空")
 	}
-	now := time.Now()
-	jti, err := randomID()
+	nonce, err := randomID()
 	if err != nil {
-		return Token{}, fmt.Errorf("生成 assertion jti 失败: %w", err)
+		return Token{}, fmt.Errorf("生成 nonce 失败: %w", err)
 	}
-	claims := jwt.MapClaims{
-		"iss": c.issuer, "aud": jwt.ClaimStrings{c.audience},
-		"iat": now.Unix(), "exp": now.Add(c.assertionTTL).Unix(), "jti": jti,
-		"project_id": c.projectID, "student_id": studentID, "table_identity": tableIdentity,
+	timestamp := time.Now().Unix()
+	payload := fmt.Sprintf("%s\n%s\n%s\n%s\n%d\n%s", c.projectID, c.keyID, studentID, tableIdentity, timestamp, nonce)
+	bodyData := exchangeRequest{
+		ProjectID:     c.projectID,
+		KeyID:         c.keyID,
+		StudentID:     studentID,
+		TableIdentity: tableIdentity,
+		Timestamp:     timestamp,
+		Nonce:         nonce,
+		Signature:     sign(c.apiKey, payload),
 	}
-	assertion := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	assertion.Header["kid"] = c.keyID
-	assertionString, err := assertion.SignedString(c.privateKey)
-	if err != nil {
-		return Token{}, fmt.Errorf("签发 assertion 失败: %w", err)
-	}
-	body, err := json.Marshal(exchangeRequest{ProjectID: c.projectID, KeyID: c.keyID, Assertion: assertionString})
+	body, err := json.Marshal(bodyData)
 	if err != nil {
 		return Token{}, fmt.Errorf("编码 Token exchange 请求失败: %w", err)
 	}
@@ -160,21 +133,11 @@ func (c *Client) Exchange(ctx context.Context, identity Identity) (Token, error)
 	return result.Data, nil
 }
 
-func parsePrivateKey(data []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, errors.New("私钥不是有效 PEM")
-	}
-	if key, err := x509.ParsePKCS8PrivateKey(block.Bytes); err == nil {
-		if rsaKey, ok := key.(*rsa.PrivateKey); ok {
-			return rsaKey, nil
-		}
-	}
-	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("解析 RSA 私钥失败: %w", err)
-	}
-	return key, nil
+func sign(apiKey, payload string) string {
+	digest := sha256.Sum256([]byte(apiKey))
+	mac := hmac.New(sha256.New, []byte(hex.EncodeToString(digest[:])))
+	_, _ = mac.Write([]byte(payload))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 func randomID() (string, error) {

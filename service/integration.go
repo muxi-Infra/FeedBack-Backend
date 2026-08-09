@@ -2,15 +2,13 @@ package service
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"regexp"
 	"strings"
 
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/apikey"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
@@ -74,13 +72,21 @@ func (s *integrationService) RegisterProject(ctx context.Context, input domain.R
 		Status:      status,
 	}
 	key := &model.FeedbackProjectKey{
-		ProjectID: project.ProjectID,
-		KeyID:     strings.TrimSpace(input.Key.KeyID),
-		Issuer:    strings.TrimSpace(input.Key.Issuer),
-		PublicKey: strings.TrimSpace(input.Key.PublicKey),
-		ExpiresAt: input.Key.ExpiresAt,
-		Status:    ProjectStatusActive,
+		ProjectID:  project.ProjectID,
+		KeyID:      strings.TrimSpace(input.Key.KeyID),
+		Issuer:     strings.TrimSpace(input.Key.Issuer),
+		APIKeyHash: "",
+		ExpiresAt:  input.Key.ExpiresAt,
+		Status:     ProjectStatusActive,
 	}
+	apiKeyValue := strings.TrimSpace(input.Key.APIKey)
+	if apiKeyValue == "" {
+		apiKeyValue, err = apikey.Generate()
+		if err != nil {
+			return nil, errs.IntegrationProjectDatabaseError(err)
+		}
+	}
+	key.APIKeyHash = apikey.Digest(apiKeyValue)
 
 	err = s.dao.Transaction(ctx, func(tx dao.IntegrationDAO) error {
 		if err := tx.CreateProject(ctx, project); err != nil {
@@ -108,7 +114,14 @@ func (s *integrationService) RegisterProject(ctx context.Context, input domain.R
 	}
 	s.publishProjectChanged(ctx, project.ProjectID)
 
-	return s.GetProject(ctx, project.ProjectID)
+	config, err := s.GetProject(ctx, project.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if len(config.Keys) > 0 {
+		config.Keys[0].APIKey = apiKeyValue
+	}
+	return config, nil
 }
 
 func (s *integrationService) GetProject(ctx context.Context, projectID string) (*domain.ProjectConfig, error) {
@@ -145,6 +158,7 @@ func (s *integrationService) GetProject(ctx context.Context, projectID string) (
 			ProjectID: key.ProjectID,
 			KeyID:     key.KeyID,
 			Issuer:    key.Issuer,
+			APIKey:    "",
 			Status:    key.Status,
 			ExpiresAt: key.ExpiresAt,
 		})
@@ -237,7 +251,7 @@ func (s *integrationService) UpdateProject(ctx context.Context, projectID string
 	return nil
 }
 
-// UpdateProjectConfig 全量替换项目配置，保证基本信息、公钥、表配置和 Scope 在同一事务中更新。
+// UpdateProjectConfig 全量替换项目配置，保证基本信息、API Key、表配置和 Scope 在同一事务中更新。
 func (s *integrationService) UpdateProjectConfig(ctx context.Context, input domain.UpdateProjectConfigInput) error {
 	registerInput := domain.RegisterProjectInput{
 		ProjectID:   input.ProjectID,
@@ -268,13 +282,27 @@ func (s *integrationService) UpdateProjectConfig(ctx context.Context, input doma
 			return errs.IntegrationProjectDatabaseError(err)
 		}
 
+		apiKeyHash := ""
+		existingKey, err := tx.GetProjectKey(ctx, projectID, strings.TrimSpace(input.Key.KeyID))
+		if err != nil {
+			return errs.IntegrationProjectDatabaseError(err)
+		}
+		if existingKey != nil {
+			apiKeyHash = existingKey.APIKeyHash
+		}
+		if strings.TrimSpace(input.Key.APIKey) != "" {
+			apiKeyHash = apikey.Digest(strings.TrimSpace(input.Key.APIKey))
+		}
+		if apiKeyHash == "" {
+			return errs.IntegrationProjectInvalidError(errors.New("api_key is required when rotating the project key"))
+		}
 		key := &model.FeedbackProjectKey{
-			ProjectID: projectID,
-			KeyID:     strings.TrimSpace(input.Key.KeyID),
-			Issuer:    strings.TrimSpace(input.Key.Issuer),
-			PublicKey: strings.TrimSpace(input.Key.PublicKey),
-			ExpiresAt: input.Key.ExpiresAt,
-			Status:    ProjectStatusActive,
+			ProjectID:  projectID,
+			KeyID:      strings.TrimSpace(input.Key.KeyID),
+			Issuer:     strings.TrimSpace(input.Key.Issuer),
+			APIKeyHash: apiKeyHash,
+			ExpiresAt:  input.Key.ExpiresAt,
+			Status:     ProjectStatusActive,
 		}
 		if err := tx.UpsertProjectKey(ctx, key); err != nil {
 			return errs.IntegrationProjectDatabaseError(err)
@@ -370,9 +398,6 @@ func validateRegisterProjectInput(input domain.RegisterProjectInput) error {
 	if strings.TrimSpace(input.Key.Issuer) == "" {
 		return invalidProjectError("issuer is required")
 	}
-	if err := validateRSAPublicKey(input.Key.PublicKey); err != nil {
-		return err
-	}
 	if len(input.Tables) == 0 {
 		return invalidProjectError("at least one project table is required")
 	}
@@ -418,24 +443,6 @@ func validateRegisterProjectInput(input domain.RegisterProjectInput) error {
 		}
 	}
 	return nil
-}
-
-func validateRSAPublicKey(value string) error {
-	block, _ := pem.Decode([]byte(strings.TrimSpace(value)))
-	if block == nil {
-		return invalidProjectError("public_key must be a valid PEM")
-	}
-	if key, err := x509.ParsePKIXPublicKey(block.Bytes); err == nil {
-		if _, ok := key.(*rsa.PublicKey); ok {
-			return nil
-		}
-	}
-	if key, err := x509.ParsePKCS1PublicKey(block.Bytes); err == nil {
-		if key != nil {
-			return nil
-		}
-	}
-	return invalidProjectError("public_key must contain an RSA public key")
 }
 
 func invalidProjectError(message string) error {

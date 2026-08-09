@@ -27,10 +27,10 @@ func NewIntegrationAdmin(s service.IntegrationService) IntegrationAdminHandler {
 	return &IntegrationAdmin{s: s}
 }
 
-// RegisterProject 注册一个对接反馈中台的校园项目。
+// RegisterProject 注册一个对接反馈中台的校园项目，并生成项目 API Key。
 //
 //	@Summary		注册反馈项目
-//	@Description	登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。
+//	@Description	登记项目 API Key、飞书反馈表和表级 scope。接口仅允许管理员访问；新生成的 API Key 只在注册响应中返回一次。
 //	@Tags			Integration Admin
 //	@Accept			json
 //	@Produce		json
@@ -51,7 +51,7 @@ func (h *IntegrationAdmin) RegisterProject(c *gin.Context, req reqV1.RegisterPro
 		Key: domain.ProjectKeyInput{
 			KeyID:     req.Key.KeyID,
 			Issuer:    req.Key.Issuer,
-			PublicKey: req.Key.PublicKey,
+			APIKey:    req.Key.APIKey,
 			ExpiresAt: req.Key.ExpiresAt,
 		},
 		Tables: make([]domain.ProjectTableInput, 0, len(req.Tables)),
@@ -146,10 +146,10 @@ func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProject
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
 }
 
-// UpdateProjectConfig 全量更新项目基本信息、公钥、飞书表配置和 Scope。
+// UpdateProjectConfig 全量更新项目基本信息、API Key、飞书表配置和 Scope。
 //
 //	@Summary		全量更新项目配置
-//	@Description	一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。
+//	@Description	一次性替换项目基本信息、API Key、飞书表配置和表级 Scope。未提交的旧 API Key 或表配置会被软删除。
 //	@Tags			Integration Admin
 //	@Accept			json
 //	@Produce		json
@@ -171,7 +171,7 @@ func (h *IntegrationAdmin) UpdateProjectConfig(c *gin.Context, req reqV1.UpdateP
 		Key: domain.ProjectKeyInput{
 			KeyID:     req.Key.KeyID,
 			Issuer:    req.Key.Issuer,
-			PublicKey: req.Key.PublicKey,
+			APIKey:    req.Key.APIKey,
 			ExpiresAt: req.Key.ExpiresAt,
 		},
 		Tables: make([]domain.ProjectTableInput, 0, len(req.Tables)),
@@ -227,6 +227,7 @@ func toProjectConfigResponse(config *domain.ProjectConfig) respV1.ProjectConfigR
 			ProjectID: key.ProjectID,
 			KeyID:     key.KeyID,
 			Issuer:    key.Issuer,
+			APIKey:    key.APIKey,
 			Status:    key.Status,
 			ExpiresAt: key.ExpiresAt,
 		})

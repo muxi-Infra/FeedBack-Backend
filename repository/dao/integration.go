@@ -144,7 +144,7 @@ func (d *integrationDAO) DeleteProject(ctx context.Context, projectID string, tx
 		return err
 	}
 	// 项目删除后允许管理员重新注册同一个 project_id，因此关联配置也必须一并软删除，
-	// 避免新项目读取到旧的公钥、飞书表配置或权限 Scope。
+	// 避免新项目读取到旧的 API Key、飞书表配置或权限 Scope。
 	if err := db.Where("project_id = ?", projectID).Delete(&model.FeedbackProjectScope{}).Error; err != nil {
 		return err
 	}
@@ -181,11 +181,11 @@ func (d *integrationDAO) UpsertProjectKey(ctx context.Context, key *model.Feedba
 	}
 
 	return db.Unscoped().Model(&existing).Updates(map[string]interface{}{
-		"issuer":     key.Issuer,
-		"public_key": key.PublicKey,
-		"status":     key.Status,
-		"expires_at": key.ExpiresAt,
-		"deleted_at": 0,
+		"issuer":       key.Issuer,
+		"api_key_hash": key.APIKeyHash,
+		"status":       key.Status,
+		"expires_at":   key.ExpiresAt,
+		"deleted_at":   0,
 	}).Error
 }
 

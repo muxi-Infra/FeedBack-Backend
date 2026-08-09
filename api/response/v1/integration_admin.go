@@ -17,6 +17,7 @@ type ProjectKeyResponse struct {
 	ProjectID string     `json:"project_id"`
 	KeyID     string     `json:"key_id"`
 	Issuer    string     `json:"issuer"`
+	APIKey    string     `json:"api_key,omitempty"`
 	Status    string     `json:"status"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }
