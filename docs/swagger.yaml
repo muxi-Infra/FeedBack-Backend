@@ -364,6 +364,15 @@ definitions:
     - table_token
     - view_id
     type: object
+  v1.RotateProjectKeyResponse:
+    properties:
+      api_key:
+        type: string
+      key_id:
+        type: string
+      project_id:
+        type: string
+    type: object
   v1.SystemStats:
     properties:
       cpu_percent:
@@ -1028,6 +1037,52 @@ paths:
           schema:
             $ref: '#/definitions/response.Response'
       summary: 全量更新项目配置
+      tags:
+      - Integration Admin
+  /api/v1/integrations/projects/{project_id}/keys/{key_id}/rotate:
+    post:
+      description: 生成新的项目 API Key。明文 Key 只在本次响应中返回，管理员需要立即保存并更新校园项目后端配置。
+      parameters:
+      - description: Bearer Admin JWT
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 项目 ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      - description: Key ID
+        in: path
+        name: key_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v1.RotateProjectKeyResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 轮换项目 API Key
       tags:
       - Integration Admin
   /api/v1/integrations/token/exchange:

@@ -65,6 +65,13 @@ type ProjectKeySummary struct {
 	ExpiresAt *time.Time
 }
 
+// RotateProjectKeyResult 返回项目 API Key 轮换结果。
+type RotateProjectKeyResult struct {
+	ProjectID string
+	KeyID     string
+	APIKey    string
+}
+
 type ExchangeIntegrationTokenInput struct {
 	ProjectID     string
 	KeyID         string

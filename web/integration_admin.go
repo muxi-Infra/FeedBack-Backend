@@ -21,5 +21,6 @@ func RegisterIntegrationAdminRouter(
 	projects.GET("/:project_id", permission.Require("project", "read"), ginx.Wrap(h.GetProject))
 	projects.PUT("/:project_id", permission.Require("project", "update"), ginx.WrapReq(h.UpdateProject))
 	projects.PUT("/:project_id/config", permission.Require("project", "update"), ginx.WrapReq(h.UpdateProjectConfig))
+	projects.POST("/:project_id/keys/:key_id/rotate", permission.Require("key", "update"), ginx.Wrap(h.RotateProjectKey))
 	projects.DELETE("/:project_id", permission.Require("project", "delete"), ginx.Wrap(h.DeleteProject))
 }

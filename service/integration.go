@@ -33,6 +33,7 @@ type IntegrationService interface {
 	ListProjects(ctx context.Context) ([]domain.ProjectSummary, error)
 	UpdateProject(ctx context.Context, projectID string, input domain.UpdateProjectInput) error
 	UpdateProjectConfig(ctx context.Context, input domain.UpdateProjectConfigInput) error
+	RotateProjectKey(ctx context.Context, projectID, keyID string) (domain.RotateProjectKeyResult, error)
 	DeleteProject(ctx context.Context, projectID string) error
 }
 
@@ -364,6 +365,50 @@ func (s *integrationService) DeleteProject(ctx context.Context, projectID string
 	}
 	s.publishProjectChanged(ctx, projectID)
 	return nil
+}
+
+// RotateProjectKey 重新生成项目 API Key，使旧 API Key 立即失效。
+func (s *integrationService) RotateProjectKey(ctx context.Context, projectID, keyID string) (domain.RotateProjectKeyResult, error) {
+	projectID = strings.TrimSpace(projectID)
+	keyID = strings.TrimSpace(keyID)
+	if projectID == "" || keyID == "" {
+		return domain.RotateProjectKeyResult{}, invalidProjectError("project_id and key_id are required")
+	}
+
+	project, err := s.dao.GetProject(ctx, projectID)
+	if err != nil {
+		return domain.RotateProjectKeyResult{}, errs.IntegrationProjectDatabaseError(err)
+	}
+	if project == nil || project.Status != ProjectStatusActive {
+		return domain.RotateProjectKeyResult{}, errs.IntegrationProjectNotFoundError(errors.New("active project not found"))
+	}
+
+	newAPIKey, err := apikey.Generate()
+	if err != nil {
+		return domain.RotateProjectKeyResult{}, errs.IntegrationProjectDatabaseError(err)
+	}
+
+	err = s.dao.Transaction(ctx, func(tx dao.IntegrationDAO) error {
+		key, err := tx.GetProjectKey(ctx, projectID, keyID)
+		if err != nil {
+			return err
+		}
+		if key == nil || key.Status != ProjectStatusActive {
+			return errs.IntegrationProjectNotFoundError(errors.New("active project key not found"))
+		}
+		key.APIKeyHash = apikey.Digest(newAPIKey)
+		return tx.UpsertProjectKey(ctx, key)
+	})
+	if err != nil {
+		return domain.RotateProjectKeyResult{}, err
+	}
+
+	s.publishProjectChanged(ctx, projectID)
+	return domain.RotateProjectKeyResult{
+		ProjectID: projectID,
+		KeyID:     keyID,
+		APIKey:    newAPIKey,
+	}, nil
 }
 
 func (s *integrationService) publishProjectChanged(ctx context.Context, projectID string) {

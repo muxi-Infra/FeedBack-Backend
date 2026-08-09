@@ -16,6 +16,7 @@ type IntegrationAdminHandler interface {
 	UpdateProject(c *gin.Context, req reqV1.UpdateProjectReq) (response.Response, error)
 	// todo 单独一个全量更新耗时有点长，后续根据需要添加单独的更新
 	UpdateProjectConfig(c *gin.Context, req reqV1.UpdateProjectConfigReq) (response.Response, error)
+	RotateProjectKey(c *gin.Context) (response.Response, error)
 	DeleteProject(c *gin.Context) (response.Response, error)
 }
 
@@ -193,6 +194,36 @@ func (h *IntegrationAdmin) UpdateProjectConfig(c *gin.Context, req reqV1.UpdateP
 		return response.Response{}, err
 	}
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
+}
+
+// RotateProjectKey 重新生成项目 API Key，旧 Key 会立即失效。
+//
+//	@Summary		轮换项目 API Key
+//	@Description	生成新的项目 API Key。明文 Key 只在本次响应中返回，管理员需要立即保存并更新校园项目后端配置。
+//	@Tags			Integration Admin
+//	@Produce		json
+//	@Param			Authorization	header	string	true	"Bearer Admin JWT"
+//	@Param			project_id		path	string	true	"项目 ID"
+//	@Param			key_id			path	string	true	"Key ID"
+//	@Success		200	{object}	response.Response{data=respV1.RotateProjectKeyResponse}
+//	@Failure		401	{object}	response.Response
+//	@Failure		403	{object}	response.Response
+//	@Failure		404	{object}	response.Response
+//	@Router			/api/v1/integrations/projects/{project_id}/keys/{key_id}/rotate [post]
+func (h *IntegrationAdmin) RotateProjectKey(c *gin.Context) (response.Response, error) {
+	result, err := h.s.RotateProjectKey(c.Request.Context(), c.Param("project_id"), c.Param("key_id"))
+	if err != nil {
+		return response.Response{}, err
+	}
+	return response.Response{
+		Code:    0,
+		Message: "Success",
+		Data: respV1.RotateProjectKeyResponse{
+			ProjectID: result.ProjectID,
+			KeyID:     result.KeyID,
+			APIKey:    result.APIKey,
+		},
+	}, nil
 }
 
 // DeleteProject 软删除项目。

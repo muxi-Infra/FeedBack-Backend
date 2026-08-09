@@ -778,6 +778,79 @@
                 }
             }
         },
+        "/api/v1/integrations/projects/{project_id}/keys/{key_id}/rotate": {
+            "post": {
+                "description": "生成新的项目 API Key。明文 Key 只在本次响应中返回，管理员需要立即保存并更新校园项目后端配置。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Integration Admin"
+                ],
+                "summary": "轮换项目 API Key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer Admin JWT",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Key ID",
+                        "name": "key_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.RotateProjectKeyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/integrations/token/exchange": {
             "post": {
                 "description": "校验项目 API Key 生成的 HMAC 签名，签发绑定项目和学生身份的短期反馈访问 Token。",
@@ -2306,6 +2379,20 @@
                     "type": "string"
                 },
                 "view_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1.RotateProjectKeyResponse": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 }
             }

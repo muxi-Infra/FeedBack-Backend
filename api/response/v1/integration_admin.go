@@ -41,3 +41,10 @@ type ProjectConfigResponse struct {
 	Keys    []ProjectKeyResponse   `json:"keys"`
 	Tables  []ProjectTableResponse `json:"tables"`
 }
+
+// RotateProjectKeyResponse 项目 API Key 轮换响应。
+type RotateProjectKeyResponse struct {
+	ProjectID string `json:"project_id"`
+	KeyID     string `json:"key_id"`
+	APIKey    string `json:"api_key"`
+}
