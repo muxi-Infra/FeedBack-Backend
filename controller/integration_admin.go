@@ -50,9 +50,6 @@ func (h *IntegrationAdmin) RegisterProject(c *gin.Context, req reqV1.RegisterPro
 		School:      req.School,
 		Status:      req.Status,
 		Key: domain.ProjectKeyInput{
-			KeyID:     req.Key.KeyID,
-			Issuer:    req.Key.Issuer,
-			APIKey:    req.Key.APIKey,
 			ExpiresAt: req.Key.ExpiresAt,
 		},
 		Tables: make([]domain.ProjectTableInput, 0, len(req.Tables)),
@@ -147,7 +144,7 @@ func (h *IntegrationAdmin) UpdateProject(c *gin.Context, req reqV1.UpdateProject
 	return response.Response{Code: 0, Message: "Success", Data: nil}, nil
 }
 
-// UpdateProjectConfig 全量更新项目基本信息、API Key、飞书表配置和 Scope。
+// UpdateProjectConfig 全量更新项目基本信息、飞书表配置和 Scope。API Key 必须通过独立轮换接口生成。
 //
 //	@Summary		全量更新项目配置
 //	@Description	一次性替换项目基本信息、API Key、飞书表配置和表级 Scope。未提交的旧 API Key 或表配置会被软删除。
@@ -171,8 +168,6 @@ func (h *IntegrationAdmin) UpdateProjectConfig(c *gin.Context, req reqV1.UpdateP
 		Status:      req.Status,
 		Key: domain.ProjectKeyInput{
 			KeyID:     req.Key.KeyID,
-			Issuer:    req.Key.Issuer,
-			APIKey:    req.Key.APIKey,
 			ExpiresAt: req.Key.ExpiresAt,
 		},
 		Tables: make([]domain.ProjectTableInput, 0, len(req.Tables)),
@@ -257,7 +252,6 @@ func toProjectConfigResponse(config *domain.ProjectConfig) respV1.ProjectConfigR
 			ID:        key.ID,
 			ProjectID: key.ProjectID,
 			KeyID:     key.KeyID,
-			Issuer:    key.Issuer,
 			APIKey:    key.APIKey,
 			Status:    key.Status,
 			ExpiresAt: key.ExpiresAt,

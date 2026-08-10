@@ -12,9 +12,13 @@ type RegisterProjectReq struct {
 }
 
 type RegisterProjectKeyReq struct {
+	ExpiresAt *time.Time `json:"expires_at"`
+}
+
+// UpdateProjectKeyReq 更新项目配置时使用的密钥参数。
+// 更新项目配置不会修改 API Key，密钥必须通过独立轮换接口生成。
+type UpdateProjectKeyReq struct {
 	KeyID     string     `json:"key_id" binding:"required"`
-	Issuer    string     `json:"issuer" binding:"required"`
-	APIKey    string     `json:"api_key"`
 	ExpiresAt *time.Time `json:"expires_at"`
 }
 
@@ -40,6 +44,6 @@ type UpdateProjectConfigReq struct {
 	ProjectName string                    `json:"project_name" binding:"required"`
 	School      string                    `json:"school" binding:"required"`
 	Status      string                    `json:"status" binding:"required"`
-	Key         RegisterProjectKeyReq     `json:"key" binding:"required"`
+	Key         UpdateProjectKeyReq       `json:"key" binding:"required"`
 	Tables      []RegisterProjectTableReq `json:"tables" binding:"required,min=1"`
 }

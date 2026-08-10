@@ -181,7 +181,6 @@ func (d *integrationDAO) UpsertProjectKey(ctx context.Context, key *model.Feedba
 	}
 
 	return db.Unscoped().Model(&existing).Updates(map[string]interface{}{
-		"issuer":       key.Issuer,
 		"api_key_hash": key.APIKeyHash,
 		"status":       key.Status,
 		"expires_at":   key.ExpiresAt,

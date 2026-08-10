@@ -2213,9 +2213,6 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "issuer": {
-                    "type": "string"
-                },
                 "key_id": {
                     "type": "string"
                 },
@@ -2296,21 +2293,8 @@ const docTemplate = `{
         },
         "v1.RegisterProjectKeyReq": {
             "type": "object",
-            "required": [
-                "issuer",
-                "key_id"
-            ],
             "properties": {
-                "api_key": {
-                    "type": "string"
-                },
                 "expires_at": {
-                    "type": "string"
-                },
-                "issuer": {
-                    "type": "string"
-                },
-                "key_id": {
                     "type": "string"
                 }
             }
@@ -2476,7 +2460,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "key": {
-                    "$ref": "#/definitions/v1.RegisterProjectKeyReq"
+                    "$ref": "#/definitions/v1.UpdateProjectKeyReq"
                 },
                 "project_name": {
                     "type": "string"
@@ -2493,6 +2477,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/v1.RegisterProjectTableReq"
                     }
+                }
+            }
+        },
+        "v1.UpdateProjectKeyReq": {
+            "type": "object",
+            "required": [
+                "key_id"
+            ],
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
                 }
             }
         },

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -72,22 +73,18 @@ func (s *integrationService) RegisterProject(ctx context.Context, input domain.R
 		School:      strings.TrimSpace(input.School),
 		Status:      status,
 	}
+	apiKeyValue, err := apikey.Generate()
+	if err != nil {
+		return nil, errs.IntegrationProjectDatabaseError(err)
+	}
+	apiKeyHash := apikey.Digest(apiKeyValue)
 	key := &model.FeedbackProjectKey{
 		ProjectID:  project.ProjectID,
-		KeyID:      strings.TrimSpace(input.Key.KeyID),
-		Issuer:     strings.TrimSpace(input.Key.Issuer),
-		APIKeyHash: "",
+		KeyID:      fmt.Sprintf("%s-key-%s", project.ProjectID, apiKeyHash[:12]),
+		APIKeyHash: apiKeyHash,
 		ExpiresAt:  input.Key.ExpiresAt,
 		Status:     ProjectStatusActive,
 	}
-	apiKeyValue := strings.TrimSpace(input.Key.APIKey)
-	if apiKeyValue == "" {
-		apiKeyValue, err = apikey.Generate()
-		if err != nil {
-			return nil, errs.IntegrationProjectDatabaseError(err)
-		}
-	}
-	key.APIKeyHash = apikey.Digest(apiKeyValue)
 
 	err = s.dao.Transaction(ctx, func(tx dao.IntegrationDAO) error {
 		if err := tx.CreateProject(ctx, project); err != nil {
@@ -158,7 +155,6 @@ func (s *integrationService) GetProject(ctx context.Context, projectID string) (
 			ID:        key.ID,
 			ProjectID: key.ProjectID,
 			KeyID:     key.KeyID,
-			Issuer:    key.Issuer,
 			APIKey:    "",
 			Status:    key.Status,
 			ExpiresAt: key.ExpiresAt,
@@ -252,7 +248,7 @@ func (s *integrationService) UpdateProject(ctx context.Context, projectID string
 	return nil
 }
 
-// UpdateProjectConfig 全量替换项目配置，保证基本信息、API Key、表配置和 Scope 在同一事务中更新。
+// UpdateProjectConfig 全量替换项目配置，API Key 不在此接口中修改。
 func (s *integrationService) UpdateProjectConfig(ctx context.Context, input domain.UpdateProjectConfigInput) error {
 	registerInput := domain.RegisterProjectInput{
 		ProjectID:   input.ProjectID,
@@ -267,6 +263,9 @@ func (s *integrationService) UpdateProjectConfig(ctx context.Context, input doma
 	}
 
 	projectID := strings.TrimSpace(input.ProjectID)
+	if strings.TrimSpace(input.Key.KeyID) == "" {
+		return invalidProjectError("key_id is required")
+	}
 	project, err := s.dao.GetProject(ctx, projectID)
 	if err != nil {
 		return errs.IntegrationProjectDatabaseError(err)
@@ -283,25 +282,17 @@ func (s *integrationService) UpdateProjectConfig(ctx context.Context, input doma
 			return errs.IntegrationProjectDatabaseError(err)
 		}
 
-		apiKeyHash := ""
 		existingKey, err := tx.GetProjectKey(ctx, projectID, strings.TrimSpace(input.Key.KeyID))
 		if err != nil {
 			return errs.IntegrationProjectDatabaseError(err)
 		}
-		if existingKey != nil {
-			apiKeyHash = existingKey.APIKeyHash
-		}
-		if strings.TrimSpace(input.Key.APIKey) != "" {
-			apiKeyHash = apikey.Digest(strings.TrimSpace(input.Key.APIKey))
-		}
-		if apiKeyHash == "" {
-			return errs.IntegrationProjectInvalidError(errors.New("api_key is required when rotating the project key"))
+		if existingKey == nil || existingKey.APIKeyHash == "" {
+			return errs.IntegrationProjectInvalidError(errors.New("project key is not configured; use the key rotation endpoint"))
 		}
 		key := &model.FeedbackProjectKey{
 			ProjectID:  projectID,
 			KeyID:      strings.TrimSpace(input.Key.KeyID),
-			Issuer:     strings.TrimSpace(input.Key.Issuer),
-			APIKeyHash: apiKeyHash,
+			APIKeyHash: existingKey.APIKeyHash,
 			ExpiresAt:  input.Key.ExpiresAt,
 			Status:     ProjectStatusActive,
 		}
@@ -436,12 +427,6 @@ func validateRegisterProjectInput(input domain.RegisterProjectInput) error {
 	}
 	if input.Status != "" && !isProjectStatus(input.Status) {
 		return invalidProjectError("unsupported project status: " + input.Status)
-	}
-	if strings.TrimSpace(input.Key.KeyID) == "" {
-		return invalidProjectError("key_id is required")
-	}
-	if strings.TrimSpace(input.Key.Issuer) == "" {
-		return invalidProjectError("issuer is required")
 	}
 	if len(input.Tables) == 0 {
 		return invalidProjectError("at least one project table is required")

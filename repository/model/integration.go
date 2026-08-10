@@ -30,7 +30,6 @@ type FeedbackProjectKey struct {
 	ID         uint64     `gorm:"primaryKey;autoIncrement"`
 	ProjectID  string     `gorm:"column:project_id;type:varchar(64);not null;index:idx_feedback_project_key_project"`
 	KeyID      string     `gorm:"column:key_id;type:varchar(128);not null;uniqueIndex:uk_feedback_project_key_id,priority:1"`
-	Issuer     string     `gorm:"column:issuer;type:varchar(128);not null"`
 	APIKeyHash string     `gorm:"column:api_key_hash;type:char(64);not null"`
 	Status     string     `gorm:"column:status;type:varchar(32);not null;default:active;index:idx_feedback_project_key_status"`
 	ExpiresAt  *time.Time `gorm:"column:expires_at"`

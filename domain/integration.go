@@ -13,8 +13,6 @@ type RegisterProjectInput struct {
 
 type ProjectKeyInput struct {
 	KeyID     string
-	Issuer    string
-	APIKey    string
 	ExpiresAt *time.Time
 }
 
@@ -35,7 +33,7 @@ type UpdateProjectInput struct {
 	Status      string
 }
 
-// UpdateProjectConfigInput 用于全量更新项目基本信息、API Key、飞书表配置和 Scope。
+// UpdateProjectConfigInput 用于全量更新项目基本信息、飞书表配置和 Scope。
 type UpdateProjectConfigInput struct {
 	ProjectID   string
 	ProjectName string
@@ -59,7 +57,6 @@ type ProjectKeySummary struct {
 	ID        uint64
 	ProjectID string
 	KeyID     string
-	Issuer    string
 	APIKey    string
 	Status    string
 	ExpiresAt *time.Time
