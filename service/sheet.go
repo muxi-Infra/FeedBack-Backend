@@ -32,15 +32,18 @@ const (
 
 //go:generate mockgen -destination=./mock/sheet_mock.go -package=mocks github.com/muxi-Infra/FeedBack-Backend/service SheetService
 type SheetService interface {
+	// V1：创建反馈、按条件查询记录、FAQ 查询/修改和图片访问。
 	CreateLarkRecord(record *domain.TableRecord, tableConfig *domain.TableConfig) (*string, error)
 	CreateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	UpdateDBRecord(recordID, shareUrl *string, recordData map[string]any, tableConfig domain.TableConfig) error
 	GetTableRecordReqByKey(keyField *domain.TableField, fieldNames []string, pageToken *string, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
-	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error)
 	GetFAQProblemTableRecord(studentID *string, fieldNames []string, tableConfig *domain.TableConfig) (*domain.FAQTableRecords, error)
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
+
+	// V2：用户历史记录分页、反馈/FAQ 同步以及新版 FAQ 状态处理。
+	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
 	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)

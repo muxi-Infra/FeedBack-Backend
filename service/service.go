@@ -11,6 +11,10 @@ var ProviderSet = wire.NewSet(
 	NewAuthService,
 	NewSheetService,
 	NewMessageService,
+	NewV3AuthService,
+	NewV3AdminService,
+	NewProjectConfigCacheV3,
+	NewAdminAuthServiceV3,
 )
 
 var (

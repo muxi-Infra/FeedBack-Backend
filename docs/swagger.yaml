@@ -288,6 +288,144 @@ definitions:
         description: 本次尝试同步的总记录数
         type: integer
     type: object
+  v3.AdminLoginReq:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  v3.AdminLoginResp:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+    type: object
+  v3.ExchangeFeedbackTokenReq:
+    properties:
+      key_id:
+        type: string
+      nonce:
+        type: string
+      project_id:
+        type: string
+      signature:
+        type: string
+      student_id:
+        type: string
+      timestamp:
+        type: integer
+    required:
+    - key_id
+    - nonce
+    - project_id
+    - signature
+    - student_id
+    - timestamp
+    type: object
+  v3.ExchangeFeedbackTokenResp:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+    type: object
+  v3.RegisterProjectReq:
+    properties:
+      project_name:
+        type: string
+      school:
+        type: string
+      tables:
+        items:
+          $ref: '#/definitions/v3.RegisterTableReq'
+        minItems: 1
+        type: array
+    required:
+    - project_name
+    - school
+    - tables
+    type: object
+  v3.RegisterProjectResp:
+    properties:
+      api_key:
+        type: string
+      key_id:
+        type: string
+      project_id:
+        type: string
+    type: object
+  v3.RegisterTableReq:
+    properties:
+      notice:
+        type: boolean
+      scopes:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      table_id:
+        type: string
+      table_identity:
+        type: string
+      table_name:
+        type: string
+      table_token:
+        type: string
+      table_type:
+        type: string
+      view_id:
+        type: string
+    required:
+    - scopes
+    - table_id
+    - table_identity
+    - table_name
+    - table_token
+    - table_type
+    - view_id
+    type: object
+  v3.SyncProjectReq:
+    properties:
+      project_id:
+        type: string
+    required:
+    - project_id
+    type: object
+  v3.SyncProjectUserReq:
+    properties:
+      project_id:
+        type: string
+      student_id:
+        type: string
+    required:
+    - project_id
+    - student_id
+    type: object
+  v3.SyncRecordsResp:
+    properties:
+      queue_full:
+        type: boolean
+      record_ids:
+        items:
+          type: string
+        type: array
+      total:
+        type: integer
+    type: object
+  v3.TenantTokenResp:
+    properties:
+      access_token:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -1019,4 +1157,237 @@ paths:
       summary: 强制同步用户记录
       tags:
       - SheetV2
+  /api/v3/admin/integrations/projects:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目配置
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.RegisterProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.RegisterProjectResp'
+              type: object
+      security:
+      - BasicAuth: []
+      summary: 注册 V3 接入项目
+      tags:
+      - V3Admin
+  /api/v3/admin/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 管理员账号
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.AdminLoginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.AdminLoginResp'
+              type: object
+      summary: V3 管理员登录
+      tags:
+      - V3Admin
+  /api/v3/admin/sheet/faq/sync:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.SyncProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 同步 V3 项目 FAQ
+      tags:
+      - V3AdminSync
+  /api/v3/admin/sheet/feedback/sync:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.SyncProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.SyncRecordsResp'
+              type: object
+      summary: 同步 V3 项目未同步反馈
+      tags:
+      - V3AdminSync
+  /api/v3/admin/sheet/feedback/sync/force:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.SyncProjectReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.SyncRecordsResp'
+              type: object
+      summary: 强制同步 V3 项目全部反馈
+      tags:
+      - V3AdminSync
+  /api/v3/admin/sheet/feedback/sync/user:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 项目和学生参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.SyncProjectUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.SyncRecordsResp'
+              type: object
+      summary: 强制同步 V3 项目指定学生反馈
+      tags:
+      - V3AdminSync
+  /api/v3/auth/tenant/token:
+    post:
+      parameters:
+      - description: Bearer 用户反馈 Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.TenantTokenResp'
+              type: object
+      summary: 获取 V3 图片上传租户令牌
+      tags:
+      - V3Auth
+  /api/v3/integrations/token/exchange:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 交换请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v3.ExchangeFeedbackTokenReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/v3.ExchangeFeedbackTokenResp'
+              type: object
+      summary: V3 交换反馈访问令牌
+      tags:
+      - V3Auth
+  /api/v3/sheet/feedback/photos/url:
+    get:
+      parameters:
+      - description: Bearer 用户反馈 Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 反馈记录 ID
+        in: query
+        name: record_id
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: 飞书文件 Token
+        in: query
+        items:
+          type: string
+        name: file_tokens
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 获取反馈图片临时 URL
+      tags:
+      - V3Sheet
 swagger: "2.0"

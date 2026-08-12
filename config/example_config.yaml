@@ -9,6 +9,18 @@ jwt:
   encKey: "your-encryption-key-here"          # 敏感数据加密密钥
   timeout: 2592000                            # 过期时间（秒），默认一个月
 
+# V3 项目级认证配置。API Key 明文只保存在接入项目后端。
+integration:
+  access_token_ttl: 2592000
+  timestamp_skew: 300
+
+# 管理后台 JWT 配置
+admin_jwt:
+  secret_key: "replace-with-a-separate-admin-jwt-secret"
+  issuer: "feedback-admin"
+  audience: "feedback-admin-web"
+  timeout: 7200
+
 # 中间件配置
 middleware:
   allowedOrigins:

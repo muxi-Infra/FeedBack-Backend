@@ -1,6 +1,7 @@
 package errs
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/errorx"
@@ -37,6 +38,25 @@ const (
 	MarkRecordNoticedErrorCode                              // 标记表格记录已通知错误
 	GetFAQRecordByTableErrorCode                            // 根据表格标识获取 FAQ 记录错误
 	SyncFAQRecordPartialFailedCode                          // 同步 FAQ 记录部分失败
+	V3ProjectTokenScopeForbiddenCode                        // 项目身份 Token 权限不足
+	V3FeedbackRecordForbiddenCode                           // 无权访问反馈记录
+	V3FeedbackPhotoForbiddenCode                            // 无权访问反馈图片
+	V3IdentityRequiredCode                                  // V3 身份信息缺失
+	V3InvalidInputCode
+	V3ExchangeExpiredCode
+	V3ProjectLookupCode
+	V3APIKeyInvalidCode
+	V3SignatureInvalidCode
+	V3NonceErrorCode
+	V3ReplayRequestCode
+	V3TokenGenerateCode
+	V3TableConfigErrorCode
+	V3ProjectDatabaseCode
+	V3ConfigPublishCode
+	V3APIKeyGenerateCode
+	V3AdminCredentialsCode
+	V3AdminDatabaseCode
+	V3PasswordHashCode
 )
 
 var (
@@ -105,6 +125,63 @@ var (
 	}
 	CountSheetRecordByUserError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, CountSheetRecordByUserErrorCode, "根据用户统计表格记录错误", err)
+	}
+	V3ProjectTokenScopeForbiddenError = func(scope string) error {
+		return errorx.New(http.StatusForbidden, V3ProjectTokenScopeForbiddenCode, "项目身份 Token 权限不足: "+scope, errors.New("scope is required"))
+	}
+	V3FeedbackRecordForbiddenError = func(err error) error {
+		return errorx.New(http.StatusForbidden, V3FeedbackRecordForbiddenCode, "无权访问该反馈记录", err)
+	}
+	V3FeedbackPhotoForbiddenError = func(err error) error {
+		return errorx.New(http.StatusForbidden, V3FeedbackPhotoForbiddenCode, "无权访问该反馈图片", err)
+	}
+	V3IdentityRequiredError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3IdentityRequiredCode, "V3 身份信息缺失", err)
+	}
+	V3InvalidInputError = func(err error) error {
+		return errorx.New(http.StatusBadRequest, V3InvalidInputCode, "V3 请求参数无效", err)
+	}
+	V3ExchangeExpiredError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3ExchangeExpiredCode, "V3 交换请求已过期", err)
+	}
+	V3ProjectLookupError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3ProjectLookupCode, "V3 项目身份无效", err)
+	}
+	V3APIKeyInvalidError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3APIKeyInvalidCode, "V3 API Key 无效", err)
+	}
+	V3SignatureInvalidError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3SignatureInvalidCode, "V3 请求签名无效", err)
+	}
+	V3NonceError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3NonceErrorCode, "V3 请求 nonce 处理失败", err)
+	}
+	V3ReplayRequestError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3ReplayRequestCode, "V3 请求 nonce 已使用", err)
+	}
+	V3TokenGenerateError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3TokenGenerateCode, "V3 反馈 Token 生成失败", err)
+	}
+	V3TableConfigError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3TableConfigErrorCode, "V3 表格配置读取失败", err)
+	}
+	V3ProjectDatabaseError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3ProjectDatabaseCode, "V3 项目配置数据库错误", err)
+	}
+	V3ConfigPublishError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3ConfigPublishCode, "V3 项目配置刷新事件发布失败", err)
+	}
+	V3APIKeyGenerateError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3APIKeyGenerateCode, "V3 API Key 生成失败", err)
+	}
+	V3AdminCredentialsError = func(err error) error {
+		return errorx.New(http.StatusUnauthorized, V3AdminCredentialsCode, "管理员用户名或密码错误", err)
+	}
+	V3AdminDatabaseError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3AdminDatabaseCode, "V3 管理员数据库错误", err)
+	}
+	V3PasswordHashError = func(err error) error {
+		return errorx.New(http.StatusInternalServerError, V3PasswordHashCode, "管理员密码处理失败", err)
 	}
 	GetUnNoticedRecordByTableError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, GetUnNoticedRecordByTableErrorCode, "根据表格标识获取未通知记录错误", err)

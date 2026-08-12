@@ -21,6 +21,8 @@ import (
 var ProviderSet = wire.NewSet(
 	NewClientConfig,
 	NewJWTConfig,
+	NewAdminJWTConfig,
+	NewIntegrationAuthConfig,
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewLarkMessageConfig,
@@ -165,6 +167,45 @@ type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
 	EncKey    string `yaml:"encKey"`
 	Timeout   int    `yaml:"timeout"` //过期时间
+}
+
+// AdminJWTConfig 管理后台 JWT 配置，与用户反馈 JWT 分离。
+type AdminJWTConfig struct {
+	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
+	Issuer    string `mapstructure:"issuer" yaml:"issuer"`
+	Audience  string `mapstructure:"audience" yaml:"audience"`
+	Timeout   int    `mapstructure:"timeout" yaml:"timeout"`
+}
+
+func NewAdminJWTConfig() AdminJWTConfig {
+	cfg := AdminJWTConfig{}
+	if err := vp.UnmarshalKey("admin_jwt", &cfg); err != nil {
+		panic(fmt.Sprintf("无法解析 admin_jwt 配置: %v", err))
+	}
+	if cfg.SecretKey == "" || cfg.Issuer == "" || cfg.Audience == "" || cfg.Timeout <= 0 {
+		panic("admin_jwt 配置无效")
+	}
+	return cfg
+}
+
+// IntegrationAuthConfig 配置 V3 项目令牌交换的有效期和时间窗口。
+type IntegrationAuthConfig struct {
+	AccessTokenTTL int `mapstructure:"access_token_ttl" yaml:"access_token_ttl"`
+	TimestampSkew  int `mapstructure:"timestamp_skew" yaml:"timestamp_skew"`
+}
+
+func NewIntegrationAuthConfig() *IntegrationAuthConfig {
+	cfg := &IntegrationAuthConfig{}
+	if err := vp.UnmarshalKey("integration", cfg); err != nil {
+		panic(fmt.Sprintf("无法解析 integration 配置: %v", err))
+	}
+	if cfg.AccessTokenTTL <= 0 {
+		cfg.AccessTokenTTL = 2592000
+	}
+	if cfg.TimestampSkew <= 0 {
+		cfg.TimestampSkew = 300
+	}
+	return cfg
 }
 
 func NewJWTConfig() JWTConfig {
