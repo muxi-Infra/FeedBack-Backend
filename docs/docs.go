@@ -1158,10 +1158,65 @@ const docTemplate = `{
             }
         },
         "/api/v3/admin/integrations/projects": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "查询 V3 接入项目列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "上一页返回的分页 Token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，默认 20，最大 100",
+                        "name": "limit_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v3.ProjectListResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
-                        "BasicAuth": []
+                        "BearerAuth": []
                     }
                 ],
                 "consumes": [
@@ -1175,6 +1230,13 @@ const docTemplate = `{
                 ],
                 "summary": "注册 V3 接入项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "项目配置",
                         "name": "request",
@@ -1198,6 +1260,199 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/v3.RegisterProjectResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v3/admin/integrations/projects/{project_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "查询 V3 接入项目配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v3.ProjectConfigResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "更新 V3 接入项目配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "项目配置",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v3.RegisterProjectReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "删除 V3 接入项目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v3/admin/integrations/projects/{project_id}/keys/rotate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "生成新的项目 API Key，旧 Key 会立即失效。新 Key 明文仅在本次响应返回一次，管理员应立即安全保存并更新接入项目后端配置。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "重新生成 V3 项目 API Key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v3.RotateAPIKeyResp"
                                         }
                                     }
                                 }
@@ -1254,6 +1509,11 @@ const docTemplate = `{
         },
         "/api/v3/admin/sheet/faq/sync": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1265,6 +1525,13 @@ const docTemplate = `{
                 ],
                 "summary": "同步 V3 项目 FAQ",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "项目参数",
                         "name": "request",
@@ -1287,6 +1554,11 @@ const docTemplate = `{
         },
         "/api/v3/admin/sheet/feedback/sync": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1298,6 +1570,13 @@ const docTemplate = `{
                 ],
                 "summary": "同步 V3 项目未同步反馈",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "项目参数",
                         "name": "request",
@@ -1332,6 +1611,11 @@ const docTemplate = `{
         },
         "/api/v3/admin/sheet/feedback/sync/force": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1343,6 +1627,13 @@ const docTemplate = `{
                 ],
                 "summary": "强制同步 V3 项目全部反馈",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "项目参数",
                         "name": "request",
@@ -1377,6 +1668,11 @@ const docTemplate = `{
         },
         "/api/v3/admin/sheet/feedback/sync/user": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -1388,6 +1684,13 @@ const docTemplate = `{
                 ],
                 "summary": "强制同步 V3 项目指定学生反馈",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 管理员 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
                     {
                         "description": "项目和学生参数",
                         "name": "request",
@@ -1505,6 +1808,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v3/sheet/faq/records": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Sheet"
+                ],
+                "summary": "查询 V3 FAQ 记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 用户反馈 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v2.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Sheet"
+                ],
+                "summary": "更新 V3 FAQ 解决状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 用户反馈 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "FAQ 解决状态",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v3.UpdateFAQReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v3/sheet/feedback/photos/url": {
             "get": {
                 "produces": [
@@ -1550,6 +1931,156 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v3/sheet/feedback/record": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Sheet"
+                ],
+                "summary": "查询单条 V3 反馈记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 用户反馈 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "反馈记录 ID",
+                        "name": "record_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.GetTableRecordByRecordIdResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v3/sheet/feedback/records": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Sheet"
+                ],
+                "summary": "查询当前学生的 V3 反馈记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 用户反馈 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "上一页返回的分页 Token",
+                        "name": "page_token",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，默认 20",
+                        "name": "limit_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.TableRecords"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "学生身份从用户反馈 Token 中解析，前端不得传入 student_id 或表格标识。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Sheet"
+                ],
+                "summary": "创建 V3 反馈记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer 用户反馈 Token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "反馈内容",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/v3.CreateFeedbackReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/v1.CreatTableRecordResp"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1577,6 +2108,25 @@ const docTemplate = `{
                 },
                 "record_id": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.TableRecords": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "description": "是否有更多",
+                    "type": "boolean"
+                },
+                "pageToken": {
+                    "description": "分页参数",
+                    "type": "string"
+                },
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TableRecord"
+                    }
                 }
             }
         },
@@ -2008,6 +2558,30 @@ const docTemplate = `{
                 }
             }
         },
+        "v3.CreateFeedbackReq": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "contact_info": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "extra_record": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "v3.ExchangeFeedbackTokenReq": {
             "type": "object",
             "required": [
@@ -2049,6 +2623,168 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "v3.ProjectConfigResp": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "$ref": "#/definitions/v3.ProjectKeyDetail"
+                },
+                "project": {
+                    "$ref": "#/definitions/v3.ProjectDetail"
+                },
+                "scopes": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "tables": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v3.ProjectTableItem"
+                    }
+                }
+            }
+        },
+        "v3.ProjectDetail": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "v3.ProjectKeyDetail": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "key_id": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "v3.ProjectListItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "school": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "v3.ProjectListResp": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "page_token": {
+                    "type": "string"
+                },
+                "projects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v3.ProjectListItem"
+                    }
+                }
+            }
+        },
+        "v3.ProjectTableItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "notice": {
+                    "type": "boolean"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "table_id": {
+                    "type": "string"
+                },
+                "table_identity": {
+                    "type": "string"
+                },
+                "table_name": {
+                    "type": "string"
+                },
+                "table_token": {
+                    "type": "string"
+                },
+                "table_type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "view_id": {
                     "type": "string"
                 }
             }
@@ -2132,6 +2868,17 @@ const docTemplate = `{
                 }
             }
         },
+        "v3.RotateAPIKeyResp": {
+            "type": "object",
+            "properties": {
+                "api_key": {
+                    "type": "string"
+                },
+                "key_id": {
+                    "type": "string"
+                }
+            }
+        },
         "v3.SyncProjectReq": {
             "type": "object",
             "required": [
@@ -2179,6 +2926,21 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "access_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "v3.UpdateFAQReq": {
+            "type": "object",
+            "required": [
+                "is_resolved",
+                "record_id"
+            ],
+            "properties": {
+                "is_resolved": {
+                    "type": "boolean"
+                },
+                "record_id": {
                     "type": "string"
                 }
             }

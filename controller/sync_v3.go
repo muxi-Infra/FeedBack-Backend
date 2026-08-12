@@ -33,12 +33,14 @@ func NewV3Sync(sheets service.SheetService, auth service.V3AuthService) V3SyncHa
 
 // SyncUnsynced 同步指定项目尚未同步的反馈记录。
 //
-//	@Summary		同步 V3 项目未同步反馈
+//	@Summary	同步 V3 项目未同步反馈
 //	@Tags		V3AdminSync
 //	@Accept		json
 //	@Produce	json
-//	@Param		request	body	reqV3.SyncProjectReq	true	"项目参数"
-//	@Success	200	{object}	response.Response{data=respV3.SyncRecordsResp}
+//	@Security	BearerAuth
+//	@Param		Authorization	header		string					true	"Bearer 管理员 Token"
+//	@Param		request			body		reqV3.SyncProjectReq	true	"项目参数"
+//	@Success	200				{object}	response.Response{data=respV3.SyncRecordsResp}
 //	@Router		/api/v3/admin/sheet/feedback/sync [post]
 func (h *V3Sync) SyncUnsynced(c *gin.Context, req reqV3.SyncProjectReq) (response.Response, error) {
 	config, err := h.auth.GetTableConfig(c.Request.Context(), req.ProjectID, constvar.FeedbackTableType)
@@ -58,12 +60,14 @@ func (h *V3Sync) SyncUnsynced(c *gin.Context, req reqV3.SyncProjectReq) (respons
 
 // ForceSyncUser 强制同步指定学生的全部反馈记录。
 //
-//	@Summary		强制同步 V3 项目指定学生反馈
+//	@Summary	强制同步 V3 项目指定学生反馈
 //	@Tags		V3AdminSync
 //	@Accept		json
 //	@Produce	json
-//	@Param		request	body	reqV3.SyncProjectUserReq	true	"项目和学生参数"
-//	@Success	200	{object}	response.Response{data=respV3.SyncRecordsResp}
+//	@Security	BearerAuth
+//	@Param		Authorization	header		string						true	"Bearer 管理员 Token"
+//	@Param		request			body		reqV3.SyncProjectUserReq	true	"项目和学生参数"
+//	@Success	200				{object}	response.Response{data=respV3.SyncRecordsResp}
 //	@Router		/api/v3/admin/sheet/feedback/sync/user [post]
 func (h *V3Sync) ForceSyncUser(c *gin.Context, req reqV3.SyncProjectUserReq) (response.Response, error) {
 	config, err := h.auth.GetTableConfig(c.Request.Context(), req.ProjectID, constvar.FeedbackTableType)
@@ -83,12 +87,14 @@ func (h *V3Sync) ForceSyncUser(c *gin.Context, req reqV3.SyncProjectUserReq) (re
 
 // ForceSyncAll 强制同步指定项目的全部反馈记录。
 //
-//	@Summary		强制同步 V3 项目全部反馈
+//	@Summary	强制同步 V3 项目全部反馈
 //	@Tags		V3AdminSync
 //	@Accept		json
 //	@Produce	json
-//	@Param		request	body	reqV3.SyncProjectReq	true	"项目参数"
-//	@Success	200	{object}	response.Response{data=respV3.SyncRecordsResp}
+//	@Security	BearerAuth
+//	@Param		Authorization	header		string					true	"Bearer 管理员 Token"
+//	@Param		request			body		reqV3.SyncProjectReq	true	"项目参数"
+//	@Success	200				{object}	response.Response{data=respV3.SyncRecordsResp}
 //	@Router		/api/v3/admin/sheet/feedback/sync/force [post]
 func (h *V3Sync) ForceSyncAll(c *gin.Context, req reqV3.SyncProjectReq) (response.Response, error) {
 	config, err := h.auth.GetTableConfig(c.Request.Context(), req.ProjectID, constvar.FeedbackTableType)
@@ -108,12 +114,14 @@ func (h *V3Sync) ForceSyncAll(c *gin.Context, req reqV3.SyncProjectReq) (respons
 
 // SyncFAQ 同步指定项目 FAQ 的解决状态统计。
 //
-//	@Summary		同步 V3 项目 FAQ
+//	@Summary	同步 V3 项目 FAQ
 //	@Tags		V3AdminSync
 //	@Accept		json
 //	@Produce	json
-//	@Param		request	body	reqV3.SyncProjectReq	true	"项目参数"
-//	@Success	200	{object}	response.Response
+//	@Security	BearerAuth
+//	@Param		Authorization	header		string					true	"Bearer 管理员 Token"
+//	@Param		request			body		reqV3.SyncProjectReq	true	"项目参数"
+//	@Success	200				{object}	response.Response
 //	@Router		/api/v3/admin/sheet/faq/sync [post]
 func (h *V3Sync) SyncFAQ(c *gin.Context, req reqV3.SyncProjectReq) (response.Response, error) {
 	config, err := h.auth.GetTableConfig(c.Request.Context(), req.ProjectID, constvar.FAQTableType)

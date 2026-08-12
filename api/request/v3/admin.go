@@ -18,6 +18,13 @@ type RegisterTableReq struct {
 	Scopes        []string `json:"scopes" binding:"required,min=1"`
 }
 
+// ListProjectsReq 查询项目列表的分页参数。
+// page_token 由上一页响应返回，首次请求无需传递。
+type ListProjectsReq struct {
+	PageToken *string `form:"page_token" binding:"omitempty"`
+	LimitSize *int    `form:"limit_size" binding:"omitempty"`
+}
+
 // SyncProjectReq 管理员同步指定项目的数据。
 type SyncProjectReq struct {
 	ProjectID string `json:"project_id" binding:"required"`

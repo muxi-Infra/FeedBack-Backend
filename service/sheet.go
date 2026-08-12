@@ -20,6 +20,7 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
 const (
@@ -42,8 +43,9 @@ type SheetService interface {
 	UpdateFAQResolutionRecord(resolution *domain.FAQResolution, tableConfig *domain.TableConfig) error
 	GetPhotoUrl(fileTokens []string) ([]domain.File, error)
 
-	// V2：用户历史记录分页、反馈/FAQ 同步以及新版 FAQ 状态处理。
+	// V2：优先从数据库读取用户反馈、FAQ 和处理状态；同步时才访问飞书。
 	GetTableRecordReqByUser(userID, pageToken *string, limitSize int, tableConfig *domain.TableConfig) (*domain.TableRecords, error)
+	GetTableRecordByUserAndRecordID(userID, recordID *string, tableConfig *domain.TableConfig) (map[string]any, error)
 	SyncUnsyncedTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncUserTableRecords(studentID *string, tableConfig *domain.TableConfig) ([]string, int, bool, error)
 	ForceSyncTableRecords(tableConfig *domain.TableConfig) ([]string, int, bool, error)
@@ -343,6 +345,28 @@ func (s *SheetServiceImpl) GetTableRecordReqByUser(userID, pageToken *string, li
 		HasMore:   &hasMore,
 		PageToken: nextToken,
 	}, nil
+}
+
+// GetTableRecordByUserAndRecordID 从数据库读取指定学生的一条反馈记录。
+// 该方法属于 V2 数据库查询路径，不会访问飞书。
+func (s *SheetServiceImpl) GetTableRecordByUserAndRecordID(userID, recordID *string, tableConfig *domain.TableConfig) (map[string]any, error) {
+	if userID == nil || recordID == nil || tableConfig == nil || tableConfig.TableIdentity == nil {
+		return nil, errs.TableRecordNotFoundError(errors.New("查询反馈记录的参数不完整"))
+	}
+
+	record, err := s.sheetDao.GetSheetRecordByRecordID(*tableConfig.TableIdentity, *userID, *recordID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.TableRecordNotFoundError(err)
+		}
+		s.log.Error("GetTableRecordByUserAndRecordID 数据库查询失败",
+			logger.String("error", err.Error()),
+			logger.String("record_id", *recordID),
+			logger.String("student_id", *userID),
+		)
+		return nil, err
+	}
+	return record.Record, nil
 }
 
 func (s *SheetServiceImpl) GetTableRecordReqByRecordID(recordID *string, tableConfig *domain.TableConfig) (map[string]any, *string, error) {

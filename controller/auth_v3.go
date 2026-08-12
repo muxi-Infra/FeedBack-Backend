@@ -65,11 +65,11 @@ func (h *V3Auth) Exchange(c *gin.Context, req reqV3.ExchangeFeedbackTokenReq) (r
 // GetTenantToken 为 V3 图片上传保留租户令牌接口，但必须先通过 V3 JWT。
 //
 //	@Summary	获取 V3 图片上传租户令牌
-//	@Tags	V3Auth
+//	@Tags		V3Auth
 //	@Produce	json
-//	@Param	Authorization	header	string	true	"Bearer 用户反馈 Token"
-//	@Success	200	{object}	response.Response{data=respV3.TenantTokenResp}
-//	@Router	/api/v3/auth/tenant/token [post]
+//	@Param		Authorization	header		string	true	"Bearer 用户反馈 Token"
+//	@Success	200				{object}	response.Response{data=respV3.TenantTokenResp}
+//	@Router		/api/v3/auth/tenant/token [post]
 func (h *V3Auth) GetTenantToken(c *gin.Context, projectID, studentID string) (response.Response, error) {
 	// todo 底层使用的是 V1 版本的，后续 V1 不需要的时候将其迁移到此处
 	if projectID == "" || studentID == "" {

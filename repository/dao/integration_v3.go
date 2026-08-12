@@ -14,7 +14,7 @@ type IntegrationDAOV3 interface {
 	// todo 后续需要将开启事物的方式统一到外面层级
 	Transaction(ctx context.Context, fn func(tx *gorm.DB) error) error
 	RegisterProject(ctx context.Context, project model.FeedbackProjectV3, key model.FeedbackProjectKeyV3, tables []model.FeedbackProjectTableV3, scopes []model.FeedbackProjectScopeV3, tx ...*gorm.DB) error
-	ListProjects(ctx context.Context, tx ...*gorm.DB) ([]model.FeedbackProjectV3, error)
+	ListProjectsByPage(ctx context.Context, lastID uint64, limit int, tx ...*gorm.DB) ([]model.FeedbackProjectV3, error)
 	GetProjectConfig(ctx context.Context, projectID string, tx ...*gorm.DB) (model.FeedbackProjectV3, *model.FeedbackProjectKeyV3, []model.FeedbackProjectTableV3, map[string][]string, error)
 	UpdateProject(ctx context.Context, projectID string, project model.FeedbackProjectV3, tables []model.FeedbackProjectTableV3, scopes []model.FeedbackProjectScopeV3, tx ...*gorm.DB) error
 	DeleteProject(ctx context.Context, projectID string, tx ...*gorm.DB) error
@@ -54,14 +54,18 @@ func (d *integrationDAOV3) getDB(ctx context.Context, tx ...*gorm.DB) (*gorm.DB,
 	return db.WithContext(ctx), nil
 }
 
-func (d *integrationDAOV3) ListProjects(ctx context.Context, tx ...*gorm.DB) ([]model.FeedbackProjectV3, error) {
+// ListProjectsByPage 按主键倒序查询启用中的项目。lastID 为上一页最后一条记录的主键。
+func (d *integrationDAOV3) ListProjectsByPage(ctx context.Context, lastID uint64, limit int, tx ...*gorm.DB) ([]model.FeedbackProjectV3, error) {
 	var projects []model.FeedbackProjectV3
 	db, err := d.getDB(ctx, tx...)
 	if err != nil {
 		return nil, err
 	}
-	err = db.Where("status = ?", "active").
-		Order("id DESC").Find(&projects).Error
+	db = db.Where("status = ?", "active")
+	if lastID > 0 {
+		db = db.Where("id < ?", lastID)
+	}
+	err = db.Order("id DESC").Limit(limit).Find(&projects).Error
 
 	return projects, err
 }

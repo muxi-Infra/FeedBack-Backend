@@ -8,18 +8,16 @@ type CreateFeedbackReq struct {
 }
 
 type GetFeedbackReq struct {
-	RecordNames []string `form:"record_names" binding:"required"`
-	PageToken   *string  `form:"page_token"`
-	LimitSize   int      `form:"limit_size"`
+	PageToken *string `form:"page_token"`
+	LimitSize int     `form:"limit_size"`
 }
 
 type GetRecordReq struct {
 	RecordID string `form:"record_id" binding:"required"`
 }
 
-type GetFAQReq struct {
-	RecordNames []string `form:"record_names" binding:"required"`
-}
+// GetFAQReq 查询当前项目 FAQ。FAQ 内容从本地数据库读取
+type GetFAQReq struct{}
 
 type UpdateFAQReq struct {
 	RecordID   *string `json:"record_id" binding:"required"`

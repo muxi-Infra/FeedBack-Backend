@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -20,7 +22,7 @@ import (
 
 type V3AdminService interface {
 	RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (respV3.RegisterProjectResp, error)
-	ListProjects(ctx context.Context) ([]model.FeedbackProjectV3, error)
+	ListProjects(ctx context.Context, pageToken *string, limitSize *int) ([]model.FeedbackProjectV3, bool, string, error)
 	GetProjectConfig(ctx context.Context, projectID string) (model.FeedbackProjectV3, *model.FeedbackProjectKeyV3, []model.FeedbackProjectTableV3, map[string][]string, error)
 	UpdateProject(ctx context.Context, projectID string, input domain.RegisterProjectInput) error
 	DeleteProject(ctx context.Context, projectID string) error
@@ -85,12 +87,69 @@ func (s *v3AdminService) RegisterProject(ctx context.Context, input domain.Regis
 	}, nil
 }
 
-func (s *v3AdminService) ListProjects(ctx context.Context) ([]model.FeedbackProjectV3, error) {
-	projects, err := s.dao.ListProjects(ctx)
-	if err != nil {
-		return nil, errs.V3ProjectDatabaseError(err)
+const (
+	defaultProjectPageSize = 10
+	maxProjectPageSize     = 50
+)
+
+func (s *v3AdminService) ListProjects(ctx context.Context, pageToken *string, limitSize *int) ([]model.FeedbackProjectV3, bool, string, error) {
+	lastID := uint64(0)
+	if pageToken != nil && strings.TrimSpace(*pageToken) != "" {
+		decodedLastID, err := decodeProjectPageToken(*pageToken)
+		if err != nil {
+			return nil, false, "", errs.V3InvalidInputError(fmt.Errorf("无效的 page_token: %w", err))
+		}
+		lastID = decodedLastID
 	}
-	return projects, nil
+
+	limit := defaultProjectPageSize
+	if limitSize != nil {
+		limit = *limitSize
+	}
+	if limit <= 0 || limit > maxProjectPageSize {
+		return nil, false, "", errs.V3InvalidInputError(fmt.Errorf("limit_size 必须在 1 到 %d 之间", maxProjectPageSize))
+	}
+
+	projects, err := s.dao.ListProjectsByPage(ctx, lastID, limit+1)
+	if err != nil {
+		return nil, false, "", errs.V3ProjectDatabaseError(err)
+	}
+
+	hasMore := len(projects) > limit
+	if hasMore {
+		projects = projects[:limit]
+	}
+	nextToken := ""
+	if hasMore && len(projects) > 0 {
+		nextToken, err = encodeProjectPageToken(projects[len(projects)-1].ID)
+		if err != nil {
+			return nil, false, "", errs.V3InvalidInputError(fmt.Errorf("生成 page_token 失败: %w", err))
+		}
+	}
+	return projects, hasMore, nextToken, nil
+}
+
+func encodeProjectPageToken(lastID uint64) (string, error) {
+	data, err := json.Marshal(domain.PageToken{LastID: lastID})
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(data), nil
+}
+
+func decodeProjectPageToken(token string) (uint64, error) {
+	data, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		return 0, err
+	}
+	var pageToken domain.PageToken
+	if err := json.Unmarshal(data, &pageToken); err != nil {
+		return 0, err
+	}
+	if pageToken.LastID == 0 {
+		return 0, errors.New("last_id 不能为空")
+	}
+	return pageToken.LastID, nil
 }
 
 func (s *v3AdminService) GetProjectConfig(ctx context.Context, projectID string) (model.FeedbackProjectV3, *model.FeedbackProjectKeyV3, []model.FeedbackProjectTableV3, map[string][]string, error) {
