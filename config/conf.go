@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/wire"
+	"github.com/joho/godotenv"
 	"github.com/nacos-group/nacos-sdk-go/v2/clients"
 	"github.com/nacos-group/nacos-sdk-go/v2/common/constant"
 	"github.com/nacos-group/nacos-sdk-go/v2/vo"
@@ -37,19 +38,40 @@ var ProviderSet = wire.NewSet(
 var vp *viper.Viper
 
 func InitNacos() error {
-	// 从 nacos 获取
-	content, err := getConfigFromNacos()
-	if err != nil {
-		log.Println(err)
-		// 本地兜底获取
-		localPath := "./config/config.yaml"
-		fileContent, err := os.ReadFile(localPath)
-		if err != nil {
-			// 如果本地文件也读取失败，则彻底失败
-			log.Fatalf("无法读取本地配置文件 %s，且 Nacos 配置获取失败: %v", localPath, err)
-			return err
+	if err := loadDotEnv(); err != nil {
+		return err
+	}
+
+	localPath := os.Getenv("FEEDBACK_CONFIG_FILE")
+	if localPath == "" {
+		localPath = "./config/config.yaml"
+	}
+	source := strings.ToLower(strings.TrimSpace(os.Getenv("FEEDBACK_CONFIG_SOURCE")))
+	if source == "" {
+		source = "auto"
+	}
+
+	var (
+		content string
+		err     error
+	)
+	switch source {
+	case "local":
+		content, err = readLocalConfig(localPath)
+	case "nacos":
+		content, err = getConfigFromNacos()
+	case "auto":
+		// 本地配置存在时优先使用，便于本地测试；仅在文件不存在时回退到 Nacos。
+		content, err = readLocalConfig(localPath)
+		if errors.Is(err, os.ErrNotExist) {
+			log.Printf("本地配置不存在，尝试从 Nacos 获取: %s", localPath)
+			content, err = getConfigFromNacos()
 		}
-		content = string(fileContent)
+	default:
+		return fmt.Errorf("不支持的 FEEDBACK_CONFIG_SOURCE: %q，可选值为 local、nacos、auto", source)
+	}
+	if err != nil {
+		return fmt.Errorf("加载配置失败，source=%s: %w", source, err)
 	}
 
 	vp = viper.New()
@@ -60,6 +82,26 @@ func InitNacos() error {
 	}
 
 	return nil
+}
+
+// loadDotEnv 仅补充当前进程尚未设置的环境变量，因此系统环境变量优先于 .env。
+func loadDotEnv() error {
+	path := os.Getenv("FEEDBACK_ENV_FILE")
+	if path == "" {
+		path = ".env"
+	}
+	if err := godotenv.Load(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("读取 .env 失败: %w", err)
+	}
+	return nil
+}
+
+func readLocalConfig(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 
 func getConfigFromNacos() (string, error) {
@@ -90,7 +132,7 @@ func getConfigFromNacos() (string, error) {
 		"clientConfig":  clientConfig,
 	})
 	if err != nil {
-		log.Fatal("初始化失败:", err)
+		return "", fmt.Errorf("初始化 Nacos 客户端失败: %w", err)
 	}
 
 	content, err := configClient.GetConfig(vo.ConfigParam{
@@ -98,7 +140,7 @@ func getConfigFromNacos() (string, error) {
 		Group:  group,
 	})
 	if err != nil {
-		log.Fatal("拉取配置失败:", err)
+		return "", fmt.Errorf("拉取 Nacos 配置失败: %w", err)
 	}
 	return content, nil
 }
