@@ -1,14 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/subosito/gotenv"
 )
 
 // @title		木犀反馈系统 API
@@ -16,11 +12,6 @@ import (
 // @host		localhost:8080
 // @BasePath	/
 func main() {
-	// 加载项目根目录的 .env。已有的系统环境变量不会被覆盖。
-	if err := gotenv.Load(); err != nil && !os.IsNotExist(err) {
-		panic(fmt.Errorf("加载 .env 失败: %w", err))
-	}
-
 	err := config.InitNacos()
 	if err != nil {
 		panic(err)

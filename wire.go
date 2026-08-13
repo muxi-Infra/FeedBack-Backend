@@ -24,7 +24,6 @@ func InitApp() (*App, error) {
 		logger.NewZapLogger,
 		lark.ProviderSet,
 		ijwt.NewJWT,
-		ijwt.NewAdminJWT,
 		repository.ProviderSet,
 		service.ProviderSet,
 		middleware.NewCorsMiddleware,
@@ -33,8 +32,6 @@ func InitApp() (*App, error) {
 		middleware.NewLoggerMiddleware,
 		middleware.NewPrometheusMiddleware,
 		middleware.NewLimitMiddleware,
-		middleware.NewAdminAuthMiddleware,
-		middleware.NewAdminPermissionMiddleware,
 		controller.ProviderSet,
 		web.NewGinEngine,
 	)

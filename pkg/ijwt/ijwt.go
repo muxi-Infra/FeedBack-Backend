@@ -1,8 +1,14 @@
 package ijwt
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +19,7 @@ type JWT struct {
 	signingMethod jwt.SigningMethod // JWT 签名方法
 	rcExpiration  time.Duration     // 刷新令牌的过期时间，防止缓存过大
 	jwtKey        []byte            // 用于签署 JWT 的密钥
+	encKey        []byte            // 用于加密敏感信息的密钥
 }
 
 func NewJWT(conf config.JWTConfig) *JWT {
@@ -20,35 +27,42 @@ func NewJWT(conf config.JWTConfig) *JWT {
 		signingMethod: jwt.SigningMethodHS256, //签名的加密方式
 		rcExpiration:  time.Duration(conf.Timeout) * time.Second,
 		jwtKey:        []byte(conf.SecretKey),
+		encKey:        []byte(conf.EncKey),
 	}
 }
 
 type UserClaims struct {
 	jwt.RegisteredClaims        // 内嵌标准的声明
-	TableIdentity        string `json:"table_identity"` // 用于区分不同的反馈表格
-	ProjectID            string `json:"project_id,omitempty"`
-	StudentID            string `json:"student_id,omitempty"`
+	TableIdentity        string `json:"table_identity"` // 人为规定的用于区分不同的飞书表格的唯一标识
+	TableName            string `json:"table_name"`     // 人为规定的用于展示的表格名称
+	TableToken           string `json:"table_token"`    // 用于和 tableId , viewId 确定飞书表格
+	TableId              string `json:"table_id"`
+	ViewId               string `json:"view_id"`
 }
 
-func (j *JWT) SetJWTToken(tableIdentify string) (string, error) {
-	return j.setJWTToken(tableIdentify, "", "", j.rcExpiration)
-}
-
-// SetIntegrationJWTToken 为已信任的接入项目和学生身份签发短期反馈 Token。
-func (j *JWT) SetIntegrationJWTToken(tableIdentify, projectID, studentID string, ttl time.Duration) (string, error) {
-	return j.setJWTToken(tableIdentify, projectID, studentID, ttl)
-}
-
-func (j *JWT) setJWTToken(tableIdentify, projectID, studentID string, ttl time.Duration) (string, error) {
+func (j *JWT) SetJWTToken(tableIdentify, tableName, tableToken, tableId, viewId string) (string, error) {
+	enTableToken, err := j.encryptString(tableToken)
+	if err != nil {
+		return "", fmt.Errorf("tableToken 加密失败：%w", err)
+	}
+	enTableId, err := j.encryptString(tableId)
+	if err != nil {
+		return "", fmt.Errorf("tableId 加密失败：%w", err)
+	}
+	enViewId, err := j.encryptString(viewId)
+	if err != nil {
+		return "", fmt.Errorf("viewId 加密失败：%w", err)
+	}
 	uc := UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.rcExpiration)),
 		},
 		TableIdentity: tableIdentify,
-		ProjectID:     projectID,
-		StudentID:     studentID,
+		TableName:     tableName,
+		TableToken:    enTableToken,
+		TableId:       enTableId,
+		ViewId:        enViewId,
 	}
-	uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(ttl))
 
 	token := jwt.NewWithClaims(j.signingMethod, uc)
 	// 使用指定的secret签名并获得完整的编码后的字符串token
@@ -69,7 +83,7 @@ func (j *JWT) ParseToken(tokenStr string) (UserClaims, error) {
 	uc := UserClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, &uc, func(token *jwt.Token) (interface{}, error) {
 		// 校验签名算法
-		if token.Method != jwt.SigningMethodHS256 {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("签名检验算法错误")
 		}
 		return j.jwtKey, nil
@@ -89,5 +103,75 @@ func (j *JWT) ParseToken(tokenStr string) (UserClaims, error) {
 		return UserClaims{}, errors.New("无法解析 token claims")
 	}
 
+	// 解密敏感信息
+	deTableToken, err := j.decryptString(claims.TableToken)
+	if err != nil {
+		return UserClaims{}, fmt.Errorf("tableToken 解密失败：%w", err)
+	}
+	deTableId, err := j.decryptString(claims.TableId)
+	if err != nil {
+		return UserClaims{}, fmt.Errorf("tableId 解密失败：%w", err)
+	}
+	deViewId, err := j.decryptString(claims.ViewId)
+	if err != nil {
+		return UserClaims{}, fmt.Errorf("viewId 解密失败：%w", err)
+	}
+	claims.TableToken = deTableToken
+	claims.TableId = deTableId
+	claims.ViewId = deViewId
+
 	return *claims, nil
+}
+
+// 辅助：用 sha256 派生 32 字节 key
+func deriveKey(key []byte) []byte {
+	h := sha256.Sum256(key)
+	return h[:]
+}
+
+// encryptString 使用 AES-GCM 将明文加密并返回 base64( nonce | ciphertext )
+func (j *JWT) encryptString(plain string) (string, error) {
+	key := deriveKey(j.encKey)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	ct := gcm.Seal(nil, nonce, []byte(plain), nil)
+	out := append(nonce, ct...)
+	return base64.StdEncoding.EncodeToString(out), nil
+}
+
+// decryptString 解密 base64( nonce | ciphertext ) 并返回明文
+func (j *JWT) decryptString(b64 string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", err
+	}
+	key := deriveKey(j.encKey)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	ns := gcm.NonceSize()
+	if len(data) < ns {
+		return "", errors.New("ciphertext too short")
+	}
+	nonce, ct := data[:ns], data[ns:]
+	pt, err := gcm.Open(nil, nonce, ct, nil)
+	if err != nil {
+		return "", err
+	}
+	return string(pt), nil
 }
