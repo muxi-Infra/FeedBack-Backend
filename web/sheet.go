@@ -13,7 +13,7 @@ func RegisterSheetHandler(r *gin.RouterGroup, sh controller.SheetV1Handler, auth
 		c.GET("/records", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByKey))
 		c.GET("/record", authMiddleware, ginx.WrapClaimsAndReq(sh.GetTableRecordReqByRecordID))
 		c.GET("/records/faq", authMiddleware, ginx.WrapClaimsAndReq(sh.GetFAQResolutionRecord))
-		c.POST("/records/faq", authMiddleware, ginx.WrapClaimsAndReq(sh.UpdateFAQResolutionRecord))
+		c.POST("records/faq", authMiddleware, ginx.WrapClaimsAndReq(sh.UpdateFAQResolutionRecord))
 		c.GET("/photos/url", authMiddleware, ginx.WrapClaimsAndReq(sh.GetPhotoUrl))
 	}
 }

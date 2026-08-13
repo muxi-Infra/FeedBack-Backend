@@ -21,12 +21,10 @@ import (
 var ProviderSet = wire.NewSet(
 	NewClientConfig,
 	NewJWTConfig,
-	NewAdminJWTConfig,
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewLarkMessageConfig,
 	NewCCNUBoxMessageConfig,
-	NewIntegrationAuthConfig,
 	NewMysqlConfig,
 	NewRedisConfig,
 	NewLimiterConfig,
@@ -37,33 +35,19 @@ var ProviderSet = wire.NewSet(
 var vp *viper.Viper
 
 func InitNacos() error {
-	localPath := "./config/config.yaml"
-	source := strings.ToLower(strings.TrimSpace(os.Getenv("FEEDBACK_CONFIG_SOURCE")))
-	if source == "" {
-		source = "auto"
-	}
-
-	var (
-		content string
-		err     error
-	)
-	switch source {
-	case "local":
-		content, err = readLocalConfig(localPath)
-	case "nacos":
-		content, err = getConfigFromNacos()
-	case "auto":
-		// 本地配置存在时优先使用本地配置；本地文件不存在时再读取 Nacos。
-		content, err = readLocalConfig(localPath)
-		if errors.Is(err, os.ErrNotExist) {
-			log.Println("本地配置不存在，尝试从 Nacos 获取")
-			content, err = getConfigFromNacos()
-		}
-	default:
-		return fmt.Errorf("不支持的 FEEDBACK_CONFIG_SOURCE: %q，可选值为 local、nacos、auto", source)
-	}
+	// 从 nacos 获取
+	content, err := getConfigFromNacos()
 	if err != nil {
-		return fmt.Errorf("加载配置失败，source=%s: %w", source, err)
+		log.Println(err)
+		// 本地兜底获取
+		localPath := "./config/config.yaml"
+		fileContent, err := os.ReadFile(localPath)
+		if err != nil {
+			// 如果本地文件也读取失败，则彻底失败
+			log.Fatalf("无法读取本地配置文件 %s，且 Nacos 配置获取失败: %v", localPath, err)
+			return err
+		}
+		content = string(fileContent)
 	}
 
 	vp = viper.New()
@@ -74,14 +58,6 @@ func InitNacos() error {
 	}
 
 	return nil
-}
-
-func readLocalConfig(path string) (string, error) {
-	fileContent, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	return string(fileContent), nil
 }
 
 func getConfigFromNacos() (string, error) {
@@ -112,7 +88,7 @@ func getConfigFromNacos() (string, error) {
 		"clientConfig":  clientConfig,
 	})
 	if err != nil {
-		return "", fmt.Errorf("初始化 Nacos 客户端失败: %w", err)
+		log.Fatal("初始化失败:", err)
 	}
 
 	content, err := configClient.GetConfig(vo.ConfigParam{
@@ -120,7 +96,7 @@ func getConfigFromNacos() (string, error) {
 		Group:  group,
 	})
 	if err != nil {
-		return "", fmt.Errorf("拉取 Nacos 配置失败: %w", err)
+		log.Fatal("拉取配置失败:", err)
 	}
 	return content, nil
 }
@@ -187,41 +163,8 @@ func NewClientConfig() *ClientConfig {
 
 type JWTConfig struct {
 	SecretKey string `yaml:"secretKey"` //秘钥
-	Timeout   int    `yaml:"timeout"`   //过期时间
-}
-
-// AdminJWTConfig 管理后台 JWT 配置，与反馈接口 JWT 分离，避免两类令牌互相复用。
-type AdminJWTConfig struct {
-	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
-	Issuer    string `mapstructure:"issuer" yaml:"issuer"`
-	Audience  string `mapstructure:"audience" yaml:"audience"`
-	Timeout   int    `mapstructure:"timeout" yaml:"timeout"`
-}
-
-func NewAdminJWTConfig() AdminJWTConfig {
-	cfg := AdminJWTConfig{}
-	if err := vp.UnmarshalKey("admin_jwt", &cfg); err != nil {
-		panic(fmt.Sprintf("无法解析 admin_jwt 配置: %v", err))
-	}
-	if cfg.SecretKey == "" || cfg.Issuer == "" || cfg.Audience == "" || cfg.Timeout <= 0 {
-		panic("admin_jwt 配置无效: secret_key、issuer、audience 不能为空，timeout 必须大于 0")
-	}
-	return cfg
-}
-
-type IntegrationAuthConfig struct {
-	AccessTokenTTL int `mapstructure:"access_token_ttl" yaml:"access_token_ttl"`
-}
-
-func NewIntegrationAuthConfig() *IntegrationAuthConfig {
-	cfg := &IntegrationAuthConfig{}
-	if err := vp.UnmarshalKey("integration", cfg); err != nil {
-		panic(fmt.Sprintf("无法解析 integration 配置: %v", err))
-	}
-	if cfg.AccessTokenTTL <= 0 {
-		cfg.AccessTokenTTL = 3600
-	}
-	return cfg
+	EncKey    string `yaml:"encKey"`
+	Timeout   int    `yaml:"timeout"` //过期时间
 }
 
 func NewJWTConfig() JWTConfig {
@@ -230,8 +173,8 @@ func NewJWTConfig() JWTConfig {
 	if err != nil {
 		panic(err)
 	}
-	if jwtConf.SecretKey == "" {
-		panic("jwt 配置无效: secretKey 不能为空")
+	if jwtConf.SecretKey == "" || jwtConf.EncKey == "" {
+		panic("jwt 配置无效: secretKey, encKey 不能为空")
 	}
 	if jwtConf.Timeout <= 0 {
 		panic("jwt 配置无效: timeout 必须大于 0")

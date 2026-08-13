@@ -26,54 +26,6 @@ definitions:
       msg:
         type: string
     type: object
-  v1.AdminLoginReq:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  v1.AdminLoginResponse:
-    properties:
-      access_token:
-        type: string
-      expires_at:
-        type: string
-      token_type:
-        type: string
-      user:
-        $ref: '#/definitions/v1.AdminUserResponse'
-    type: object
-  v1.AdminUserResponse:
-    properties:
-      created_at:
-        type: string
-      display_name:
-        type: string
-      id:
-        type: integer
-      last_login_at:
-        type: string
-      status:
-        type: string
-      updated_at:
-        type: string
-      username:
-        type: string
-    type: object
-  v1.ChangeAdminPasswordReq:
-    properties:
-      current_password:
-        type: string
-      new_password:
-        type: string
-    required:
-    - current_password
-    - new_password
-    type: object
   v1.CreatTableRecordReg:
     properties:
       contact_info:
@@ -91,49 +43,19 @@ definitions:
         items:
           type: string
         type: array
+      student_id:
+        description: 学号，用于标记用户身份
+        type: string
       table_identify:
         type: string
     required:
     - content
+    - student_id
     - table_identify
     type: object
   v1.CreatTableRecordResp:
     properties:
       record_id:
-        type: string
-    type: object
-  v1.CreateAdminReq:
-    properties:
-      display_name:
-        type: string
-      password:
-        type: string
-      username:
-        type: string
-    required:
-    - password
-    - username
-    type: object
-  v1.ExchangeIntegrationTokenReq:
-    properties:
-      assertion:
-        type: string
-      key_id:
-        type: string
-      project_id:
-        type: string
-    required:
-    - assertion
-    - key_id
-    - project_id
-    type: object
-  v1.ExchangeIntegrationTokenResp:
-    properties:
-      access_token:
-        type: string
-      expires_in:
-        type: integer
-      token_type:
         type: string
     type: object
   v1.FAQResolutionUpdateReq:
@@ -148,12 +70,28 @@ definitions:
         type: string
       unresolved_field_name:
         type: string
+      user_id:
+        type: string
     required:
     - is_resolved
     - record_id
     - resolved_field_name
     - table_identify
     - unresolved_field_name
+    - user_id
+    type: object
+  v1.GenerateTableTokenReq:
+    properties:
+      table_identify:
+        description: 反馈表格 Identify，反馈表的唯一标识
+        type: string
+    required:
+    - table_identify
+    type: object
+  v1.GenerateTableTokenResp:
+    properties:
+      access_token:
+        type: string
     type: object
   v1.GenerateTenantToken:
     properties:
@@ -211,146 +149,6 @@ definitions:
         description: MemoryRSSMB 进程常驻内存（MB）
         type: string
     type: object
-  v1.ProjectConfigResponse:
-    properties:
-      keys:
-        items:
-          $ref: '#/definitions/v1.ProjectKeyResponse'
-        type: array
-      project:
-        $ref: '#/definitions/v1.ProjectResponse'
-      tables:
-        items:
-          $ref: '#/definitions/v1.ProjectTableResponse'
-        type: array
-    type: object
-  v1.ProjectKeyResponse:
-    properties:
-      expires_at:
-        type: string
-      id:
-        type: integer
-      issuer:
-        type: string
-      key_id:
-        type: string
-      project_id:
-        type: string
-      status:
-        type: string
-    type: object
-  v1.ProjectResponse:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      project_id:
-        type: string
-      project_name:
-        type: string
-      school:
-        type: string
-      status:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  v1.ProjectTableResponse:
-    properties:
-      id:
-        type: integer
-      notice:
-        type: boolean
-      project_id:
-        type: string
-      scopes:
-        items:
-          type: string
-        type: array
-      status:
-        type: string
-      table_id:
-        type: string
-      table_identity:
-        type: string
-      table_name:
-        type: string
-      table_token:
-        type: string
-      table_type:
-        type: string
-      view_id:
-        type: string
-    type: object
-  v1.RegisterProjectKeyReq:
-    properties:
-      expires_at:
-        type: string
-      issuer:
-        type: string
-      key_id:
-        type: string
-      public_key:
-        type: string
-    required:
-    - issuer
-    - key_id
-    - public_key
-    type: object
-  v1.RegisterProjectReq:
-    properties:
-      key:
-        $ref: '#/definitions/v1.RegisterProjectKeyReq'
-      project_id:
-        type: string
-      project_name:
-        type: string
-      school:
-        type: string
-      status:
-        type: string
-      tables:
-        items:
-          $ref: '#/definitions/v1.RegisterProjectTableReq'
-        minItems: 1
-        type: array
-    required:
-    - key
-    - project_id
-    - project_name
-    - school
-    - tables
-    type: object
-  v1.RegisterProjectTableReq:
-    properties:
-      notice:
-        type: boolean
-      scopes:
-        items:
-          type: string
-        minItems: 1
-        type: array
-      table_id:
-        type: string
-      table_identity:
-        type: string
-      table_name:
-        type: string
-      table_token:
-        type: string
-      table_type:
-        type: string
-      view_id:
-        type: string
-    required:
-    - scopes
-    - table_id
-    - table_identity
-    - table_name
-    - table_token
-    - view_id
-    type: object
   v1.SystemStats:
     properties:
       cpu_percent:
@@ -377,53 +175,11 @@ definitions:
     type: object
   v1.TriggerNotificationReq:
     properties:
-      project_id:
-        description: 项目标识
-        type: string
       table_identify:
         description: 反馈表格 Identify，反馈表的唯一标识
         type: string
     required:
-    - project_id
     - table_identify
-    type: object
-  v1.UpdateAdminStatusReq:
-    properties:
-      status:
-        type: string
-    required:
-    - status
-    type: object
-  v1.UpdateProjectConfigReq:
-    properties:
-      key:
-        $ref: '#/definitions/v1.RegisterProjectKeyReq'
-      project_name:
-        type: string
-      school:
-        type: string
-      status:
-        type: string
-      tables:
-        items:
-          $ref: '#/definitions/v1.RegisterProjectTableReq'
-        minItems: 1
-        type: array
-    required:
-    - key
-    - project_name
-    - school
-    - status
-    - tables
-    type: object
-  v1.UpdateProjectReq:
-    properties:
-      project_name:
-        type: string
-      school:
-        type: string
-      status:
-        type: string
     type: object
   v2.FAQResolutionUpdateReq:
     properties:
@@ -433,10 +189,13 @@ definitions:
         type: string
       table_identify:
         type: string
+      user_id:
+        type: string
     required:
     - is_resolved
     - record_id
     - table_identify
+    - user_id
     type: object
   v2.ForceSyncTableRecordsReq:
     properties:
@@ -461,9 +220,12 @@ definitions:
     type: object
   v2.ForceSyncUserTableRecordsReq:
     properties:
+      student_id:
+        type: string
       table_identify:
         type: string
     required:
+    - student_id
     - table_identify
     type: object
   v2.ForceSyncUserTableRecordsResp:
@@ -532,184 +294,62 @@ info:
   title: 木犀反馈系统 API
   version: "1.0"
 paths:
-  /api/v1/admin/login:
-    post:
-      consumes:
-      - application/json
-      description: 校验管理员账号和密码，返回 Admin JWT。
-      parameters:
-      - description: 管理员登录信息
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.AdminLoginReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.AdminLoginResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 管理员登录
-      tags:
-      - Admin Auth
-  /api/v1/admin/users:
-    post:
-      consumes:
-      - application/json
-      description: 创建新的管理后台账号，需要具备 admin:create 权限。
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 管理员信息
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.CreateAdminReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.AdminUserResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 创建管理员
-      tags:
-      - Admin
-  /api/v1/admin/users/{admin_id}:
+  /api/v1/auth/table-config/refresh:
     get:
-      description: 根据管理员 ID 查询账号信息，需要具备 admin:read 权限。
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 管理员 ID
-        format: int64
-        in: path
-        name: admin_id
-        required: true
-        type: integer
+      consumes:
+      - application/json
+      description: 刷新并重新加载系统中所有支持的表格配置信息，返回当前可用的表格列表及其基本信息。通常用于配置更新后的缓存刷新。
+      operationId: refresh-table-config
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: 成功返回目前支持索引的表格的公开配置
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器内部错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 刷新表格配置缓存
+      tags:
+      - Auth
+  /api/v1/auth/table-config/token:
+    post:
+      consumes:
+      - application/json
+      description: 根据表格标识符生成JWT访问令牌，用于后续的表格数据操作。该令牌包含表格配置信息和访问权限。
+      operationId: get-table-token
+      parameters:
+      - description: 获取Token请求参数
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/v1.GenerateTableTokenReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 成功返回 JWT 令牌
           schema:
             allOf:
             - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/v1.AdminUserResponse'
+                  $ref: '#/definitions/v1.GenerateTableTokenResp'
               type: object
         "400":
-          description: Bad Request
+          description: 请求参数错误
           schema:
             $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
+        "500":
+          description: 服务器内部错误
           schema:
             $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 查询管理员
+      summary: 获取表格访问令牌
       tags:
-      - Admin
-  /api/v1/admin/users/{admin_id}/status:
-    patch:
-      consumes:
-      - application/json
-      description: 启用、锁定或禁用管理员账号，需要具备 admin:update 权限。
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 管理员 ID
-        format: int64
-        in: path
-        name: admin_id
-        required: true
-        type: integer
-      - description: 管理员状态
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.UpdateAdminStatusReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 修改管理员状态
-      tags:
-      - Admin
+      - Auth
   /api/v1/auth/tenant/token:
     post:
       consumes:
@@ -769,299 +409,11 @@ paths:
       summary: 系统健康检查
       tags:
       - Health
-  /api/v1/integrations/projects:
-    get:
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/v1.ProjectResponse'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 获取项目列表
-      tags:
-      - Integration Admin
-    post:
-      consumes:
-      - application/json
-      description: 登记项目身份公钥、飞书反馈表和表级 scope。接口仅允许管理员访问，返回完整项目配置。
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 项目配置
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.RegisterProjectReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.ProjectConfigResponse'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "409":
-          description: Conflict
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 注册反馈项目
-      tags:
-      - Integration Admin
-  /api/v1/integrations/projects/{project_id}:
-    delete:
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 项目 ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 删除项目
-      tags:
-      - Integration Admin
-    get:
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 项目 ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.ProjectConfigResponse'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 获取项目配置
-      tags:
-      - Integration Admin
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 项目 ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: 项目基本信息
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.UpdateProjectReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 更新项目
-      tags:
-      - Integration Admin
-  /api/v1/integrations/projects/{project_id}/config:
-    put:
-      consumes:
-      - application/json
-      description: 一次性替换项目基本信息、公钥、飞书表配置和表级 Scope。未提交的旧公钥或表配置会被软删除。
-      parameters:
-      - description: Bearer Admin JWT
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: 项目 ID
-        in: path
-        name: project_id
-        required: true
-        type: string
-      - description: 完整项目配置
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.UpdateProjectConfigReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.Response'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 全量更新项目配置
-      tags:
-      - Integration Admin
-  /api/v1/integrations/token/exchange:
-    post:
-      consumes:
-      - application/json
-      description: 校验已登记项目的身份断言，签发绑定项目和学生身份的短期反馈访问 Token。
-      operationId: integration-token-exchange
-      parameters:
-      - description: 项目身份断言
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/v1.ExchangeIntegrationTokenReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/v1.ExchangeIntegrationTokenResp'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.Response'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Response'
-      summary: 项目身份换取反馈 Token
-      tags:
-      - Auth
   /api/v1/message/trigger:
     post:
       consumes:
       - application/json
-      description: 根据项目和表格标识，将表格写入通知通道以触发下游消费
+      description: 将 `table_identify` 写入通知通道以触发下游消费
       operationId: trigger-notification
       parameters:
       - description: 触发通知请求参数
@@ -1198,7 +550,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据当前 JWT 中的学生身份查询历史反馈记录，支持分页查询。前端不再传入学生 ID。
+      description: 根据指定的字段条件查询用户的历史反馈记录，支持分页查询。通常用于查看用户之前提交的反馈内容。
       operationId: get-table-record
       parameters:
       - description: Bearer Token
@@ -1206,9 +558,14 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: 用于查询记录的字段名，字段值由 JWT 中的学生身份决定
+      - description: 用于查询记录的关键值，一般使用学号的字段名
         in: query
         name: key_field
+        required: true
+        type: string
+      - description: 用于查询记录的关键值，一般使用学号的字段值
+        in: query
+        name: key_value
         required: true
         type: string
       - description: 分页参数,第一次不需要
@@ -1294,7 +651,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
+      description: 根据学号查询用户相关的常见问题记录及其解决状态。
       operationId: get-faq-resolution-record
       parameters:
       - description: Bearer Token
@@ -1310,6 +667,11 @@ paths:
         name: record_names
         required: true
         type: array
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
+        required: true
+        type: string
       - in: query
         name: table_identify
         required: true
@@ -1376,7 +738,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据当前 JWT 中的学生身份查询用户历史反馈记录，支持分页查询，前端不再传入学生 ID。
+      description: 根据学号查询用户的历史反馈记录，支持分页查询，用于查看用户历史反馈内容。
       operationId: get-table-record-by-user
       parameters:
       - description: Bearer Token
@@ -1390,6 +752,11 @@ paths:
       - description: 分页参数,第一次不需要
         in: query
         name: page_token
+        type: string
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
+        required: true
         type: string
       - in: query
         name: table_identify
@@ -1422,12 +789,17 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据当前 JWT 中的学生身份查询相关的常见问题记录及其解决状态。
+      description: 根据学号查询用户相关的常见问题记录及其解决状态。
       operationId: get-faq-record
       parameters:
       - description: Bearer Token
         in: header
         name: Authorization
+        required: true
+        type: string
+      - description: 学号，用于标记用户身份
+        in: query
+        name: student_id
         required: true
         type: string
       - in: query
@@ -1461,7 +833,7 @@ paths:
       consumes:
       - application/json
       description: 用户更新FAQ问题的解决状态，将问题标记为已解决或未解决。
-      operationId: update-faq-resolution-v2
+      operationId: update-faq-resolution
       parameters:
       - description: Bearer Token
         in: header

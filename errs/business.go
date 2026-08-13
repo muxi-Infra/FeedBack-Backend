@@ -37,20 +37,6 @@ const (
 	MarkRecordNoticedErrorCode                              // 标记表格记录已通知错误
 	GetFAQRecordByTableErrorCode                            // 根据表格标识获取 FAQ 记录错误
 	SyncFAQRecordPartialFailedCode                          // 同步 FAQ 记录部分失败
-	IntegrationTokenInvalidCode                             // 项目身份 Token 无效
-	IntegrationScopeDeniedCode                              // 项目身份 Token 权限不足
-	IntegrationProjectInvalidCode                           // 项目配置无效
-	IntegrationProjectNotFoundCode                          // 项目不存在
-	IntegrationProjectAlreadyExistsCode                     // 项目已存在
-	IntegrationProjectDatabaseCode                          // 项目配置数据库错误
-	AdminInvalidInputCode                                   // 管理员参数无效
-	AdminAlreadyExistsCode                                  // 管理员账号已存在
-	AdminNotFoundCode                                       // 管理员账号不存在
-	AdminAuthFailedCode                                     // 管理员认证失败
-	AdminDisabledCode                                       // 管理员账号不可用
-	AdminPasswordCode                                       // 管理员密码处理失败
-	AdminTokenCode                                          // 管理员 Token 无效或生成失败
-	AdminDatabaseCode                                       // 管理员数据库错误
 )
 
 var (
@@ -131,47 +117,5 @@ var (
 	}
 	SyncFAQRecordPartialFailedError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, SyncFAQRecordPartialFailedCode, "同步 FAQ 记录部分失败", err)
-	}
-	IntegrationTokenInvalidError = func(err error) error {
-		return errorx.New(http.StatusUnauthorized, IntegrationTokenInvalidCode, "项目身份 Token 无效", err)
-	}
-	IntegrationScopeDeniedError = func(err error) error {
-		return errorx.New(http.StatusForbidden, IntegrationScopeDeniedCode, "项目身份 Token 权限不足", err)
-	}
-	IntegrationProjectInvalidError = func(err error) error {
-		return errorx.New(http.StatusBadRequest, IntegrationProjectInvalidCode, "项目配置无效", err)
-	}
-	IntegrationProjectNotFoundError = func(err error) error {
-		return errorx.New(http.StatusNotFound, IntegrationProjectNotFoundCode, "项目不存在", err)
-	}
-	IntegrationProjectAlreadyExistsError = func(err error) error {
-		return errorx.New(http.StatusConflict, IntegrationProjectAlreadyExistsCode, "项目已存在", err)
-	}
-	IntegrationProjectDatabaseError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, IntegrationProjectDatabaseCode, "项目配置数据库错误", err)
-	}
-	AdminInvalidInputError = func(err error) error {
-		return errorx.New(http.StatusBadRequest, AdminInvalidInputCode, "管理员参数无效", err)
-	}
-	AdminAlreadyExistsError = func(err error) error {
-		return errorx.New(http.StatusConflict, AdminAlreadyExistsCode, "管理员账号已存在", err)
-	}
-	AdminNotFoundError = func(err error) error {
-		return errorx.New(http.StatusNotFound, AdminNotFoundCode, "管理员账号不存在", err)
-	}
-	AdminAuthFailedError = func(err error) error {
-		return errorx.New(http.StatusUnauthorized, AdminAuthFailedCode, "管理员用户名或密码错误", err)
-	}
-	AdminDisabledError = func(err error) error {
-		return errorx.New(http.StatusForbidden, AdminDisabledCode, "管理员账号不可用", err)
-	}
-	AdminPasswordError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, AdminPasswordCode, "管理员密码处理失败", err)
-	}
-	AdminTokenError = func(err error) error {
-		return errorx.New(http.StatusUnauthorized, AdminTokenCode, "管理员 Token 无效", err)
-	}
-	AdminDatabaseError = func(err error) error {
-		return errorx.New(http.StatusInternalServerError, AdminDatabaseCode, "管理员数据库错误", err)
 	}
 )
