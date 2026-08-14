@@ -32,6 +32,7 @@ go.work.sum
 .vscode/
 
 *_test.go
+!pkg/apikey/dev_exchange_test.go
 /.idea
 /.vscode
 config/config-prod.yaml

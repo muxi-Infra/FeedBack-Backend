@@ -60,7 +60,31 @@ func InitApp() (*App, error) {
 	authHandler := controller.NewAuth(jwt, authService)
 	messageHandler := controller.NewMessage(messageService)
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
-	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler)
+	integrationDAOV3 := dao.NewIntegrationDAOV3(db)
+	integrationNonceStoreV3 := cache.NewIntegrationNonceStoreV3(client)
+	projectConfigEventBusV3 := cache.NewProjectConfigEventBusV3(client, loggerLogger)
+	projectConfigCacheV3 := service.NewProjectConfigCacheV3()
+	integrationAuthConfig := config.NewIntegrationAuthConfig()
+	v3JWT := ijwt.NewV3JWT(jwtConfig, integrationAuthConfig)
+	v3AuthService := service.NewV3AuthService(integrationDAOV3, integrationNonceStoreV3, projectConfigEventBusV3, projectConfigCacheV3, v3JWT, integrationAuthConfig)
+	v3AuthHandler := controller.NewV3Auth(v3AuthService, authService)
+	v3SheetHandler := controller.NewV3Sheet(sheetService, messageService, v3AuthService)
+	v3AdminService := service.NewV3AdminService(integrationDAOV3, projectConfigEventBusV3)
+	v3AdminHandler := controller.NewV3Admin(v3AdminService)
+	v3SyncHandler := controller.NewV3Sync(sheetService, v3AuthService)
+	adminUserDAOV3 := dao.NewAdminUserDAOV3(db)
+	adminJWTConfig := config.NewAdminJWTConfig()
+	adminJWTV3 := ijwt.NewAdminJWTV3(adminJWTConfig)
+	adminAuthServiceV3 := service.NewAdminAuthServiceV3(adminUserDAOV3, adminJWTV3)
+	adminAuthHandlerV3 := controller.NewAdminAuthV3(adminAuthServiceV3)
+	adminAuthMiddlewareV3 := middleware.NewAdminAuthMiddlewareV3(adminJWTV3)
+	enforcer, err := ioc.InitCasbinV3(db)
+	if err != nil {
+		return nil, err
+	}
+	adminPermissionMiddlewareV3 := middleware.NewAdminPermissionMiddlewareV3(enforcer)
+	v3AuthMiddleware := middleware.NewV3AuthMiddleware(v3JWT)
+	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler, v3AuthHandler, v3SheetHandler, v3AdminHandler, v3SyncHandler, adminAuthHandlerV3, adminAuthMiddlewareV3, adminPermissionMiddlewareV3, v3AuthMiddleware)
 	app := &App{
 		r: engine,
 	}

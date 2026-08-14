@@ -8,4 +8,9 @@ var ProviderSet = wire.NewSet(
 	NewSheet,
 	NewSheetV2,
 	NewMessage,
+	NewV3Auth,
+	NewV3Sheet,
+	NewV3Admin,
+	NewV3Sync,
+	NewAdminAuthV3,
 )

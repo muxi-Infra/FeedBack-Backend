@@ -47,6 +47,10 @@
 - `UpdateRecordDBErrorCode = 200019` - 更新表格记录数据库错误 - HTTP 500
 - `GetUnsyncedRecordsByTableErrorCode = 200020` - 根据表格标识获取未同步记录错误 - HTTP 500
 - `CountSheetRecordByUserErrorCode = 200021` - 根据用户统计表格记录错误 - HTTP 500
+- `V3ProjectTokenScopeForbiddenCode = 200026` - V3 项目身份 Token 权限不足 - HTTP 403
+- `V3FeedbackRecordForbiddenCode = 200027` - 无权访问反馈记录 - HTTP 403
+- `V3FeedbackPhotoForbiddenCode = 200028` - 无权访问反馈图片 - HTTP 403
+- `V3IdentityRequiredCode = 200029` - V3 身份信息缺失 - HTTP 401
 
 ### 第三方服务（30xxxx）
 - `LarkRequestErrorCode = 300000` - 飞书请求接口失败 - HTTP 500

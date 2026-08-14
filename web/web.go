@@ -19,6 +19,14 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	swag controller.SwagHandler,
 	sh controller.SheetV1Handler, ah controller.AuthHandler, mh controller.MessageHandler,
 	shV2 controller.SheetV2Handler,
+	v3ah controller.V3AuthHandler,
+	v3sh controller.V3SheetHandler,
+	v3admin controller.V3AdminHandler,
+	v3sync controller.V3SyncHandler,
+	v3adminAuth controller.AdminAuthHandlerV3,
+	v3AdminMiddleware *middleware.AdminAuthMiddlewareV3,
+	v3AdminPermission *middleware.AdminPermissionMiddlewareV3,
+	v3AuthMiddleware *middleware.V3AuthMiddleware,
 ) *gin.Engine {
 	gin.ForceConsoleColor()
 	r := gin.Default()
@@ -48,6 +56,13 @@ func NewGinEngine(corsMiddleware *middleware.CorsMiddleware,
 	apiV2 := r.Group("/api/v2")
 
 	RegisterSheetHandlerV2(apiV2, shV2, authMiddleware.MiddlewareFunc())
+
+	// V3 使用项目级 API Key 交换和精简 JWT，独立于 V1/V2。
+	apiV3 := r.Group("/api/v3")
+	RegisterAdminAuthRouterV3(apiV3, v3adminAuth)
+	RegisterAuthRouterV3(apiV3, v3ah, v3AuthMiddleware.MiddlewareFunc())
+	RegisterSheetHandlerV3(apiV3, v3sh, v3AuthMiddleware.MiddlewareFunc())
+	RegisterAdminRouterV3(apiV3, v3admin, v3sync, v3AdminMiddleware.MiddlewareFunc(), v3AdminPermission)
 
 	return r
 }
