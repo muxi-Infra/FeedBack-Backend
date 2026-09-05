@@ -84,6 +84,10 @@ func NewV3AuthService(d dao.IntegrationDAOV3, n cache.IntegrationNonceStoreV3, e
 }
 
 func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (string, int64, error) {
+	return s.exchangeAt(ctx, input, time.Now())
+}
+
+func (s *v3AuthService) exchangeAt(ctx context.Context, input V3ExchangeInput, now time.Time) (string, int64, error) {
 	if input.ProjectID == "" || input.KeyID == "" || input.StudentID == "" || input.Nonce == "" || input.Signature == "" {
 		return "", 0, errs.V3InvalidInputError(errors.New("v3 exchange fields are required"))
 	}
@@ -92,7 +96,8 @@ func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (st
 	if s.config != nil && s.config.TimestampSkew > 0 {
 		window = s.config.TimestampSkew
 	}
-	if delta := time.Now().Unix() - input.Timestamp; delta > int64(window) || delta < -int64(window) {
+	delta := now.Unix() - input.Timestamp
+	if delta > int64(window) || delta < -int64(window) {
 		return "", 0, errs.V3ExchangeExpiredError(errors.New("v3 exchange timestamp is expired"))
 	}
 
@@ -115,7 +120,10 @@ func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (st
 		return "", 0, errs.V3SignatureInvalidError(err)
 	}
 
-	used, err := s.nonces.MarkUsed(ctx, "v3:exchange:nonce:"+input.ProjectID+":"+input.Nonce, time.Duration(window)*time.Second)
+	// Keep the nonce through the request's last valid second. Future timestamps
+	// remain acceptable for longer than one skew window after their first use.
+	nonceTTL := time.Duration(int64(window)-delta+1) * time.Second
+	used, err := s.nonces.MarkUsed(ctx, "v3:exchange:nonce:"+input.ProjectID+":"+input.Nonce, nonceTTL)
 	if err != nil {
 		return "", 0, errs.V3NonceError(err)
 	}
