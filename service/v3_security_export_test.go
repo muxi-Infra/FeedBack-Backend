@@ -11,8 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// NewSheetServiceForTest uses the production read paths without starting unrelated
-// synchronization workers that consume process-wide queues indefinitely.
+// NewSheetServiceForTest 使用生产代码的读取逻辑，
+// 不启动与本组测试无关、长期消费进程级队列的同步工作协程。
 func NewSheetServiceForTest(db *gorm.DB, client lark.Client) SheetService {
 	return &SheetServiceImpl{
 		c: client, log: logger.NewZapLogger(zap.NewNop()),
@@ -21,7 +21,7 @@ func NewSheetServiceForTest(db *gorm.DB, client lark.Client) SheetService {
 	}
 }
 
-// ExchangeV3AtForTest advances timestamp validation with the Redis test clock.
+// ExchangeV3AtForTest 让时间戳校验时间与 Redis 测试时钟同步推进。
 func ExchangeV3AtForTest(s V3AuthService, ctx context.Context, input V3ExchangeInput, now time.Time) (string, int64, error) {
 	return s.(*v3AuthService).exchangeAt(ctx, input, now)
 }

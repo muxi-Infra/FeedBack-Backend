@@ -120,8 +120,8 @@ func (s *v3AuthService) exchangeAt(ctx context.Context, input V3ExchangeInput, n
 		return "", 0, errs.V3SignatureInvalidError(err)
 	}
 
-	// Keep the nonce through the request's last valid second. Future timestamps
-	// remain acceptable for longer than one skew window after their first use.
+	// nonce 必须保留到请求的最后一个有效秒结束。
+	// 携带未来时间戳的请求，首次使用后的剩余有效期可能超过一个时间偏差窗口。
 	nonceTTL := time.Duration(int64(window)-delta+1) * time.Second
 	used, err := s.nonces.MarkUsed(ctx, "v3:exchange:nonce:"+input.ProjectID+":"+input.Nonce, nonceTTL)
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 
 func TestV3NonceStoreAtomicityAndExpiration(t *testing.T) {
 	server := miniredis.RunT(t)
-	// Independent clients/stores model multiple application instances sharing Redis.
+	// 使用独立客户端和存储对象，模拟多个应用实例共享同一 Redis 的场景。
 	var stores []cache.IntegrationNonceStoreV3
 	for i := 0; i < 2; i++ {
 		client := redis.NewClient(&redis.Options{Addr: server.Addr(), MaxRetries: -1})

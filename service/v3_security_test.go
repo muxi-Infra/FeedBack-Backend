@@ -60,8 +60,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// Configuration event delivery is outside these read/exchange tests. Returning
-// immediately prevents the production constructor from leaking a subscriber.
+// 本组读取和兑换测试不验证配置事件投递。
+// 消费方法立即返回，避免生产构造函数启动的订阅协程持续运行。
 type inertProjectEvents struct{}
 
 func (inertProjectEvents) PublishProjectChanged(context.Context, string) error       { return nil }
@@ -79,8 +79,8 @@ type securityFixture struct {
 
 func newSecurityFixture(t *testing.T) *securityFixture {
 	t.Helper()
-	// One connection keeps :memory: scoped to this test while still executing SQL,
-	// including the production WHERE predicates and key rotation transaction.
+	// 使用单连接保证内存数据库仅供当前测试使用，同时实际执行 SQL，
+	// 包括生产代码中的 WHERE 查询条件和密钥轮换事务。
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: gormlogger.Default.LogMode(gormlogger.Silent)})
 	require.NoError(t, err)
 	sqlDB, err := db.DB()
@@ -122,8 +122,8 @@ func newSecurityFixture(t *testing.T) *securityFixture {
 			require.NoError(t, db.Create(&model.FeedbackProjectScopeV3{ProjectID: project, TableIdentity: identity, Scope: scope}).Error)
 		}
 	}
-	// Interleave other owners and projects so dropping either SQL predicate leaks
-	// rows on both initial and subsequent pages. Reuse student/record IDs across tables.
+	// 交错插入不同用户和项目的数据，确保缺少任一隔离条件都会导致首页或后续页泄露数据。
+	// 在不同表中复用学生和记录 ID，验证表隔离条件确实生效。
 	f.record(t, projectA, studentA, "record-a1", "photo-a1")
 	f.record(t, projectA, studentB, "record-b1", "photo-b1")
 	f.record(t, projectB, studentA, "record-project-b", "photo-project-b")
@@ -195,7 +195,7 @@ func TestV3FeedbackListIdentityIsolation(t *testing.T) {
 	} {
 		t.Run(tc.project+"/"+tc.student, func(t *testing.T) {
 			token := f.token(t, tc.project, tc.student)
-			// Client-supplied identity and physical table fields must never override claims.
+			// 客户端传入的身份和物理表字段不能覆盖令牌中的身份声明。
 			query := url.Values{"student_id": {studentB}, "project_id": {projectB}, "table_identity": {projectB + "-feedback"}, "table_identify": {projectB + "-feedback"}, "limit_size": {"1"}}
 			var ids []string
 			for page := 0; page < 3; page++ {
@@ -268,7 +268,7 @@ func TestV3FeedbackPhotoOwnership(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newSecurityFixture(t)
-			// No expectation for denied requests: any external call fails the test.
+			// 被拒绝的请求不设置飞书调用期望；一旦发起外部调用，测试就会失败。
 			if tc.status == 200 {
 				f.lark.EXPECT().GetPhotoUrl(gomock.Any(), gomock.Eq(larkdrive.NewBatchGetTmpDownloadUrlMediaReqBuilder().FileTokens(tc.photos).Build())).Return(&larkdrive.BatchGetTmpDownloadUrlMediaResp{
 					Data: &larkdrive.BatchGetTmpDownloadUrlMediaRespData{TmpDownloadUrls: []*larkdrive.TmpDownloadUrl{{FileToken: ptr(tc.photos[0]), TmpDownloadUrl: ptr("https://images.example.invalid/owned")}}},
@@ -295,7 +295,7 @@ func TestV3FAQScopeAndProjectIsolation(t *testing.T) {
 			if scope != "" {
 				require.NoError(t, f.db.Create(&model.FeedbackProjectScopeV3{ProjectID: projectA, TableIdentity: projectA + "-faq", Scope: scope}).Error)
 			}
-			// A read grant on another table or project must not authorize this FAQ.
+			// 其他表或项目的读取权限不能授予当前 FAQ 的访问权限。
 			require.NoError(t, f.db.Create(&model.FeedbackProjectScopeV3{ProjectID: projectA, TableIdentity: projectA + "-feedback", Scope: constvar.FeedbackScopeRead}).Error)
 			for _, project := range []string{projectB, projectA, projectB, projectA} {
 				status, code := 200, 0
@@ -413,7 +413,7 @@ func TestV3TokenExchangeConcurrentReplay(t *testing.T) {
 		}
 	}
 	require.Equal(t, 1, success, "SET NX must admit exactly one concurrent exchange")
-	// Nonces belong to projects, not students. Re-signing for another student is still replay.
+	// nonce 按项目隔离；同一项目换用其他学生身份重新签名，仍应判定为重放。
 	f.exchange(t, signedExchange(projectA, studentB, projectA+"-key", testAPIKey, input.Nonce, input.Timestamp), 401, errs.V3ReplayRequestCode)
 	f.exchange(t, signedExchange(projectB, studentA, projectB+"-key", testAPIKey, input.Nonce, input.Timestamp), 200, 0)
 	f.exchange(t, signedExchange(projectA, studentA, projectA+"-key", testAPIKey, "fresh-nonce", input.Timestamp), 200, 0)
@@ -437,8 +437,8 @@ func TestV3NonceCoversEntireTimestampWindow(t *testing.T) {
 			input := exchangeInput(signedExchange(projectA, studentA, projectA+"-key", testAPIKey, "window-nonce", now.Add(offset).Unix()))
 			_, _, err := service.ExchangeV3AtForTest(f.auth, context.Background(), input, now)
 			require.NoError(t, err)
-			// The timestamp endpoints are inclusive, so retention must include the
-			// last valid second, including requests initially dated in the future.
+			// 时间戳有效窗口包含端点，因此 nonce 必须保留到最后一个有效秒结束，
+			// 首次请求携带未来时间戳时也应满足这一要求。
 			remaining := 300*time.Second + offset
 			f.redis.FastForward(remaining)
 			_, _, err = service.ExchangeV3AtForTest(f.auth, context.Background(), input, now.Add(remaining))
@@ -464,12 +464,12 @@ func TestV3APIKeyRotation(t *testing.T) {
 	keyID, newKey := rotated.KeyID, rotated.APIKey
 	require.NotEmpty(t, keyID)
 	require.NotEmpty(t, newKey)
-	// A fresh nonce isolates key revocation from the independent replay check.
+	// 使用全新 nonce，确保兑换失败源于旧密钥已撤销，而非重复请求检查。
 	f.exchange(t, signedExchange(projectA, studentA, projectA+"-key", testAPIKey, "old-key-fresh-nonce", now), 401, errs.V3APIKeyInvalidCode)
 	f.exchange(t, signedExchange(projectA, studentA, keyID, testAPIKey, "wrong-key-fresh-nonce", now), 401, errs.V3SignatureInvalidCode)
 	newToken := f.exchange(t, signedExchange(projectA, studentA, keyID, newKey, "new-key-fresh-nonce", now), 200, 0)
 	f.exchange(t, signedExchange(projectB, studentA, projectB+"-key", testAPIKey, "other-project-fresh-nonce", now), 200, 0)
-	// Rotation revokes exchange credentials, not previously issued feedback tokens.
+	// 密钥轮换撤销的是兑换凭据，已签发的反馈令牌仍应保持有效。
 	for _, token := range []string{issued, newToken} {
 		f.request(t, http.MethodGet, "/sheet/feedback/record?record_id=record-a1", token, nil, 200, 0)
 	}
@@ -530,8 +530,8 @@ func TestV3ProtectedRoutesRejectInvalidIdentity(t *testing.T) {
 	}
 	expired := jwt.MapClaims{"project_id": projectA, "student_id": studentA, "exp": time.Now().Add(-time.Hour).Unix()}
 	tokens["expired"] = sign(expired, testJWTKey, jwt.SigningMethodHS256)
-	// Enumerate production registrations so newly added protected routes are
-	// automatically included. Exchange has separate signature failure coverage.
+	// 枚举生产代码注册的路由，使后续新增的受保护路由也纳入鉴权失败测试。
+	// 兑换接口的签名失败场景由独立用例覆盖。
 	for _, route := range f.router.Routes() {
 		if route.Path == "/api/v3/integrations/token/exchange" {
 			continue
@@ -542,6 +542,6 @@ func TestV3ProtectedRoutesRejectInvalidIdentity(t *testing.T) {
 			})
 		}
 	}
-	// Complete identities still reach the actual read path.
+	// 身份完整的令牌仍应能通过实际读取逻辑访问数据。
 	f.request(t, http.MethodGet, "/sheet/feedback/record?record_id=record-a1", sign(claims, testJWTKey, jwt.SigningMethodHS256), nil, 200, 0)
 }
