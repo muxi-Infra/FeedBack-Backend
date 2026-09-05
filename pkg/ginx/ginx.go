@@ -44,6 +44,15 @@ func WrapClaimsAndReq[Req any](fn func(*gin.Context, Req, ijwt.UserClaims) (resp
 		res, err := fn(ctx, req, claims)
 		if err != nil {
 			ctx.Error(err) // 记录错误到ctx.Errors,以便后续中间件处理日志等
+		}
+
+		// handler 已提交响应时，不再追加统一 JSON 响应。
+		if ctx.Writer.Written() {
+			return
+		}
+
+		// 未提交响应时，返回错误响应
+		if err != nil {
 			customError := errorx.ToCustomError(err)
 
 			ctx.JSON(customError.HttpCode, response.Response{
@@ -78,6 +87,15 @@ func WrapReq[Req any](fn func(*gin.Context, Req) (response.Response, error)) gin
 		res, err := fn(ctx, req)
 		if err != nil {
 			ctx.Error(err) // 记录错误到ctx.Errors,以便后续中间件处理日志等
+		}
+
+		// handler 已提交响应时，不再追加统一 JSON 响应。
+		if ctx.Writer.Written() {
+			return
+		}
+
+		// 未提交响应时，返回错误响应
+		if err != nil {
 			customError := errorx.ToCustomError(err)
 
 			ctx.JSON(customError.HttpCode, response.Response{
@@ -102,6 +120,15 @@ func Wrap(fn func(*gin.Context) (response.Response, error)) gin.HandlerFunc {
 		res, err := fn(ctx)
 		if err != nil {
 			ctx.Error(err) // 记录错误到ctx.Errors,以便后续中间件处理日志等
+		}
+
+		// handler 已提交响应时，不再追加统一 JSON 响应。
+		if ctx.Writer.Written() {
+			return
+		}
+
+		// 未提交响应时，返回错误响应
+		if err != nil {
 			customError := errorx.ToCustomError(err)
 
 			ctx.JSON(customError.HttpCode, response.Response{
@@ -136,6 +163,15 @@ func WrapClaims(fn func(*gin.Context, ijwt.UserClaims) (response.Response, error
 		res, err := fn(ctx, claims)
 		if err != nil {
 			ctx.Error(err) // 记录错误到ctx.Errors,以便后续中间件处理日志等
+		}
+
+		// handler 已提交响应时，不再追加统一 JSON 响应。
+		if ctx.Writer.Written() {
+			return
+		}
+
+		// 未提交响应时，返回错误响应
+		if err != nil {
 			customError := errorx.ToCustomError(err)
 
 			ctx.JSON(customError.HttpCode, response.Response{
