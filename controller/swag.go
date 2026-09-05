@@ -2,6 +2,7 @@ package controller
 
 import (
 	_ "embed"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/muxi-Infra/FeedBack-Backend/api/response"
@@ -35,11 +36,10 @@ func NewSwag() SwagHandler {
 //	@Failure		500	{object}	response.Response	"服务器内部错误"
 //	@Router			/api/v1/openapi [get]
 func (s *Swag) GetOpenApi3(c *gin.Context) (response.Response, error) {
-	content := s.openapi
-
-	// 返回 YAML 字符串
-	c.String(200, content)
-	// 为保证返回的文件纯净性，不打印通用响应体
-	c.Abort()
+	c.Data(
+		http.StatusOK,
+		"application/x-yaml; charset=utf-8",
+		[]byte(s.openapi),
+	)
 	return response.Response{}, nil
 }
