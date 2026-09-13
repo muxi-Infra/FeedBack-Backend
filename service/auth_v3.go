@@ -84,6 +84,10 @@ func NewV3AuthService(d dao.IntegrationDAOV3, n cache.IntegrationNonceStoreV3, e
 }
 
 func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (string, int64, error) {
+	return s.exchangeWithClock(ctx, input, time.Now)
+}
+
+func (s *v3AuthService) exchangeWithClock(ctx context.Context, input V3ExchangeInput, now func() time.Time) (string, int64, error) {
 	if input.ProjectID == "" || input.KeyID == "" || input.StudentID == "" || input.Nonce == "" || input.Signature == "" {
 		return "", 0, errs.V3InvalidInputError(errors.New("v3 exchange fields are required"))
 	}
@@ -92,7 +96,8 @@ func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (st
 	if s.config != nil && s.config.TimestampSkew > 0 {
 		window = s.config.TimestampSkew
 	}
-	if delta := time.Now().Unix() - input.Timestamp; delta > int64(window) || delta < -int64(window) {
+	delta := now().Unix() - input.Timestamp
+	if delta > int64(window) || delta < -int64(window) {
 		return "", 0, errs.V3ExchangeExpiredError(errors.New("v3 exchange timestamp is expired"))
 	}
 
@@ -115,12 +120,22 @@ func (s *v3AuthService) Exchange(ctx context.Context, input V3ExchangeInput) (st
 		return "", 0, errs.V3SignatureInvalidError(err)
 	}
 
-	used, err := s.nonces.MarkUsed(ctx, "v3:exchange:nonce:"+input.ProjectID+":"+input.Nonce, time.Duration(window)*time.Second)
+	// nonce 必须保留到请求的最后一个有效秒结束。
+	// 携带未来时间戳的请求，首次使用后的剩余有效期可能超过一个时间偏差窗口。
+	nonceTTL := time.Duration(int64(window)-delta+1) * time.Second
+	used, err := s.nonces.MarkUsed(ctx, "v3:exchange:nonce:"+input.ProjectID+":"+input.Nonce, nonceTTL)
 	if err != nil {
 		return "", 0, errs.V3NonceError(err)
 	}
 	if !used {
 		return "", 0, errs.V3ReplayRequestError(errors.New("v3 exchange nonce has already been used"))
+	}
+
+	// 数据库查询或 Redis 操作可能耗尽请求有效期，甚至等到其他请求写入的 nonce 过期。
+	// 必须在 Redis 返回后重新读取当前时间，避免在途请求凭入口处的时间继续签发令牌。
+	delta = now().Unix() - input.Timestamp
+	if delta > int64(window) || delta < -int64(window) {
+		return "", 0, errs.V3ExchangeExpiredError(errors.New("v3 exchange timestamp is expired"))
 	}
 
 	token, expires, err := s.jwt.Issue(input.ProjectID, input.StudentID)
