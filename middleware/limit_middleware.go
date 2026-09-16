@@ -38,6 +38,11 @@ func NewLimitMiddleware(conf *config.LimiterConfig, client *redis.Client) *Limit
 
 func (m *LimitMiddleware) Middleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		switch ctx.FullPath() {
+		case "/api/v1/health", "/api/v1/metrics", "/api/v3/admin/integrations/projects/:project_id/config-status":
+			ctx.Next()
+			return
+		}
 		prefix := "feedback-limit" + strings.ReplaceAll(ctx.FullPath(), ":", "_")
 		if prefix == "feedback-limit:" {
 			// 未注册路由使用统一前缀,避免浪费 redis 资源
@@ -60,7 +65,7 @@ func (m *LimitMiddleware) Middleware() gin.HandlerFunc {
 		).Int()
 		if err != nil {
 			ctx.Error(fmt.Errorf("限流器执行错误: %v", err))
-			ctx.JSON(http.StatusInternalServerError, response.Response{
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, response.Response{
 				Code:    http.StatusInternalServerError,
 				Message: "限流器内部错误",
 				Data:    nil,
@@ -69,7 +74,7 @@ func (m *LimitMiddleware) Middleware() gin.HandlerFunc {
 		}
 		if res == 0 {
 			ctx.Error(errors.New("请求过于频繁，请稍后再试"))
-			ctx.JSON(http.StatusTooManyRequests, response.Response{
+			ctx.AbortWithStatusJSON(http.StatusTooManyRequests, response.Response{
 				Code:    http.StatusTooManyRequests,
 				Message: "请求过于频繁，请稍后再试",
 				Data:    nil,

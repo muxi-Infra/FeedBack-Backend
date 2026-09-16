@@ -31,6 +31,31 @@ definitions:
           $ref: '#/definitions/domain.TableRecord'
         type: array
     type: object
+  model.ConfigAuditV3:
+    properties:
+      admin_id:
+        type: integer
+      change_id:
+        type: string
+      created_at:
+        type: string
+      fields:
+        type: string
+      id:
+        type: integer
+      kind:
+        type: string
+      previous_version:
+        type: integer
+      project_id:
+        type: string
+      request_id:
+        type: string
+      result:
+        type: string
+      version:
+        type: integer
+    type: object
   response.Response:
     properties:
       code:
@@ -38,6 +63,31 @@ definitions:
       data: {}
       msg:
         type: string
+    type: object
+  service.ProjectConfigStatusV3:
+    properties:
+      applied_version:
+        type: integer
+      confirmed_at:
+        type: string
+      error_class:
+        type: string
+      instance_id:
+        type: string
+      invalidated_at:
+        type: string
+      last_event_id:
+        type: string
+      loaded_at:
+        type: string
+      project_id:
+        type: string
+      required_version:
+        type: integer
+      state:
+        type: string
+      target_version:
+        type: integer
     type: object
   v1.CreatTableRecordReg:
     properties:
@@ -386,6 +436,8 @@ definitions:
     type: object
   v3.ProjectDetail:
     properties:
+      config_version:
+        type: integer
       created_at:
         type: string
       id:
@@ -420,6 +472,8 @@ definitions:
     type: object
   v3.ProjectListItem:
     properties:
+      config_version:
+        type: integer
       created_at:
         type: string
       id:
@@ -1309,6 +1363,44 @@ paths:
       summary: 强制同步用户记录
       tags:
       - SheetV2
+  /api/v3/admin/integrations/config-audits:
+    get:
+      parameters:
+      - description: 项目 ID
+        in: query
+        name: project_id
+        type: string
+      - description: 请求关联 ID
+        in: query
+        name: request_id
+        type: string
+      - description: 上一页最后 ID
+        in: query
+        name: before_id
+        type: integer
+      - description: 每页数量，默认 20，最大 100
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ConfigAuditV3'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 查询 V3 配置变更审计
+      tags:
+      - V3Admin
   /api/v3/admin/integrations/projects:
     get:
       parameters:
@@ -1345,7 +1437,12 @@ paths:
     post:
       consumes:
       - application/json
+      description: 成功表示配置、版本、审计和事件 Outbox 已提交；各实例缓存异步应用。
       parameters:
+      - description: 调用方预先保存的 UUID，供提交结果未知时查审计
+        in: header
+        name: X-Request-ID
+        type: string
       - description: Bearer 管理员 Token
         in: header
         name: Authorization
@@ -1376,7 +1473,12 @@ paths:
       - V3Admin
   /api/v3/admin/integrations/projects/{project_id}:
     delete:
+      description: 成功表示删除事务已提交；已签发 JWT 的后续访问受配置缓存撤销窗口约束。
       parameters:
+      - description: 请求关联 UUID
+        in: header
+        name: X-Request-ID
+        type: string
       - description: Bearer 管理员 Token
         in: header
         name: Authorization
@@ -1431,7 +1533,12 @@ paths:
     put:
       consumes:
       - application/json
+      description: 成功表示事务已提交；各实例缓存异步应用，Scope 撤销受配置缓存生效窗口约束。
       parameters:
+      - description: 请求关联 UUID
+        in: header
+        name: X-Request-ID
+        type: string
       - description: Bearer 管理员 Token
         in: header
         name: Authorization
@@ -1460,10 +1567,39 @@ paths:
       summary: 更新 V3 接入项目配置
       tags:
       - V3Admin
+  /api/v3/admin/integrations/projects/{project_id}/config-status:
+    get:
+      parameters:
+      - description: 项目 ID
+        in: path
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.ProjectConfigStatusV3'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: 查询本实例 V3 配置应用状态
+      tags:
+      - V3Admin
   /api/v3/admin/integrations/projects/{project_id}/keys/rotate:
     post:
-      description: 生成新的项目 API Key，旧 Key 会立即失效。新 Key 明文仅在本次响应返回一次，管理员应立即安全保存并更新接入项目后端配置。
+      description: 提交后旧 Key 无法新兑换，已签发 JWT 保持有效。新 Key 明文只返回一次；网络断开导致结果未知时先用请求 ID 查审计，不自动重试。缓存异步应用。
       parameters:
+      - description: 请求关联 UUID
+        in: header
+        name: X-Request-ID
+        type: string
       - description: Bearer 管理员 Token
         in: header
         name: Authorization
@@ -1862,4 +1998,9 @@ paths:
       summary: 创建 V3 反馈记录
       tags:
       - V3Sheet
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

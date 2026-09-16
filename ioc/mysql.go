@@ -13,11 +13,14 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func InitMysql(cfg *config.MysqlConfig) *gorm.DB {
+func InitMysql(cfg *config.MysqlConfig) (*gorm.DB, func(), error) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8&parseTime=true&loc=Local",
 		cfg.UserName, cfg.Password, cfg.Addr, cfg.DBName)
 
 	logFile, err := os.OpenFile(cfg.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		return nil, nil, err
+	}
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
 		Logger: logger.New(
 			log.New(logFile, "\r\n", log.LstdFlags),
@@ -26,16 +29,25 @@ func InitMysql(cfg *config.MysqlConfig) *gorm.DB {
 				LogLevel:                  logger.Warn,            // 日志级别
 				IgnoreRecordNotFoundError: true,                   // 是否忽略记录未找到错误
 				Colorful:                  false,                  // 是否彩色打印
+				ParameterizedQueries:      true,
 			},
 		),
 	})
 	if err != nil {
-		panic(fmt.Sprintf("Mysql 连接失败: %v", err))
+		_ = logFile.Close()
+		return nil, nil, fmt.Errorf("mysql initialization failed")
 	}
 
+	sqlDB, err := db.DB()
+	if err != nil {
+		_ = logFile.Close()
+		return nil, nil, err
+	}
+	cleanup := func() { _ = sqlDB.Close(); _ = logFile.Close() }
 	err = repository.InitTables(db)
 	if err != nil {
-		panic(err)
+		cleanup()
+		return nil, nil, fmt.Errorf("mysql migration failed")
 	}
-	return db
+	return db, cleanup, nil
 }

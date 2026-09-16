@@ -1,0 +1,23 @@
+services:
+  redis:
+    image: redis:${REDIS_VERSION:-7.2}-alpine
+    command: [redis-server, --save, "", --appendonly, "no"]
+    ports: ["127.0.0.1:${TEST_REDIS_PORT:-6389}:6379"]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: feedback98-test-only
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: feedback98_test
+    ports: ["127.0.0.1:${TEST_MYSQL_PORT:-33079}:3306"]
+    tmpfs: [/var/lib/mysql]
+    healthcheck:
+      test: [CMD, mysqladmin, ping, -h, 127.0.0.1, -pfeedback98-test-only]
+      interval: 2s
+      timeout: 2s
+      retries: 60

@@ -1157,6 +1157,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v3/admin/integrations/config-audits": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "查询 V3 配置变更审计",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "请求关联 ID",
+                        "name": "request_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "上一页最后 ID",
+                        "name": "before_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，默认 20，最大 100",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.ConfigAuditV3"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v3/admin/integrations/projects": {
             "get": {
                 "security": [
@@ -1219,6 +1284,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "成功表示配置、版本、审计和事件 Outbox 已提交；各实例缓存异步应用。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1230,6 +1296,12 @@ const docTemplate = `{
                 ],
                 "summary": "注册 V3 接入项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "调用方预先保存的 UUID，供提交结果未知时查审计",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Bearer 管理员 Token",
@@ -1326,6 +1398,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "成功表示事务已提交；各实例缓存异步应用，Scope 撤销受配置缓存生效窗口约束。",
                 "consumes": [
                     "application/json"
                 ],
@@ -1337,6 +1410,12 @@ const docTemplate = `{
                 ],
                 "summary": "更新 V3 接入项目配置",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "请求关联 UUID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Bearer 管理员 Token",
@@ -1376,6 +1455,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "成功表示删除事务已提交；已签发 JWT 的后续访问受配置缓存撤销窗口约束。",
                 "produces": [
                     "application/json"
                 ],
@@ -1384,6 +1464,12 @@ const docTemplate = `{
                 ],
                 "summary": "删除 V3 接入项目",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "请求关联 UUID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Bearer 管理员 Token",
@@ -1409,6 +1495,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v3/admin/integrations/projects/{project_id}/config-status": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "V3Admin"
+                ],
+                "summary": "查询本实例 V3 配置应用状态",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "项目 ID",
+                        "name": "project_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/service.ProjectConfigStatusV3"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/v3/admin/integrations/projects/{project_id}/keys/rotate": {
             "post": {
                 "security": [
@@ -1416,7 +1547,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "生成新的项目 API Key，旧 Key 会立即失效。新 Key 明文仅在本次响应返回一次，管理员应立即安全保存并更新接入项目后端配置。",
+                "description": "提交后旧 Key 无法新兑换，已签发 JWT 保持有效。新 Key 明文只返回一次；网络断开导致结果未知时先用请求 ID 查审计，不自动重试。缓存异步应用。",
                 "produces": [
                     "application/json"
                 ],
@@ -1425,6 +1556,12 @@ const docTemplate = `{
                 ],
                 "summary": "重新生成 V3 项目 API Key",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "请求关联 UUID",
+                        "name": "X-Request-ID",
+                        "in": "header"
+                    },
                     {
                         "type": "string",
                         "description": "Bearer 管理员 Token",
@@ -2130,6 +2267,44 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ConfigAuditV3": {
+            "type": "object",
+            "properties": {
+                "admin_id": {
+                    "type": "integer"
+                },
+                "change_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "previous_version": {
+                    "type": "integer"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "response.Response": {
             "type": "object",
             "properties": {
@@ -2139,6 +2314,44 @@ const docTemplate = `{
                 "data": {},
                 "msg": {
                     "type": "string"
+                }
+            }
+        },
+        "service.ProjectConfigStatusV3": {
+            "type": "object",
+            "properties": {
+                "applied_version": {
+                    "type": "integer"
+                },
+                "confirmed_at": {
+                    "type": "string"
+                },
+                "error_class": {
+                    "type": "string"
+                },
+                "instance_id": {
+                    "type": "string"
+                },
+                "invalidated_at": {
+                    "type": "string"
+                },
+                "last_event_id": {
+                    "type": "string"
+                },
+                "loaded_at": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "required_version": {
+                    "type": "integer"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "target_version": {
+                    "type": "integer"
                 }
             }
         },
@@ -2656,6 +2869,9 @@ const docTemplate = `{
         "v3.ProjectDetail": {
             "type": "object",
             "properties": {
+                "config_version": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2708,6 +2924,9 @@ const docTemplate = `{
         "v3.ProjectListItem": {
             "type": "object",
             "properties": {
+                "config_version": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2944,6 +3163,13 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

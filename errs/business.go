@@ -57,9 +57,13 @@ const (
 	V3AdminCredentialsCode
 	V3AdminDatabaseCode
 	V3PasswordHashCode
+	V3ConfigUnavailableCode
 )
 
 var (
+	V3ConfigUnavailableError = func(err error) error {
+		return errorx.New(http.StatusServiceUnavailable, V3ConfigUnavailableCode, "V3 配置暂时无法确认，请稍后重试", err)
+	}
 	TokenGeneratedError = func(err error) error {
 		return errorx.New(http.StatusInternalServerError, TokenGeneratedErrorCode, "Token 生成失败", err)
 	}

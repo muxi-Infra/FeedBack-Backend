@@ -86,7 +86,7 @@ func TestV3InFlightReplayAfterNonceExpiration(t *testing.T) {
 				} else {
 					nonces = delayedExchangeNonceStore{IntegrationNonceStoreV3: nonces, before: wait}
 				}
-				slowAuth := service.NewV3AuthService(d, nonces, inertProjectEvents{}, service.NewProjectConfigCacheV3(), f.jwt,
+				slowAuth := service.NewV3AuthService(d, nonces, f.local, f.jwt,
 					&config.IntegrationAuthConfig{TimestampSkew: 300})
 				input := exchangeInput(signedExchange(projectA, studentA, projectA+"-key", testAPIKey, "inflight-nonce", start.Add(offset).Unix()))
 				var token string
@@ -164,8 +164,7 @@ func TestV3ExchangeRechecksTimeAfterNonceReply(t *testing.T) {
 					now = now.Add(tc.delay)
 				},
 			}
-			auth := service.NewV3AuthService(dao.NewIntegrationDAOV3(f.db), nonces, inertProjectEvents{},
-				service.NewProjectConfigCacheV3(), f.jwt, &config.IntegrationAuthConfig{TimestampSkew: 300})
+			auth := service.NewV3AuthService(dao.NewIntegrationDAOV3(f.db), nonces, f.local, f.jwt, &config.IntegrationAuthConfig{TimestampSkew: 300})
 			token, expires, err := service.ExchangeV3WithClockForTest(auth, context.Background(), input, func() time.Time { return now })
 			if tc.expired {
 				require.Error(t, err, "Redis 响应返回时已过期的请求不能签发令牌")

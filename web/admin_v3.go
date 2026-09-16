@@ -15,6 +15,8 @@ func RegisterAdminAuthRouterV3(r *gin.RouterGroup, h controller.AdminAuthHandler
 
 // RegisterAdminRouterV3 注册 V3 项目管理接口。
 func RegisterAdminRouterV3(r *gin.RouterGroup, h controller.V3AdminHandler, syncHandler controller.V3SyncHandler, auth gin.HandlerFunc, permissions *middleware.AdminPermissionMiddlewareV3) {
+	r.GET("/admin/integrations/projects/:project_id/config-status", auth, permissions.Require("integration", "read"), ginx.Wrap(h.ConfigStatus))
+	r.GET("/admin/integrations/config-audits", auth, permissions.Require("integration", "read"), ginx.Wrap(h.ConfigAudits))
 	r.POST("/admin/integrations/projects", auth, permissions.Require("integration", "create"), ginx.WrapReq(h.RegisterProject))
 	r.GET("/admin/integrations/projects", auth, permissions.Require("integration", "read"), ginx.WrapReq(h.ListProjects))
 	r.GET("/admin/integrations/projects/:project_id", auth, permissions.Require("integration", "read"), ginx.Wrap(h.GetProject))

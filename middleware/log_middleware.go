@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"github.com/google/uuid"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/constvar"
+	"strings"
 	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
@@ -11,6 +14,27 @@ import (
 
 type LoggerMiddleware struct {
 	log logger.Logger
+}
+
+func (lm *LoggerMiddleware) ConfigAuditV3() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !strings.HasPrefix(c.Request.URL.Path, "/api/v3/admin/integrations/") {
+			c.Next()
+			return
+		}
+		requestID := c.GetHeader("X-Request-ID")
+		if _, err := uuid.Parse(requestID); err != nil {
+			requestID = uuid.NewString()
+		}
+		c.Set("config_request_id", requestID)
+		c.Header("X-Request-ID", requestID)
+		c.Next()
+		if c.Request.Method != "GET" && c.Writer.Status() >= 400 {
+			actor, _ := c.Get(constvar.AdminIDContextKeyV3)
+			id, _ := actor.(uint64)
+			lm.log.Warn("config_change_rejected", logger.String("request_id", requestID), logger.Uint64("admin_id", id), logger.String("project_id", c.Param("project_id")), logger.String("method", c.Request.Method), logger.String("route", c.FullPath()), logger.Int("status", c.Writer.Status()))
+		}
+	}
 }
 
 func NewLoggerMiddleware(log logger.Logger) *LoggerMiddleware {

@@ -1,0 +1,39 @@
+name: V3 configuration integration
+on:
+  workflow_call:
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        redis: ['6.2', '7.2']
+    services:
+      redis:
+        image: redis:${{ matrix.redis }}-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 2s --health-retries 30
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: feedback98-test-only
+          MYSQL_ROOT_HOST: '%'
+          MYSQL_DATABASE: feedback98_test
+        ports: ['3306:3306']
+        options: >-
+          --tmpfs /var/lib/mysql
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pfeedback98-test-only"
+          --health-interval 2s --health-timeout 2s --health-retries 60
+    env:
+      FEEDBACK_INTEGRATION_REDIS_ADDR: 127.0.0.1:6379
+      FEEDBACK_INTEGRATION_MYSQL_DSN: root:feedback98-test-only@tcp(127.0.0.1:3306)/feedback98_test?parseTime=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Configuration integration tests
+        run: go test -mod=readonly -tags=integration -count=1 -timeout=180s ./...

@@ -6,8 +6,11 @@ import (
 	"github.com/google/wire"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configclock"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configmetrics"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
@@ -16,10 +19,13 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/web"
 )
 
-func InitApp() (*App, error) {
+func InitApp() (*App, func(), error) {
 	wire.Build(
 		wire.Struct(new(App), "*"),
 		config.ProviderSet,
+		domain.NewConfigInstanceV3,
+		configclock.New,
+		configmetrics.New,
 		ioc.ProviderSet,
 		logger.NewZapLogger,
 		lark.ProviderSet,
@@ -40,5 +46,5 @@ func InitApp() (*App, error) {
 		controller.ProviderSet,
 		web.NewGinEngine,
 	)
-	return &App{}, nil
+	return &App{}, nil, nil
 }
