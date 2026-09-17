@@ -174,6 +174,7 @@ func (b *redisProjectConfigEventBusV3) Consume(ctx context.Context, handler func
 	defer stop()
 	ready := false
 	pendingCursor := "0"
+	pendingEnd := ""
 	attempt := 0
 	for ctx.Err() == nil {
 		if !ready {
@@ -190,15 +191,13 @@ func (b *redisProjectConfigEventBusV3) Consume(ctx context.Context, handler func
 				continue
 			}
 			if err = reconcile(ctx); err != nil {
-				if !configclock.Wait(ctx, b.clock, configclock.Backoff(b.cfg.RetryMin, b.cfg.RetryMax, attempt)) {
-					return
-				}
-				attempt++
-				continue
+				// The independent refresh loop retries reconciliation; healthy projects can consume now.
+				b.log.Warn("config_consumer_reconcile_failed", logger.String("error_class", domain.ConfigErrorClass(err)))
 			}
 			ready = true
 			b.metrics.Consumer.Set(1)
 			pendingCursor = "0"
+			pendingEnd = ""
 			attempt = 0
 		}
 		failed := false
@@ -210,7 +209,19 @@ func (b *redisProjectConfigEventBusV3) Consume(ctx context.Context, handler func
 				block = time.Second
 			}
 			op, cancel := context.WithTimeout(ctx, 2*time.Second)
-			items, err := b.reader.XReadGroup(op, &redis.XReadGroupArgs{Group: b.group, Consumer: b.name, Streams: []string{b.stream, position}, Count: 20, Block: block}).Result()
+			var items []redis.XStream
+			var err error
+			if position == "0" {
+				// Freeze each sweep's end so new failures cannot indefinitely postpone old retries.
+				var pending *redis.XPending
+				pending, err = b.reader.XPending(op, b.stream, b.group).Result()
+				if err == nil {
+					pendingEnd = pending.Higher
+				}
+			}
+			if err == nil {
+				items, err = b.reader.XReadGroup(op, &redis.XReadGroupArgs{Group: b.group, Consumer: b.name, Streams: []string{b.stream, position}, Count: 20, Block: block}).Result()
+			}
 			cancel()
 			if errors.Is(err, redis.Nil) {
 				if position != ">" {
@@ -233,7 +244,7 @@ func (b *redisProjectConfigEventBusV3) Consume(ctx context.Context, handler func
 			processed = processed || last != ""
 			failed = failed || bad
 			if position != ">" {
-				if last == "" {
+				if last == "" || pendingEnd == "" || !streamIDBefore(last, pendingEnd) {
 					pendingCursor = "0"
 				} else {
 					pendingCursor = last

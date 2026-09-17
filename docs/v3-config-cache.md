@@ -22,11 +22,17 @@ Redis 故障不再把数据库已提交的管理写入改成 500。但现有业�
 
 PUT 同内容具有相同最终效果，仍推进版本并增加审计；并发编辑是最后提交生效。DELETE 重试保留已删除状态，不复活项目。注册、轮换不是幂等操作：网络断开导致提交结果未知时，用预先保存的请求 ID 查询审计，不要自动重试。系统不持久化一次性 Key 明文；确认提交但响应丢失时，由管理员明确再次轮换。
 
+更新、删除和 Key 轮换的目标项目不存在时返回 HTTP 404（`V3ProjectNotFoundCode`），不归类为数据库故障。已有删除墓碑的 DELETE 重试仍返回成功；对已删除或停用项目的更新和 Key 轮换返回相同的 404。数据库故障仍返回 500。
+
 ## 各实例缓存与消费者
 
 进程身份为 hostname、PID 和启动 UUID。每个实例使用独立消费组 `feedback-v3-config-refresh-v2:<instance_id>`，每次新进程以 `$` 建组并重新对账；Redis 启动不可用时持续退避重试，数据库对账独立运行，Redis 恢复建组后再次对账。不能把所有实例改成共享消费组。
 
+建组后先尝试一次全量对账；某项目加载失败不会阻止随后消费其他项目的事件。失败对账由独立定时任务继续重试，`consumer_up=1` 只表示消费连接可用，完整对账是否成功仍须检查 `last_full_success_timestamp_seconds`。
+
 同进程消费循环先恢复自身 PEL 的一页，再读取一页 `>`，批量 20，处理并发 4。失败项目保留 PEL，ACK 失败允许重复处理；重复、乱序事件不能降低缓存版本。建组/读/处理失败均有可取消退避，`NOGROUP` 重新建组并对账。ACK 的含义是完整项目快照已应用到至少事件版本，或确认墓碑；接收消息和删除缓存都不算成功刷新。
+
+每轮 PEL 扫描开始时通过 XPENDING 固定当前最大消息 ID，分页游标到达该终点后回卷。新增失败消息不会无限延长当前扫描，旧消息可以再次重试；重试间隔仍随本轮页数、加载耗时和退避增长，不承诺固定秒数。
 
 Stream 保留原 `project_id`、`changed_at` 字段，新增 `config_version`、`change_id`、`kind`、`schema_version=1`。旧事件强制数据库核对。无法解析或 PEL 正文被裁剪时，成功全量对账后 ACK 丢弃，不记录原载荷。XADD 默认 `MAXLEN ~ 10000`，保留条数近似，不能换算固定时间。积压达到 1000 或检测到消费位置早于保留首条时触发对账，消费继续有界推进。
 
@@ -34,11 +40,13 @@ Stream 保留原 `project_id`、`changed_at` 字段，新增 `config_version`、
 
 缓存是项目级不可变快照（项目、所有活动表格及 Scope），运行时 DAO 在一个 MySQL REPEATABLE READ 事务里读取，不读取 Key 摘要。同项目并发加载合并，总数据库加载并发 4。加载前记录 generation，写入时比较 generation、最低要求版本及当前版本；失效之前开始的旧结果不能写回或直接返回。对调用方复制 Scope 切片。
 
+若加载期间 generation 未改变，但数据库快照仍低于要求版本（包括异常硬删除后返回版本 0），本次刷新立即以 `version_behind` 失败，不在加载期限内循环查库，也不会降低缓存版本。外层消费退避和定时对账负责后续重试。仅真正被并发失效取代的加载计为 `superseded`；刷新调用以超时或取消退出时也记录 `failed`。
+
 全量对账分页枚举包含冷项目和墓碑的版本；版本相同才续期，改变则完整加载并逐项目替换。只有扫描完整成功后才核对本地多余项目；单页失败不误删，某项目失败不清空其他缓存。已知旧版拒用，尚未发现变化的缓存只用到 60 秒。所有实例各自对账，没有全局调度锁。直接 SQL 修改配置不在保证范围：维护写入必须同时遵守版本、审计与 Outbox 事务协议。
 
 ## 生命周期和配置
 
-构造函数不启动 V3 goroutine。App 显式启动配置运行时，退出时取消消费者、发布器、对账和维护任务，停止 timer/ticker，取消查询、关闭专用阻塞读取连接并等待退出。HTTP 优雅关闭预算 10 秒，V3 任务关闭预算 5 秒。V1/V2 飞书刷新和已有业务队列的生命周期没有在此重构。
+构造函数不启动 V3 goroutine。App 显式启动配置运行时，收到退出信号后先停止接受 HTTP 请求并等待在途请求排空，期间配置缓存和加载仍可用；之后取消消费者、发布器、对账和维护任务，停止 timer/ticker，取消查询、关闭专用阻塞读取连接并等待退出。HTTP 优雅关闭预算 10 秒，V3 任务关闭预算 5 秒。V1/V2 飞书刷新和已有业务队列的生命周期没有在此重构。
 
 完整可选配置见 [`config/example_config.yaml`](../config/example_config.yaml) 的 `v3_config_cache`。缺省使用默认值；显式零值不能关闭兜底或授权期限，时间与容量组合非法时启动失败。配置沿用 YAML/Nacos 启动加载方式，变更这些参数需要重启实例。
 
@@ -74,7 +82,7 @@ CORS 允许 `X-Request-ID` 并暴露以上响应头。项目详情和列表的�
 | `refresh_duration_seconds{trigger}` | 单项目数据库加载耗时直方图 |
 | `apply_age_seconds` | 数据库变更时间到应用的年龄，包含事务时间、时钟偏差，冷启动也会观测 |
 | `invalidation_delay_seconds` | 发现失效到成功应用的耗时 |
-| `cache_requests_total{result}` | hit/miss/expired/outdated，请求级计数，可计算命中率 |
+| `cache_requests_total{result}` | hit/miss/expired/outdated，请求级计数；有效快照确认项目或表格不存在也属于 hit，不等同于授权通过率 |
 | `events_total{stage}` | received/invalid/retry/read_failed/ack_failed/acked |
 | `publish_total{result}` | published/failed/claim_failed/finish_failed |
 | `consumer_up` | 消费者最近连接/读取状态 |
@@ -120,5 +128,6 @@ docker compose -p $testProject -f test/compose.config-v3.yml down -v
 | 状态不隐式刷新、审计可信身份与脱敏、热 JWT 撤权和删除窗口 | `service/config_security_v3_test.go` |
 | 身份/图片隔离、Scope、Key 轮换、nonce 和在途重放 | 保留 #97 的 `v3_security_test.go`、`auth_v3_inflight_test.go` |
 | 限流终止、诊断认证、非法配置拒绝 | `middleware/limit_config_v3_test.go`、`config/config_cache_v3_test.go` |
+| HTTP 请求排空后关闭配置运行时、监听失败后回收任务 | `main_test.go` |
 
 miniredis 不用于证明 Redis 7 lag 或真实 PEL/裁剪语义；SQLite 不用于证明 MySQL 行锁和隔离级别。

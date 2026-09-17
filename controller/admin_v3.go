@@ -170,6 +170,7 @@ func (h *V3Admin) GetProject(c *gin.Context) (response.Response, error) {
 //	@Param		request			body		reqV3.RegisterProjectReq	true	"项目配置"
 //	@Success	200				{object}	response.Response
 //	@Router		/api/v3/admin/integrations/projects/{project_id} [put]
+//	@Failure	404				{object}	response.Response	"项目不存在或不可用"
 func (h *V3Admin) UpdateProject(c *gin.Context, req reqV3.RegisterProjectReq) (response.Response, error) {
 	input := toRegisterProjectInput(req)
 	receipt, err := h.service.UpdateProject(c.Request.Context(), c.Param("project_id"), input, configActor(c))
@@ -201,6 +202,7 @@ func (h *V3Admin) UpdateProject(c *gin.Context, req reqV3.RegisterProjectReq) (r
 //	@Param		project_id		path		string	true	"项目 ID"
 //	@Success	200				{object}	response.Response
 //	@Router		/api/v3/admin/integrations/projects/{project_id} [delete]
+//	@Failure	404				{object}	response.Response	"项目不存在；已有删除墓碑时仍返回成功"
 func (h *V3Admin) DeleteProject(c *gin.Context) (response.Response, error) {
 	receipt, err := h.service.DeleteProject(c.Request.Context(), c.Param("project_id"), configActor(c))
 	if err != nil {
@@ -230,6 +232,7 @@ func (h *V3Admin) DeleteProject(c *gin.Context) (response.Response, error) {
 //	@Param			project_id		path		string	true	"项目 ID"
 //	@Success		200				{object}	response.Response{data=respV3.RotateAPIKeyResp}
 //	@Router			/api/v3/admin/integrations/projects/{project_id}/keys/rotate [post]
+//	@Failure		404				{object}	response.Response	"项目不存在或不可用"
 func (h *V3Admin) RotateAPIKey(c *gin.Context) (response.Response, error) {
 	result, err := h.service.RotateAPIKey(c.Request.Context(), c.Param("project_id"), configActor(c))
 	if err != nil {

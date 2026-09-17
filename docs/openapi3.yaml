@@ -942,6 +942,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/response.Response"
+        "404":
+          description: 项目不存在；已有删除墓碑时仍返回成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
       security:
         - BearerAuth: []
       summary: 删除 V3 接入项目
@@ -1003,6 +1009,12 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
+        "404":
+          description: 项目不存在或不可用
           content:
             application/json:
               schema:
@@ -1072,6 +1084,12 @@ paths:
                       data:
                         $ref: "#/components/schemas/v3.RotateAPIKeyResp"
                     type: object
+        "404":
+          description: 项目不存在或不可用
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/response.Response"
       security:
         - BearerAuth: []
       summary: 重新生成 V3 项目 API Key

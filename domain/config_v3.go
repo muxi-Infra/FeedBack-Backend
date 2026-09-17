@@ -47,6 +47,8 @@ func (s ProjectSnapshotV3) Active() bool {
 	return s.Project.ID != 0 && s.Project.DeletedAt == 0 && s.Project.Status == "active"
 }
 
+var ErrConfigVersionBehind = errors.New("configuration snapshot is below the required version")
+
 // ConfigErrorClass never includes driver messages or configuration values.
 func ConfigErrorClass(err error) string {
 	if err == nil {
@@ -57,6 +59,9 @@ func ConfigErrorClass(err error) string {
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return "timeout"
+	}
+	if errors.Is(err, ErrConfigVersionBehind) {
+		return "version_behind"
 	}
 	return "dependency"
 }

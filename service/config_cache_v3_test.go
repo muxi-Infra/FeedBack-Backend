@@ -439,3 +439,87 @@ func TestV3ConfigSlowLoadDoesNotExtendAuthorizationLease(t *testing.T) {
 	_, err = other.Get(ctx, id, constvar.FeedbackTableType)
 	require.Equal(t, 503, errorx.ToCustomError(err).HttpCode)
 }
+
+func TestV3ConfigVersionDeficitFailsWithoutImmediateRetries(t *testing.T) {
+	for _, version := range []uint64{0, 1} {
+		t.Run(map[uint64]string{0: "missing", 1: "older"}[version], func(t *testing.T) {
+			f := newConfigFixture(t)
+			ctx := context.Background()
+			id := f.register(t)
+			_, err := f.cache.Get(ctx, id, constvar.FeedbackTableType)
+			require.NoError(t, err)
+			snapshot, err := f.dao.Snapshot(ctx, id)
+			require.NoError(t, err)
+			if version == 0 {
+				snapshot = domain.ProjectSnapshotV3{Project: model.FeedbackProjectV3{ProjectID: id}}
+			}
+			calls := 0
+			f.cache.dao = snapshotHookDAO{ConfigDAOV3: f.dao, hook: func(context.Context, string) (domain.ProjectSnapshotV3, error) {
+				calls++
+				return snapshot, nil
+			}}
+			f.cache.Notify(domain.ConfigEventV3{ProjectID: id, Version: 2})
+			err = f.cache.Refresh(ctx, id, "event")
+			require.ErrorIs(t, err, domain.ErrConfigVersionBehind)
+			require.Equal(t, 1, calls)
+			require.Equal(t, float64(1), testutil.ToFloat64(f.metrics.Refresh.WithLabelValues("event", "failed")))
+			require.Zero(t, testutil.ToFloat64(f.metrics.Refresh.WithLabelValues("event", "superseded")))
+			status := f.cache.Status(ctx, id, "test")
+			require.Equal(t, uint64(1), status.AppliedVersion)
+			require.Equal(t, uint64(2), status.RequiredVersion)
+			require.Equal(t, "stale", status.State)
+			require.Equal(t, "version_behind", status.ErrorClass)
+			_, err = f.cache.Get(ctx, id, constvar.FeedbackTableType)
+			require.Equal(t, 503, errorx.ToCustomError(err).HttpCode)
+			f.cache.dao = f.dao
+			_, err = f.admin.UpdateProject(ctx, id, configInput(constvar.FeedbackScopeWrite), configActor())
+			require.NoError(t, err)
+			current, err := f.cache.Get(ctx, id, constvar.FeedbackTableType)
+			require.NoError(t, err)
+			require.True(t, current.HasScope(constvar.FeedbackScopeWrite))
+		})
+	}
+}
+
+func TestV3ConfigCanceledRefreshIsCountedAsFailure(t *testing.T) {
+	f := newConfigFixture(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := f.cache.Refresh(ctx, "fictional", "request")
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, float64(1), testutil.ToFloat64(f.metrics.Refresh.WithLabelValues("request", "failed")))
+	require.Equal(t, 1, f.logs.FilterMessage("refresh_failed").Len())
+}
+
+func TestV3ConfigMissingProjectMutationsReturnNotFound(t *testing.T) {
+	f := newConfigFixture(t)
+	ctx := context.Background()
+	for _, mutate := range []func() error{
+		func() error { _, err := f.admin.DeleteProject(ctx, "missing", configActor()); return err },
+		func() error {
+			_, err := f.admin.UpdateProject(ctx, "missing", configInput(constvar.FeedbackScopeWrite), configActor())
+			return err
+		},
+		func() error { _, err := f.admin.RotateAPIKey(ctx, "missing", configActor()); return err },
+	} {
+		err := mutate()
+		require.Error(t, err)
+		require.Equal(t, 404, errorx.ToCustomError(err).HttpCode)
+		require.Equal(t, errs.V3ProjectNotFoundCode, errorx.ToCustomError(err).Code)
+	}
+	audits, err := f.dao.ListAudits(ctx, "missing", "", 0, 100)
+	require.NoError(t, err)
+	require.Empty(t, audits)
+	n, _, err := f.dao.OutboxStats(ctx)
+	require.NoError(t, err)
+	require.Zero(t, n)
+	id := f.register(t)
+	first, err := f.admin.DeleteProject(ctx, id, configActor())
+	require.NoError(t, err)
+	again, err := f.admin.DeleteProject(ctx, id, configActor())
+	require.NoError(t, err)
+	require.Equal(t, first.Version, again.Version)
+	require.Empty(t, again.ChangeID)
+	_, err = f.admin.RotateAPIKey(ctx, id, configActor())
+	require.Equal(t, 404, errorx.ToCustomError(err).HttpCode)
+}

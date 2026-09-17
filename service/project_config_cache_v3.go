@@ -118,7 +118,7 @@ func (c *ProjectConfigCacheV3) Notify(event domain.ConfigEventV3) {
 }
 
 // Refresh publishes complete snapshots, including deletion tombstones.
-func (c *ProjectConfigCacheV3) Refresh(request context.Context, id, trigger string) error {
+func (c *ProjectConfigCacheV3) Refresh(request context.Context, id, trigger string) (refreshErr error) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -127,6 +127,12 @@ func (c *ProjectConfigCacheV3) Refresh(request context.Context, id, trigger stri
 	c.wg.Add(1)
 	c.mu.Unlock()
 	defer c.wg.Done()
+	defer func() {
+		if refreshErr != nil {
+			c.metrics.Refresh.WithLabelValues(trigger, "failed").Inc()
+			c.log.Warn("refresh_failed", logger.String("project_id", id), logger.String("error_class", domain.ConfigErrorClass(refreshErr)))
+		}
+	}()
 	ctx, cancel := context.WithTimeout(c.ctx, c.cfg.LoadTimeout)
 	stop := context.AfterFunc(request, cancel)
 	defer stop()
@@ -176,7 +182,11 @@ func (c *ProjectConfigCacheV3) Refresh(request context.Context, id, trigger stri
 		}
 		c.mu.Lock()
 		e = c.entry(id)
-		obsolete := generation != e.generation || snapshot.Project.ConfigVersion < e.required || (e.snapshot != nil && snapshot.Project.ConfigVersion < e.snapshot.Project.ConfigVersion)
+		obsolete := generation != e.generation
+		if err == nil && !obsolete && (snapshot.Project.ConfigVersion < e.required || (e.snapshot != nil && snapshot.Project.ConfigVersion < e.snapshot.Project.ConfigVersion)) {
+			// A stable version deficit needs an external retry, not another immediate query.
+			err = domain.ErrConfigVersionBehind
+		}
 		if err == nil && c.clock.Now().Sub(started) >= c.cfg.MaxAge {
 			err = context.DeadlineExceeded
 		}
@@ -209,11 +219,10 @@ func (c *ProjectConfigCacheV3) Refresh(request context.Context, id, trigger stri
 		e.flight = nil
 		c.mu.Unlock()
 		c.metrics.Duration.WithLabelValues(trigger).Observe(c.clock.Now().Sub(started).Seconds())
-		c.metrics.Refresh.WithLabelValues(trigger, result).Inc()
 		if err != nil {
-			c.log.Warn("refresh_failed", logger.String("project_id", id), logger.String("error_class", domain.ConfigErrorClass(err)))
 			return err
 		}
+		c.metrics.Refresh.WithLabelValues(trigger, result).Inc()
 		if obsolete {
 			continue
 		}

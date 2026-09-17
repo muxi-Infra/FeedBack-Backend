@@ -1496,6 +1496,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response'
+        "404":
+          description: 项目不存在；已有删除墓碑时仍返回成功
+          schema:
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: 删除 V3 接入项目
@@ -1562,6 +1566,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.Response'
+        "404":
+          description: 项目不存在或不可用
+          schema:
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: 更新 V3 接入项目配置
@@ -1622,6 +1630,10 @@ paths:
                 data:
                   $ref: '#/definitions/v3.RotateAPIKeyResp'
               type: object
+        "404":
+          description: 项目不存在或不可用
+          schema:
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: 重新生成 V3 项目 API Key

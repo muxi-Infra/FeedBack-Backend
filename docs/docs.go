@@ -1446,6 +1446,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
+                    },
+                    "404": {
+                        "description": "项目不存在或不可用",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
                     }
                 }
             },
@@ -1488,6 +1494,12 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "项目不存在；已有删除墓碑时仍返回成功",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1594,6 +1606,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "404": {
+                        "description": "项目不存在或不可用",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }

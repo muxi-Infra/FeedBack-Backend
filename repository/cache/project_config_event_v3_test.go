@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -313,6 +314,100 @@ func TestV3ConfigPendingRetriesKeepBackoffAcrossEmptyPages(t *testing.T) {
 			require.GreaterOrEqual(t, d, base/2)
 			require.LessOrEqual(t, d, base)
 			clock.Advance(d)
+		case <-time.After(5 * time.Second):
+			t.Fatal("missing retry timer")
+		}
+	}
+}
+
+func TestV3ConfigReconcileFailureDoesNotBlockConsumption(t *testing.T) {
+	m := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: m.Addr(), MaxRetries: -1})
+	t.Cleanup(func() { _ = client.Close() })
+	assertConfigConsumptionAfterReconcileFailure(t, client, "test:config:"+uuid.NewString())
+}
+
+func assertConfigConsumptionAfterReconcileFailure(t *testing.T, client *redis.Client, key string) {
+	t.Helper()
+	b := newConfigBusTest(t, client, key, configclock.New())
+	ctx, cancel := context.WithCancel(context.Background())
+	done, reconciled, acked := make(chan struct{}), make(chan struct{}, 2), make(chan struct{}, 2)
+	client.AddHook(configCommandHook{after: func(cmd redis.Cmder) {
+		if cmd.Name() == "xack" && cmd.Err() == nil {
+			acked <- struct{}{}
+		}
+	}})
+	go func() {
+		defer close(done)
+		b.Consume(ctx, func(context.Context, domain.ConfigEventV3) error { return nil }, func(context.Context) error {
+			reconciled <- struct{}{}
+			return errors.New("one project failed to load")
+		})
+	}()
+	t.Cleanup(func() { cancel(); _ = b.Close(); configSignal(t, done) })
+	for i := 0; i < 2; i++ {
+		configSignal(t, reconciled)
+		_, err := b.Publish(ctx, domain.ConfigEventV3{ProjectID: "healthy", Version: uint64(i + 1)})
+		require.NoError(t, err)
+		configSignal(t, acked)
+		if i == 0 {
+			require.NoError(t, client.XGroupDestroy(ctx, b.stream, b.group).Err())
+		}
+	}
+}
+
+func TestV3ConfigPendingSweepFinishesDespiteNewFailures(t *testing.T) {
+	m := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: m.Addr(), MaxRetries: -1})
+	t.Cleanup(func() { _ = client.Close() })
+	assertConfigPendingSweepFinishes(t, client, "test:config:"+uuid.NewString())
+}
+
+func assertConfigPendingSweepFinishes(t *testing.T, client *redis.Client, key string) {
+	t.Helper()
+	clock := observingConfigClock{Clock: testclock.New(), delays: make(chan time.Duration, 1)}
+	b := newConfigBusTest(t, client, key, clock)
+	var batch int
+	var oldCalls atomic.Int32
+	var recovered atomic.Bool
+	b.reader.AddHook(configCommandHook{before: func(cmd redis.Cmder) error {
+		args := cmd.Args()
+		if cmd.Name() != "xreadgroup" || args[len(args)-1] != ">" {
+			return nil
+		}
+		batch++
+		pipe := client.Pipeline()
+		for i := 0; i < 20; i++ {
+			pipe.XAdd(context.Background(), &redis.XAddArgs{Stream: b.stream, Values: map[string]any{"project_id": fmt.Sprintf("batch-%d", batch), "config_version": "1"}})
+		}
+		_, err := pipe.Exec(context.Background())
+		return err
+	}})
+	ready, _ := consumeConfigTest(t, b, func(_ context.Context, e domain.ConfigEventV3) error {
+		if e.ProjectID == "batch-1" {
+			oldCalls.Add(1)
+			if recovered.Load() {
+				return nil
+			}
+		}
+		return errors.New("injected load failure")
+	})
+	configSignal(t, ready)
+	for round := 0; round < 6; round++ {
+		select {
+		case delay := <-clock.delays:
+			if round == 1 {
+				require.Equal(t, int32(40), oldCalls.Load())
+				recovered.Store(true)
+			}
+			if round == 5 {
+				require.Equal(t, int32(60), oldCalls.Load(), "the oldest page must be retried and acknowledged after recovery")
+				pending, err := client.XPending(context.Background(), b.stream, b.group).Result()
+				require.NoError(t, err)
+				require.Equal(t, int64(100), pending.Count)
+				return
+			}
+			clock.Advance(delay)
 		case <-time.After(5 * time.Second):
 			t.Fatal("missing retry timer")
 		}

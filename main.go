@@ -44,10 +44,15 @@ type App struct {
 }
 
 func (app *App) run(ctx context.Context) error {
-	if err := app.configRuntime.Start(ctx); err != nil {
+	server := &http.Server{Addr: ":8080", Handler: app.r, ReadHeaderTimeout: 10 * time.Second}
+	return app.runServer(ctx, server)
+}
+
+func (app *App) runServer(ctx context.Context, server *http.Server) error {
+	// HTTP handlers still need configuration while Shutdown drains active requests.
+	if err := app.configRuntime.Start(context.WithoutCancel(ctx)); err != nil {
 		return err
 	}
-	server := &http.Server{Addr: ":8080", Handler: app.r, ReadHeaderTimeout: 10 * time.Second}
 	result := make(chan error, 1)
 	go func() { result <- server.ListenAndServe() }()
 	var serveErr error

@@ -78,7 +78,14 @@ func (s *v3AdminService) change(ctx context.Context, id, kind, fields string, ac
 		return s.configs.RecordChange(ctx, tx, actor, event, previous, fields)
 	})
 	if err != nil {
-		s.log.Warn("config_change_failed", logger.String("project_id", id), logger.Uint64("admin_id", actor.AdminID), logger.String("request_id", actor.RequestID), logger.String("kind", kind), logger.String("error_class", domain.ConfigErrorClass(err)))
+		class := domain.ConfigErrorClass(err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			class = "not_found"
+		}
+		s.log.Warn("config_change_failed", logger.String("project_id", id), logger.Uint64("admin_id", actor.AdminID), logger.String("request_id", actor.RequestID), logger.String("kind", kind), logger.String("error_class", class))
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ConfigReceiptV3{}, errs.V3ProjectNotFoundError(errors.New(class))
+		}
 		return domain.ConfigReceiptV3{}, errs.V3ProjectDatabaseError(errors.New(domain.ConfigErrorClass(err)))
 	}
 	s.cache.Notify(event)

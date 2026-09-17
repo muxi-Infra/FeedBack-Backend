@@ -60,6 +60,16 @@ func TestIntegrationConfigRedisBroadcastRecoveryAndCancel(t *testing.T) {
 	require.Zero(t, testutil.ToFloat64(a.metrics.Unread))
 }
 
+func TestIntegrationConfigRedisReconcileFailureDoesNotBlockConsumption(t *testing.T) {
+	client, key := integrationenv.Redis(t)
+	assertConfigConsumptionAfterReconcileFailure(t, client, key)
+}
+
+func TestIntegrationConfigRedisPendingSweepFinishesDespiteNewFailures(t *testing.T) {
+	client, key := integrationenv.Redis(t)
+	assertConfigPendingSweepFinishes(t, client, key)
+}
+
 func TestIntegrationConfigRedisAtomicLeaseCleanup(t *testing.T) {
 	client, key := integrationenv.Redis(t)
 	ctx := context.Background()
