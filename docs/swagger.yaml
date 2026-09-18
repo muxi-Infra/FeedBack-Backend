@@ -1459,6 +1459,19 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Config-Change-ID:
+              description: 配置变更 ID
+              type: string
+            X-Config-Propagation:
+              description: asynchronous
+              type: string
+            X-Config-Version:
+              description: 已提交配置版本
+              type: string
+            X-Request-ID:
+              description: 请求关联 ID
+              type: string
           schema:
             allOf:
             - $ref: '#/definitions/response.Response'
@@ -1494,6 +1507,19 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Config-Change-ID:
+              description: 配置变更 ID，重复删除为空
+              type: string
+            X-Config-Propagation:
+              description: asynchronous
+              type: string
+            X-Config-Version:
+              description: 删除墓碑版本
+              type: string
+            X-Request-ID:
+              description: 请求关联 ID
+              type: string
           schema:
             $ref: '#/definitions/response.Response'
         "404":
@@ -1564,6 +1590,19 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Config-Change-ID:
+              description: 配置变更 ID
+              type: string
+            X-Config-Propagation:
+              description: asynchronous
+              type: string
+            X-Config-Version:
+              description: 已提交配置版本
+              type: string
+            X-Request-ID:
+              description: 请求关联 ID
+              type: string
           schema:
             $ref: '#/definitions/response.Response'
         "404":
@@ -1623,6 +1662,19 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            X-Config-Change-ID:
+              description: 配置变更 ID
+              type: string
+            X-Config-Propagation:
+              description: asynchronous
+              type: string
+            X-Config-Version:
+              description: 已提交配置版本
+              type: string
+            X-Request-ID:
+              description: 请求关联 ID
+              type: string
           schema:
             allOf:
             - $ref: '#/definitions/response.Response'

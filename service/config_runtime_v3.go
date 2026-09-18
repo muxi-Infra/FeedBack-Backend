@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
@@ -16,24 +17,25 @@ import (
 )
 
 type ConfigRuntimeV3 struct {
-	local         *ProjectConfigCacheV3
-	events        cache.ProjectConfigEventBusV3
-	dao           dao.ConfigDAOV3
-	cfg           *config.V3ConfigCacheConfig
-	clock         configclock.Clock
-	metrics       *configmetrics.Metrics
-	log           logger.Logger
-	instance      *domain.ConfigInstanceV3
-	mu            sync.Mutex
-	cancel        context.CancelFunc
-	done          chan struct{}
-	wg            sync.WaitGroup
-	reconcileGate chan struct{}
-	stopped       bool
+	local          *ProjectConfigCacheV3
+	events         cache.ProjectConfigEventBusV3
+	dao            dao.ConfigDAOV3
+	cfg            *config.V3ConfigCacheConfig
+	clock          configclock.Clock
+	metrics        *configmetrics.Metrics
+	log            logger.Logger
+	instance       *domain.ConfigInstanceV3
+	mu             sync.Mutex
+	cancel         context.CancelFunc
+	done           chan struct{}
+	wg             sync.WaitGroup
+	reconcileGate  chan struct{}
+	stopped        bool
+	outboxWarnings map[string]time.Time
 }
 
 func NewConfigRuntimeV3(local *ProjectConfigCacheV3, events cache.ProjectConfigEventBusV3, d dao.ConfigDAOV3, cfg *config.V3ConfigCacheConfig, clock configclock.Clock, m *configmetrics.Metrics, log logger.Logger, instance *domain.ConfigInstanceV3) *ConfigRuntimeV3 {
-	return &ConfigRuntimeV3{local: local, events: events, dao: d, cfg: cfg, clock: clock, metrics: m, log: log, instance: instance, reconcileGate: make(chan struct{}, 1)}
+	return &ConfigRuntimeV3{local: local, events: events, dao: d, cfg: cfg, clock: clock, metrics: m, log: log, instance: instance, reconcileGate: make(chan struct{}, 1), outboxWarnings: make(map[string]time.Time)}
 }
 func (r *ConfigRuntimeV3) Start(parent context.Context) error {
 	r.mu.Lock()
@@ -138,8 +140,9 @@ func (r *ConfigRuntimeV3) publish(ctx context.Context) {
 	cancel()
 	if err != nil {
 		r.metrics.Publish.WithLabelValues("claim_failed").Inc()
-		return
+		r.warnOutbox(ctx, "config_outbox_claim_failed", err, logger.Int("claimed_count", len(rows)))
 	}
+	// ClaimOutbox may return successfully leased rows alongside a later claim error.
 	var wg sync.WaitGroup
 	for _, row := range rows {
 		wg.Add(1)
@@ -153,19 +156,41 @@ func (r *ConfigRuntimeV3) publishRow(ctx context.Context, row model.ConfigOutbox
 	message, err := r.events.Publish(op, domain.ConfigEventV3{ProjectID: row.ProjectID, Version: row.Version, Kind: row.Kind, ChangeID: row.ChangeID, ChangedAt: row.CreatedAt})
 	if err != nil {
 		r.metrics.Publish.WithLabelValues("failed").Inc()
-		r.log.Warn("config_publish_failed", logger.String("change_id", row.ChangeID), logger.String("error_class", domain.ConfigErrorClass(err)))
+		r.warnOutbox(ctx, "config_publish_failed", err, logger.String("change_id", row.ChangeID), logger.String("project_id", row.ProjectID), logger.Int("attempt", row.Attempts))
 		retryCtx, retryCancel := context.WithTimeout(ctx, r.cfg.LoadTimeout)
 		defer retryCancel()
-		_ = r.dao.RetryOutbox(retryCtx, row, r.clock.Now().Add(configclock.Backoff(r.cfg.RetryMin, r.cfg.RetryMax, row.Attempts-1)), domain.ConfigErrorClass(err))
+		if retryErr := r.dao.RetryOutbox(retryCtx, row, r.clock.Now().Add(configclock.Backoff(r.cfg.RetryMin, r.cfg.RetryMax, row.Attempts-1)), domain.ConfigErrorClass(err)); retryErr != nil {
+			r.metrics.Publish.WithLabelValues("retry_failed").Inc()
+			r.warnOutbox(ctx, "config_outbox_retry_failed", retryErr, logger.String("change_id", row.ChangeID), logger.String("project_id", row.ProjectID), logger.Int("attempt", row.Attempts))
+		}
 		return
 	}
 	if err = r.dao.FinishOutbox(op, row, message, r.clock.Now()); err != nil {
 		r.metrics.Publish.WithLabelValues("finish_failed").Inc()
+		r.warnOutbox(ctx, "config_outbox_finish_failed", err, logger.String("change_id", row.ChangeID), logger.String("project_id", row.ProjectID), logger.String("message_id", message), logger.Int("attempt", row.Attempts))
 		return
 	}
 	r.metrics.Publish.WithLabelValues("published").Inc()
 	r.log.Info("config_event_published", logger.String("change_id", row.ChangeID), logger.String("message_id", message), logger.String("project_id", row.ProjectID), logger.Uint64("version", row.Version))
 }
+
+// Sample each failure stage once per minute; publish counters remain unsampled.
+func (r *ConfigRuntimeV3) warnOutbox(ctx context.Context, message string, err error, fields ...logger.Field) {
+	if ctx.Err() != nil {
+		return
+	}
+	now := r.clock.Now()
+	r.mu.Lock()
+	if last, ok := r.outboxWarnings[message]; ok && now.Sub(last) < time.Minute {
+		r.mu.Unlock()
+		return
+	}
+	r.outboxWarnings[message] = now
+	r.mu.Unlock()
+	fields = append(fields, logger.String("instance_id", r.instance.ID), logger.String("error_class", domain.ConfigErrorClass(err)))
+	r.log.Warn(message, fields...)
+}
+
 func (r *ConfigRuntimeV3) maintenanceLoop(ctx context.Context) {
 	heartbeat := r.clock.NewTicker(r.cfg.HeartbeatInterval)
 	defer heartbeat.Stop()
@@ -202,7 +227,9 @@ func (r *ConfigRuntimeV3) maintenanceLoop(ctx context.Context) {
 				r.metrics.OutboxStatsUp.Set(0)
 			}
 			op, cancel = context.WithTimeout(ctx, r.cfg.LoadTimeout)
-			_ = r.dao.PruneOutbox(op, r.clock.Now().Add(-r.cfg.OutboxRetention))
+			if err := r.dao.PruneOutbox(op, r.clock.Now().Add(-r.cfg.OutboxRetention)); err != nil {
+				r.warnOutbox(ctx, "config_outbox_prune_failed", err)
+			}
 			cancel()
 		}
 	}

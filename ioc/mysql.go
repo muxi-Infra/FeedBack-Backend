@@ -1,11 +1,15 @@
 package ioc
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"time"
 
+	mysqlclient "github.com/go-sql-driver/mysql"
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/repository"
 	"gorm.io/driver/mysql"
@@ -35,19 +39,43 @@ func InitMysql(cfg *config.MysqlConfig) (*gorm.DB, func(), error) {
 	})
 	if err != nil {
 		_ = logFile.Close()
-		return nil, nil, fmt.Errorf("mysql initialization failed")
+		return nil, nil, mysqlStartupError("initialization", err)
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
 		_ = logFile.Close()
-		return nil, nil, err
+		return nil, nil, mysqlStartupError("connection pool", err)
 	}
 	cleanup := func() { _ = sqlDB.Close(); _ = logFile.Close() }
 	err = repository.InitTables(db)
 	if err != nil {
 		cleanup()
-		return nil, nil, fmt.Errorf("mysql migration failed")
+		return nil, nil, mysqlStartupError("migration", err)
 	}
 	return db, cleanup, nil
+}
+
+// Startup errors are printed by main; never include a driver message or DSN.
+func mysqlStartupError(stage string, err error) error {
+	var serverErr *mysqlclient.MySQLError
+	if errors.As(err, &serverErr) {
+		return fmt.Errorf("mysql %s failed (mysql_code=%d)", stage, serverErr.Number)
+	}
+	class := "driver"
+	var networkErr net.Error
+	var dnsErr *net.DNSError
+	switch {
+	case errors.Is(err, context.Canceled):
+		class = "canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		class = "timeout"
+	case errors.As(err, &networkErr) && networkErr.Timeout():
+		class = "timeout"
+	case errors.As(err, &dnsErr):
+		class = "dns"
+	case errors.As(err, &networkErr):
+		class = "network"
+	}
+	return fmt.Errorf("mysql %s failed (error_class=%s)", stage, class)
 }

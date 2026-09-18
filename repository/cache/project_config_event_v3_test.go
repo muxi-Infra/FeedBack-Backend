@@ -206,15 +206,26 @@ func TestV3ConfigGroupLeaseCleanupAndLegacyEvent(t *testing.T) {
 }
 
 func TestV3ConfigGroupResponseCompatibility(t *testing.T) {
-	for _, tail := range [][]any{nil, {"entries-read", int64(1), "lag", int64(9)}, {"entries-read", nil, "lag", nil}, {"lag", int64(0), "future", int64(1)}} {
-		fields := append([]any{"name", "g", "consumers", int64(1), "pending", int64(2), "last-delivered-id", "1-0"}, tail...)
-		g, err := configGroups([]any{fields})
-		require.NoError(t, err)
-		require.Len(t, g, 1)
-		require.Equal(t, int64(2), g[0].pending)
-		if len(tail) == 0 || tail[len(tail)-1] == nil {
-			require.False(t, g[0].exact)
-		}
+	for _, tt := range []struct {
+		name  string
+		tail  []any
+		lag   int64
+		exact bool
+	}{
+		{"missing lag", nil, 0, false},
+		{"known lag", []any{"entries-read", int64(1), "lag", int64(9)}, 9, true},
+		{"unknown lag", []any{"entries-read", nil, "lag", nil}, 0, false},
+		{"zero lag and future field", []any{"lag", int64(0), "future", int64(1)}, 0, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			fields := append([]any{"name", "g", "consumers", int64(1), "pending", int64(2), "last-delivered-id", "1-0"}, tt.tail...)
+			g, err := configGroups([]any{fields})
+			require.NoError(t, err)
+			require.Len(t, g, 1)
+			require.Equal(t, int64(2), g[0].pending)
+			require.Equal(t, tt.lag, g[0].lag)
+			require.Equal(t, tt.exact, g[0].exact)
+		})
 	}
 }
 

@@ -71,6 +71,8 @@ CORS 允许 `X-Request-ID` 并暴露以上响应头。项目详情和列表的�
 
 日志、事件、审计不包含 API Key、摘要、JWT、飞书 Token、请求体或完整配置。GORM 使用参数化 SQL 日志。校验拒绝、鉴权拒绝和事务失败写结构化失败日志；数据库故障时不承诺失败审计仍能入库。
 
+Outbox 领取、发布、重试状态写入、完成标记和清理失败分别记录阶段日志；每个实例每个阶段最多每分钟记录一次，发布计数器仍逐次累计。日志包含实例及安全错误分类，单条事件操作还包含项目、变更 ID 和尝试次数。批量领取后续记录失败时，已成功领取的记录仍继续发布。MySQL 启动失败保留初始化/迁移阶段和数据库错误码或网络错误类别，不输出驱动原始消息或连接串。
+
 ## 指标和告警
 
 使用已有 Prometheus registry/metrics 端点和认证。所有下列名字都有 `feedback_v3_config_` 前缀；项目/请求/事件 ID 不作为标签，实例区分使用 Prometheus scrape 的 `instance`。
@@ -84,7 +86,7 @@ CORS 允许 `X-Request-ID` 并暴露以上响应头。项目详情和列表的�
 | `invalidation_delay_seconds` | 发现失效到成功应用的耗时 |
 | `cache_requests_total{result}` | hit/miss/expired/outdated，请求级计数；有效快照确认项目或表格不存在也属于 hit，不等同于授权通过率 |
 | `events_total{stage}` | received/invalid/retry/read_failed/ack_failed/acked |
-| `publish_total{result}` | published/failed/claim_failed/finish_failed |
+| `publish_total{result}` | published/failed/claim_failed/finish_failed/retry_failed（重试状态写入失败） |
 | `consumer_up` | 消费者最近连接/读取状态 |
 | `last_full_success_timestamp_seconds` | 最近完整对账成功时间，初始为 0 |
 | `stream_pending`、`stream_unread` | 未确认与未投递数量，不能用 Stream 长度代替 |

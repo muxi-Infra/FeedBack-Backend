@@ -352,6 +352,43 @@ func TestV3ConfigOutboxFailureAndDuplicatePublication(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, n)
 }
+
+type partialClaimDAO struct{ dao.ConfigDAOV3 }
+
+func (d partialClaimDAO) ClaimOutbox(ctx context.Context, owner string, now time.Time, lease time.Duration, limit int) ([]model.ConfigOutboxV3, error) {
+	rows, err := d.ConfigDAOV3.ClaimOutbox(ctx, owner, now, lease, limit)
+	if err != nil {
+		return rows, err
+	}
+	return rows, errors.New("fictional-sensitive-claim-failure")
+}
+
+func TestV3ConfigPublishesPartialClaimsAndSamplesFailureLogs(t *testing.T) {
+	f := newConfigFixture(t)
+	id := f.register(t)
+	bus := &testConfigBus{}
+	r := NewConfigRuntimeV3(f.cache, bus, partialClaimDAO{f.dao}, f.cfg, f.clock, f.metrics, f.log, f.instance)
+	r.publish(context.Background())
+	require.Len(t, bus.published, 1)
+	require.Equal(t, id, bus.published[0].ProjectID)
+	n, _, err := f.dao.OutboxStats(context.Background())
+	require.NoError(t, err)
+	require.Zero(t, n, "successfully claimed rows must be finished without waiting for lease expiry")
+	logs := f.logs.FilterMessage("config_outbox_claim_failed")
+	require.Equal(t, 1, logs.Len())
+	require.Equal(t, int64(1), logs.All()[0].ContextMap()["claimed_count"])
+	require.Equal(t, "dependency", logs.All()[0].ContextMap()["error_class"])
+	encoded, err := json.Marshal(logs.All()[0].ContextMap())
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "fictional-sensitive-claim-failure")
+	r.publish(context.Background())
+	require.Equal(t, 1, f.logs.FilterMessage("config_outbox_claim_failed").Len())
+	f.clock.Advance(time.Minute)
+	r.publish(context.Background())
+	require.Equal(t, 2, f.logs.FilterMessage("config_outbox_claim_failed").Len())
+	require.Equal(t, float64(3), testutil.ToFloat64(f.metrics.Publish.WithLabelValues("claim_failed")))
+}
+
 func TestV3ConfigRuntimeCancellationStopsTimersAndLoads(t *testing.T) {
 	f := newConfigFixture(t)
 	f.register(t)

@@ -38,10 +38,6 @@ func NewV3Admin(s service.V3AdminService) V3AdminHandler {
 // RegisterProject 注册项目并生成一次性 API Key。
 // @Description 成功表示配置、版本、审计和事件 Outbox 已提交；各实例缓存异步应用。
 // @Param X-Request-ID header string false "调用方预先保存的 UUID，供提交结果未知时查审计"
-// @Header 200 {string} X-Request-ID "请求关联 ID"
-// @Header 200 {string} X-Config-Version "已提交配置版本"
-// @Header 200 {string} X-Config-Change-ID "配置变更 ID"
-// @Header 200 {string} X-Config-Propagation "asynchronous"
 //
 //	@Summary	注册 V3 接入项目
 //	@Tags		V3Admin
@@ -51,6 +47,10 @@ func NewV3Admin(s service.V3AdminService) V3AdminHandler {
 //	@Param		Authorization	header		string						true	"Bearer 管理员 Token"
 //	@Param		request			body		reqV3.RegisterProjectReq	true	"项目配置"
 //	@Success	200				{object}	response.Response{data=respV3.RegisterProjectResp}
+//	@Header 200 {string} X-Request-ID "请求关联 ID"
+//	@Header 200 {string} X-Config-Version "已提交配置版本"
+//	@Header 200 {string} X-Config-Change-ID "配置变更 ID"
+//	@Header 200 {string} X-Config-Propagation "asynchronous"
 //	@Router		/api/v3/admin/integrations/projects [post]
 func (h *V3Admin) RegisterProject(c *gin.Context, req reqV3.RegisterProjectReq) (response.Response, error) {
 	tables := make([]domain.RegisterProjectTableInput, 0, len(req.Tables))
@@ -155,10 +155,6 @@ func (h *V3Admin) GetProject(c *gin.Context) (response.Response, error) {
 // UpdateProject 全量更新 V3 项目的表格配置，不会修改 API Key。
 // @Description 成功表示事务已提交；各实例缓存异步应用，Scope 撤销受配置缓存生效窗口约束。
 // @Param X-Request-ID header string false "请求关联 UUID"
-// @Header 200 {string} X-Request-ID "请求关联 ID"
-// @Header 200 {string} X-Config-Version "已提交配置版本"
-// @Header 200 {string} X-Config-Change-ID "配置变更 ID"
-// @Header 200 {string} X-Config-Propagation "asynchronous"
 //
 //	@Summary	更新 V3 接入项目配置
 //	@Tags		V3Admin
@@ -170,6 +166,10 @@ func (h *V3Admin) GetProject(c *gin.Context) (response.Response, error) {
 //	@Param		request			body		reqV3.RegisterProjectReq	true	"项目配置"
 //	@Success	200				{object}	response.Response
 //	@Router		/api/v3/admin/integrations/projects/{project_id} [put]
+//	@Header 200 {string} X-Request-ID "请求关联 ID"
+//	@Header 200 {string} X-Config-Version "已提交配置版本"
+//	@Header 200 {string} X-Config-Change-ID "配置变更 ID"
+//	@Header 200 {string} X-Config-Propagation "asynchronous"
 //	@Failure	404				{object}	response.Response	"项目不存在或不可用"
 func (h *V3Admin) UpdateProject(c *gin.Context, req reqV3.RegisterProjectReq) (response.Response, error) {
 	input := toRegisterProjectInput(req)
@@ -189,10 +189,6 @@ func (h *V3Admin) UpdateProject(c *gin.Context, req reqV3.RegisterProjectReq) (r
 // DeleteProject 删除 V3 项目及其 API Key、表格和权限配置。
 // @Description 成功表示删除事务已提交；已签发 JWT 的后续访问受配置缓存撤销窗口约束。
 // @Param X-Request-ID header string false "请求关联 UUID"
-// @Header 200 {string} X-Request-ID "请求关联 ID"
-// @Header 200 {string} X-Config-Version "删除墓碑版本"
-// @Header 200 {string} X-Config-Change-ID "配置变更 ID，重复删除为空"
-// @Header 200 {string} X-Config-Propagation "asynchronous"
 //
 //	@Summary	删除 V3 接入项目
 //	@Tags		V3Admin
@@ -202,6 +198,10 @@ func (h *V3Admin) UpdateProject(c *gin.Context, req reqV3.RegisterProjectReq) (r
 //	@Param		project_id		path		string	true	"项目 ID"
 //	@Success	200				{object}	response.Response
 //	@Router		/api/v3/admin/integrations/projects/{project_id} [delete]
+//	@Header 200 {string} X-Request-ID "请求关联 ID"
+//	@Header 200 {string} X-Config-Version "删除墓碑版本"
+//	@Header 200 {string} X-Config-Change-ID "配置变更 ID，重复删除为空"
+//	@Header 200 {string} X-Config-Propagation "asynchronous"
 //	@Failure	404				{object}	response.Response	"项目不存在；已有删除墓碑时仍返回成功"
 func (h *V3Admin) DeleteProject(c *gin.Context) (response.Response, error) {
 	receipt, err := h.service.DeleteProject(c.Request.Context(), c.Param("project_id"), configActor(c))
@@ -218,10 +218,6 @@ func (h *V3Admin) DeleteProject(c *gin.Context) (response.Response, error) {
 
 // RotateAPIKey 重新生成项目 API Key，旧 Key 无法新兑换，已签发 JWT 保持有效。
 // @Param X-Request-ID header string false "请求关联 UUID"
-// @Header 200 {string} X-Request-ID "请求关联 ID"
-// @Header 200 {string} X-Config-Version "已提交配置版本"
-// @Header 200 {string} X-Config-Change-ID "配置变更 ID"
-// @Header 200 {string} X-Config-Propagation "asynchronous"
 //
 //	@Summary		重新生成 V3 项目 API Key
 //	@Description	提交后旧 Key 无法新兑换，已签发 JWT 保持有效。新 Key 明文只返回一次；网络断开导致结果未知时先用请求 ID 查审计，不自动重试。缓存异步应用。
@@ -231,6 +227,10 @@ func (h *V3Admin) DeleteProject(c *gin.Context) (response.Response, error) {
 //	@Param			Authorization	header		string	true	"Bearer 管理员 Token"
 //	@Param			project_id		path		string	true	"项目 ID"
 //	@Success		200				{object}	response.Response{data=respV3.RotateAPIKeyResp}
+//	@Header 200 {string} X-Request-ID "请求关联 ID"
+//	@Header 200 {string} X-Config-Version "已提交配置版本"
+//	@Header 200 {string} X-Config-Change-ID "配置变更 ID"
+//	@Header 200 {string} X-Config-Propagation "asynchronous"
 //	@Router			/api/v3/admin/integrations/projects/{project_id}/keys/rotate [post]
 //	@Failure		404				{object}	response.Response	"项目不存在或不可用"
 func (h *V3Admin) RotateAPIKey(c *gin.Context) (response.Response, error) {

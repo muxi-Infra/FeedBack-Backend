@@ -1336,6 +1336,24 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        },
+                        "headers": {
+                            "X-Config-Change-ID": {
+                                "type": "string",
+                                "description": "配置变更 ID"
+                            },
+                            "X-Config-Propagation": {
+                                "type": "string",
+                                "description": "asynchronous"
+                            },
+                            "X-Config-Version": {
+                                "type": "string",
+                                "description": "已提交配置版本"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "请求关联 ID"
+                            }
                         }
                     }
                 }
@@ -1445,6 +1463,24 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Config-Change-ID": {
+                                "type": "string",
+                                "description": "配置变更 ID"
+                            },
+                            "X-Config-Propagation": {
+                                "type": "string",
+                                "description": "asynchronous"
+                            },
+                            "X-Config-Version": {
+                                "type": "string",
+                                "description": "已提交配置版本"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "请求关联 ID"
+                            }
                         }
                     },
                     "404": {
@@ -1496,6 +1532,24 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
+                        },
+                        "headers": {
+                            "X-Config-Change-ID": {
+                                "type": "string",
+                                "description": "配置变更 ID，重复删除为空"
+                            },
+                            "X-Config-Propagation": {
+                                "type": "string",
+                                "description": "asynchronous"
+                            },
+                            "X-Config-Version": {
+                                "type": "string",
+                                "description": "删除墓碑版本"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "请求关联 ID"
+                            }
                         }
                     },
                     "404": {
@@ -1606,6 +1660,24 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        },
+                        "headers": {
+                            "X-Config-Change-ID": {
+                                "type": "string",
+                                "description": "配置变更 ID"
+                            },
+                            "X-Config-Propagation": {
+                                "type": "string",
+                                "description": "asynchronous"
+                            },
+                            "X-Config-Version": {
+                                "type": "string",
+                                "description": "已提交配置版本"
+                            },
+                            "X-Request-ID": {
+                                "type": "string",
+                                "description": "请求关联 ID"
+                            }
                         }
                     },
                     "404": {
