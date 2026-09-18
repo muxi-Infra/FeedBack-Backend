@@ -14,6 +14,25 @@ integration:
   access_token_ttl: 2592000
   timestamp_skew: 300
 
+# 各实例独立刷新；不能关闭兜底对账或过期授权拒绝。
+v3_config_cache:
+  stream_key: feedback:v3:project_config_changed
+  refresh_interval: 30s
+  refresh_timeout: 10s
+  max_age: 60s
+  load_timeout: 2s
+  concurrency: 4
+  retry_min: 200ms
+  retry_max: 30s
+  publish_interval: 1s
+  outbox_lease: 15s
+  outbox_retention: 168h
+  stream_max_len: 10000
+  backlog_threshold: 1000
+  heartbeat_interval: 10s
+  group_lease: 120s
+  maintenance_interval: 1m
+
 # 管理后台 JWT 配置
 admin_jwt:
   secret_key: "replace-with-a-separate-admin-jwt-secret"

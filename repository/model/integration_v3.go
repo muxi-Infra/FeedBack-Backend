@@ -25,14 +25,15 @@ func (AdminUserV3) TableName() string {
 
 // FeedbackProjectV3 保存 V3 接入项目的基本信息。
 type FeedbackProjectV3 struct {
-	ID          uint64 `gorm:"primaryKey;autoIncrement"`
-	ProjectID   string `gorm:"column:project_id;type:varchar(64);not null;uniqueIndex:uk_v3_project,priority:1"`
-	ProjectName string `gorm:"column:project_name;type:varchar(128);not null"`
-	School      string `gorm:"column:school;type:varchar(128);not null"`
-	Status      string `gorm:"column:status;type:varchar(32);not null;default:active;index"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_v3_project,priority:2"`
+	ConfigVersion uint64 `gorm:"column:config_version;not null;default:1"`
+	ID            uint64 `gorm:"primaryKey;autoIncrement"`
+	ProjectID     string `gorm:"column:project_id;type:varchar(64);not null;uniqueIndex:uk_v3_project,priority:1"`
+	ProjectName   string `gorm:"column:project_name;type:varchar(128);not null"`
+	School        string `gorm:"column:school;type:varchar(128);not null"`
+	Status        string `gorm:"column:status;type:varchar(32);not null;default:active;index"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     soft_delete.DeletedAt `gorm:"column:deleted_at;softDelete:nano;index;uniqueIndex:uk_v3_project,priority:2"`
 }
 
 func (FeedbackProjectV3) TableName() string {

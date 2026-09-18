@@ -13,35 +13,91 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/errs"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/apikey"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configclock"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/constvar"
-	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"gorm.io/gorm"
 )
 
 type V3AdminService interface {
-	RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (respV3.RegisterProjectResp, error)
-	ListProjects(ctx context.Context, pageToken *string, limitSize *int) ([]model.FeedbackProjectV3, bool, string, error)
-	GetProjectConfig(ctx context.Context, projectID string) (model.FeedbackProjectV3, *model.FeedbackProjectKeyV3, []model.FeedbackProjectTableV3, map[string][]string, error)
-	UpdateProject(ctx context.Context, projectID string, input domain.RegisterProjectInput) error
-	DeleteProject(ctx context.Context, projectID string) error
-	RotateAPIKey(ctx context.Context, projectID string) (string, string, error)
+	RegisterProject(context.Context, domain.RegisterProjectInput, domain.ConfigActorV3) (respV3.RegisterProjectResp, error)
+	ListProjects(context.Context, *string, *int) ([]model.FeedbackProjectV3, bool, string, error)
+	GetProjectConfig(context.Context, string) (model.FeedbackProjectV3, *model.FeedbackProjectKeyV3, []model.FeedbackProjectTableV3, map[string][]string, error)
+	UpdateProject(context.Context, string, domain.RegisterProjectInput, domain.ConfigActorV3) (domain.ConfigReceiptV3, error)
+	DeleteProject(context.Context, string, domain.ConfigActorV3) (domain.ConfigReceiptV3, error)
+	RotateAPIKey(context.Context, string, domain.ConfigActorV3) (respV3.RotateAPIKeyResp, error)
+	ConfigStatus(context.Context, string) ProjectConfigStatusV3
+	ConfigAudits(context.Context, string, string, uint64, int) ([]model.ConfigAuditV3, error)
 }
 
 type v3AdminService struct {
-	dao    dao.IntegrationDAOV3
-	events cache.ProjectConfigEventBusV3
+	dao      dao.IntegrationDAOV3
+	configs  dao.ConfigDAOV3
+	cache    *ProjectConfigCacheV3
+	clock    configclock.Clock
+	log      logger.Logger
+	instance *domain.ConfigInstanceV3
 }
 
-func NewV3AdminService(d dao.IntegrationDAOV3, events cache.ProjectConfigEventBusV3) V3AdminService {
-	return &v3AdminService{
-		dao:    d,
-		events: events,
+func NewV3AdminService(d dao.IntegrationDAOV3, configs dao.ConfigDAOV3, local *ProjectConfigCacheV3, clock configclock.Clock, log logger.Logger, instance *domain.ConfigInstanceV3) V3AdminService {
+	return &v3AdminService{dao: d, configs: configs, cache: local, clock: clock, log: log, instance: instance}
+}
+
+func (s *v3AdminService) change(ctx context.Context, id, kind, fields string, actor domain.ConfigActorV3, mutation func(*gorm.DB) error) (domain.ConfigReceiptV3, error) {
+	event := domain.ConfigEventV3{ProjectID: id, Kind: kind, ChangeID: uuid.NewString()}
+	err := s.dao.Transaction(ctx, func(tx *gorm.DB) error {
+		var previous uint64
+		if kind != "create" {
+			p, err := s.configs.LockProject(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+			previous = p.ConfigVersion
+			if p.DeletedAt != 0 {
+				if kind == "delete" {
+					event.Version = previous
+					event.ChangeID = ""
+					return nil
+				}
+				return gorm.ErrRecordNotFound
+			}
+			if p.Status != "active" && kind != "delete" {
+				return gorm.ErrRecordNotFound
+			}
+		}
+		if previous == ^uint64(0) {
+			return errors.New("config version exhausted")
+		}
+		event.Version = previous + 1
+		if err := mutation(tx); err != nil {
+			return err
+		}
+		event.ChangedAt = s.clock.Now()
+		return s.configs.RecordChange(ctx, tx, actor, event, previous, fields)
+	})
+	if err != nil {
+		class := domain.ConfigErrorClass(err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			class = "not_found"
+		}
+		s.log.Warn("config_change_failed", logger.String("project_id", id), logger.Uint64("admin_id", actor.AdminID), logger.String("request_id", actor.RequestID), logger.String("kind", kind), logger.String("error_class", class))
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ConfigReceiptV3{}, errs.V3ProjectNotFoundError(errors.New(class))
+		}
+		return domain.ConfigReceiptV3{}, errs.V3ProjectDatabaseError(errors.New(domain.ConfigErrorClass(err)))
 	}
+	s.cache.Notify(event)
+	phase := "config_change_committed"
+	if event.ChangeID == "" {
+		phase = "config_change_unchanged"
+	}
+	s.log.Info(phase, logger.String("project_id", id), logger.String("change_id", event.ChangeID), logger.Uint64("version", event.Version), logger.Uint64("admin_id", actor.AdminID), logger.String("request_id", actor.RequestID), logger.String("kind", kind))
+	return domain.ConfigReceiptV3{Version: event.Version, ChangeID: event.ChangeID}, nil
 }
 
-func (s *v3AdminService) RegisterProject(ctx context.Context, input domain.RegisterProjectInput) (respV3.RegisterProjectResp, error) {
+func (s *v3AdminService) RegisterProject(ctx context.Context, input domain.RegisterProjectInput, actor domain.ConfigActorV3) (respV3.RegisterProjectResp, error) {
 	if err := validateProjectInput(input); err != nil {
 		return respV3.RegisterProjectResp{}, err
 	}
@@ -71,16 +127,14 @@ func (s *v3AdminService) RegisterProject(ctx context.Context, input domain.Regis
 	if err != nil {
 		return respV3.RegisterProjectResp{}, err
 	}
-	if err := s.dao.Transaction(ctx, func(tx *gorm.DB) error {
+	receipt, err := s.change(ctx, projectID, "create", "project,tables,scopes,key", actor, func(tx *gorm.DB) error {
 		return s.dao.RegisterProject(ctx, project, key, tables, scopes, tx)
-	}); err != nil {
-		return respV3.RegisterProjectResp{}, errs.V3ProjectDatabaseError(err)
-	}
-
-	if err := s.events.PublishProjectChanged(ctx, projectID); err != nil {
-		return respV3.RegisterProjectResp{}, errs.V3ConfigPublishError(err)
+	})
+	if err != nil {
+		return respV3.RegisterProjectResp{}, err
 	}
 	return respV3.RegisterProjectResp{
+		Receipt:   receipt,
 		ProjectID: projectID,
 		KeyID:     keyID,
 		APIKey:    plainKey,
@@ -160,74 +214,59 @@ func (s *v3AdminService) GetProjectConfig(ctx context.Context, projectID string)
 	return project, key, tables, scopes, nil
 }
 
-func (s *v3AdminService) UpdateProject(ctx context.Context, projectID string, input domain.RegisterProjectInput) error {
+func (s *v3AdminService) UpdateProject(ctx context.Context, projectID string, input domain.RegisterProjectInput, actor domain.ConfigActorV3) (domain.ConfigReceiptV3, error) {
 	if strings.TrimSpace(projectID) == "" {
-		return errs.V3InvalidInputError(errors.New("项目 ID 不能为空"))
+		return domain.ConfigReceiptV3{}, errs.V3InvalidInputError(errors.New("project_id required"))
 	}
 	if err := validateProjectInput(input); err != nil {
-		return err
+		return domain.ConfigReceiptV3{}, err
 	}
-	project := model.FeedbackProjectV3{
-		ProjectID:   projectID,
-		ProjectName: strings.TrimSpace(input.ProjectName),
-		School:      strings.TrimSpace(input.School),
-		Status:      "active",
-	}
+	project := model.FeedbackProjectV3{ProjectID: projectID, ProjectName: strings.TrimSpace(input.ProjectName), School: strings.TrimSpace(input.School), Status: "active"}
 	tables, scopes, err := buildProjectTables(projectID, input.Tables)
 	if err != nil {
-		return err
+		return domain.ConfigReceiptV3{}, err
 	}
-	if err := s.dao.Transaction(ctx, func(tx *gorm.DB) error {
+	return s.change(ctx, projectID, "update", "project,tables,scopes", actor, func(tx *gorm.DB) error {
 		return s.dao.UpdateProject(ctx, projectID, project, tables, scopes, tx)
-	}); err != nil {
-		return errs.V3ProjectDatabaseError(err)
-	}
-	if err := s.events.PublishProjectChanged(ctx, projectID); err != nil {
-		return errs.V3ConfigPublishError(err)
-	}
-	return nil
+	})
 }
-
-func (s *v3AdminService) DeleteProject(ctx context.Context, projectID string) error {
-	if projectID == "" {
-		return errs.V3InvalidInputError(errors.New("project_id 不能为空"))
+func (s *v3AdminService) DeleteProject(ctx context.Context, projectID string, actor domain.ConfigActorV3) (domain.ConfigReceiptV3, error) {
+	if strings.TrimSpace(projectID) == "" {
+		return domain.ConfigReceiptV3{}, errs.V3InvalidInputError(errors.New("project_id required"))
 	}
-	if err := s.dao.Transaction(ctx, func(tx *gorm.DB) error {
+	return s.change(ctx, projectID, "delete", "project,tables,scopes,key", actor, func(tx *gorm.DB) error {
 		return s.dao.DeleteProject(ctx, projectID, tx)
-	}); err != nil {
-		return errs.V3ProjectDatabaseError(err)
-	}
-	if err := s.events.PublishProjectChanged(ctx, projectID); err != nil {
-		return errs.V3ConfigPublishError(err)
-	}
-	return nil
+	})
 }
-
-func (s *v3AdminService) RotateAPIKey(ctx context.Context, projectID string) (string, string, error) {
-	if projectID == "" {
-		return "", "", errs.V3InvalidInputError(errors.New("project_id 不能为空"))
+func (s *v3AdminService) RotateAPIKey(ctx context.Context, projectID string, actor domain.ConfigActorV3) (respV3.RotateAPIKeyResp, error) {
+	if strings.TrimSpace(projectID) == "" {
+		return respV3.RotateAPIKeyResp{}, errs.V3InvalidInputError(errors.New("project_id required"))
 	}
 	plain, err := apikey.Generate()
 	if err != nil {
-		return "", "", errs.V3APIKeyGenerateError(err)
+		return respV3.RotateAPIKeyResp{}, errs.V3APIKeyGenerateError(err)
 	}
 	keyID := projectID + "-key-" + uuid.NewString()[:12]
-	err = s.dao.Transaction(ctx, func(tx *gorm.DB) error {
-		return s.dao.RotateAPIKey(ctx, projectID, model.FeedbackProjectKeyV3{
-			ProjectID:  projectID,
-			KeyID:      keyID,
-			APIKeyHash: apikey.Digest(plain),
-			Status:     "active",
-		}, tx)
+	receipt, err := s.change(ctx, projectID, "rotate_key", "key", actor, func(tx *gorm.DB) error {
+		return s.dao.RotateAPIKey(ctx, projectID, model.FeedbackProjectKeyV3{ProjectID: projectID, KeyID: keyID, APIKeyHash: apikey.Digest(plain), Status: "active"}, tx)
 	})
 	if err != nil {
-		return "", "", errs.V3ProjectDatabaseError(err)
+		return respV3.RotateAPIKeyResp{}, err
 	}
-
-	if err := s.events.PublishProjectChanged(ctx, projectID); err != nil {
-		return "", "", errs.V3ConfigPublishError(err)
+	return respV3.RotateAPIKeyResp{KeyID: keyID, APIKey: plain, Receipt: receipt}, nil
+}
+func (s *v3AdminService) ConfigStatus(ctx context.Context, id string) ProjectConfigStatusV3 {
+	return s.cache.Status(ctx, id, s.instance.ID)
+}
+func (s *v3AdminService) ConfigAudits(ctx context.Context, project, request string, before uint64, limit int) ([]model.ConfigAuditV3, error) {
+	if limit < 1 || limit > 100 {
+		return nil, errs.V3InvalidInputError(errors.New("limit must be between 1 and 100"))
 	}
-	return keyID, plain, nil
+	rows, err := s.configs.ListAudits(ctx, project, request, before, limit)
+	if err != nil {
+		return nil, errs.V3ProjectDatabaseError(errors.New(domain.ConfigErrorClass(err)))
+	}
+	return rows, nil
 }
 
 func buildProjectTables(projectID string, inputs []domain.RegisterProjectTableInput) ([]model.FeedbackProjectTableV3, []model.FeedbackProjectScopeV3, error) {

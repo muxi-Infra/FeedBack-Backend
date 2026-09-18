@@ -9,8 +9,11 @@ package main
 import (
 	"github.com/muxi-Infra/FeedBack-Backend/config"
 	"github.com/muxi-Infra/FeedBack-Backend/controller"
+	"github.com/muxi-Infra/FeedBack-Backend/domain"
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configclock"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configmetrics"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/lark"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
@@ -22,7 +25,7 @@ import (
 
 // Injectors from wire.go:
 
-func InitApp() (*App, error) {
+func InitApp() (*App, func(), error) {
 	middlewareConfig := config.NewMiddlewareConfig()
 	corsMiddleware := middleware.NewCorsMiddleware(middlewareConfig)
 	jwtConfig := config.NewJWTConfig()
@@ -37,15 +40,22 @@ func InitApp() (*App, error) {
 	registry := ioc.InitPrometheus()
 	prometheusMiddleware := middleware.NewPrometheusMiddleware(registry)
 	limiterConfig := config.NewLimiterConfig()
-	redisConfig := config.NewRedisConfig()
-	client := ioc.InitRedis(redisConfig)
+	redisConfig, err := config.NewRedisConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	client, cleanup := ioc.InitRedis(redisConfig, loggerLogger)
 	limitMiddleware := middleware.NewLimitMiddleware(limiterConfig, client)
 	swagHandler := controller.NewSwag()
 	clientConfig := config.NewClientConfig()
 	larkClient := ioc.InitClient(clientConfig)
 	client2 := lark.NewClient(larkClient)
 	mysqlConfig := config.NewMysqlConfig()
-	db := ioc.InitMysql(mysqlConfig)
+	db, cleanup2, err := ioc.InitMysql(mysqlConfig)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
 	faqResolutionDAO := dao.NewFAQResolutionDAO(db)
 	sheetDAO := dao.NewSheetDAO(db)
 	faqdao := dao.NewFAQDAO(db)
@@ -62,14 +72,23 @@ func InitApp() (*App, error) {
 	sheetV2Handler := controller.NewSheetV2(sheetService, messageService)
 	integrationDAOV3 := dao.NewIntegrationDAOV3(db)
 	integrationNonceStoreV3 := cache.NewIntegrationNonceStoreV3(client)
-	projectConfigEventBusV3 := cache.NewProjectConfigEventBusV3(client, loggerLogger)
-	projectConfigCacheV3 := service.NewProjectConfigCacheV3()
+	configDAOV3 := dao.NewConfigDAOV3(db)
+	v3ConfigCacheConfig, err := config.NewV3ConfigCacheConfig()
+	if err != nil {
+		cleanup2()
+		cleanup()
+		return nil, nil, err
+	}
+	clock := configclock.New()
+	metrics := configmetrics.New(registry)
+	projectConfigCacheV3 := service.NewProjectConfigCacheV3(configDAOV3, v3ConfigCacheConfig, clock, metrics, loggerLogger)
 	integrationAuthConfig := config.NewIntegrationAuthConfig()
 	v3JWT := ijwt.NewV3JWT(jwtConfig, integrationAuthConfig)
-	v3AuthService := service.NewV3AuthService(integrationDAOV3, integrationNonceStoreV3, projectConfigEventBusV3, projectConfigCacheV3, v3JWT, integrationAuthConfig)
+	v3AuthService := service.NewV3AuthService(integrationDAOV3, integrationNonceStoreV3, projectConfigCacheV3, v3JWT, integrationAuthConfig)
 	v3AuthHandler := controller.NewV3Auth(v3AuthService, authService)
 	v3SheetHandler := controller.NewV3Sheet(sheetService, messageService, v3AuthService)
-	v3AdminService := service.NewV3AdminService(integrationDAOV3, projectConfigEventBusV3)
+	configInstanceV3 := domain.NewConfigInstanceV3()
+	v3AdminService := service.NewV3AdminService(integrationDAOV3, configDAOV3, projectConfigCacheV3, clock, loggerLogger, configInstanceV3)
 	v3AdminHandler := controller.NewV3Admin(v3AdminService)
 	v3SyncHandler := controller.NewV3Sync(sheetService, v3AuthService)
 	adminUserDAOV3 := dao.NewAdminUserDAOV3(db)
@@ -80,13 +99,21 @@ func InitApp() (*App, error) {
 	adminAuthMiddlewareV3 := middleware.NewAdminAuthMiddlewareV3(adminJWTV3)
 	enforcer, err := ioc.InitCasbinV3(db)
 	if err != nil {
-		return nil, err
+		cleanup2()
+		cleanup()
+		return nil, nil, err
 	}
 	adminPermissionMiddlewareV3 := middleware.NewAdminPermissionMiddlewareV3(enforcer)
 	v3AuthMiddleware := middleware.NewV3AuthMiddleware(v3JWT)
 	engine := web.NewGinEngine(corsMiddleware, authMiddleware, basicAuthMiddleware, loggerMiddleware, prometheusMiddleware, limitMiddleware, swagHandler, sheetV1Handler, authHandler, messageHandler, sheetV2Handler, v3AuthHandler, v3SheetHandler, v3AdminHandler, v3SyncHandler, adminAuthHandlerV3, adminAuthMiddlewareV3, adminPermissionMiddlewareV3, v3AuthMiddleware)
+	projectConfigEventBusV3 := cache.NewProjectConfigEventBusV3(client, loggerLogger, v3ConfigCacheConfig, clock, metrics, configInstanceV3)
+	configRuntimeV3 := service.NewConfigRuntimeV3(projectConfigCacheV3, projectConfigEventBusV3, configDAOV3, v3ConfigCacheConfig, clock, metrics, loggerLogger, configInstanceV3)
 	app := &App{
-		r: engine,
+		r:             engine,
+		configRuntime: configRuntimeV3,
 	}
-	return app, nil
+	return app, func() {
+		cleanup2()
+		cleanup()
+	}, nil
 }

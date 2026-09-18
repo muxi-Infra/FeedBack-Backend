@@ -1,0 +1,33 @@
+groups:
+  - name: feedback-v3-config
+    rules:
+      - alert: V3ConfigReconcileOverdue
+        expr: time() - feedback_v3_config_last_full_success_timestamp_seconds > 60
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "V3 configuration reconciliation is overdue on {{ $labels.instance }}"
+      - alert: V3ConfigOutboxDelayed
+        expr: feedback_v3_config_outbox_oldest_age_seconds > 60 and feedback_v3_config_outbox_stats_up == 1
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "V3 configuration events are awaiting publication"
+      - alert: V3ConfigConsumerUnavailable
+        expr: feedback_v3_config_consumer_up == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "V3 configuration consumer is unavailable; inspect reconciliation"
+      - alert: V3ConfigStreamBacklog
+        expr: (feedback_v3_config_stream_pending + feedback_v3_config_stream_unread) >= 1000 and feedback_v3_config_stream_stats_up == 1
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "V3 configuration consumer backlog exceeds threshold"
+      - alert: V3ConfigRefreshFailures
+        expr: sum by (instance) (rate(feedback_v3_config_refresh_total{result="failed"}[5m])) / clamp_min(sum by (instance) (rate(feedback_v3_config_refresh_total{result=~"applied|unchanged|failed"}[5m])), 0.001) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "More than 5% of V3 configuration refreshes failed"

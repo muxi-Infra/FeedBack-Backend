@@ -10,7 +10,7 @@ FeedBack-Backend 是一个基于 Go 的后端服务，用于收集和管理来�
 - 自动刷新与管理飞书租户 Token
 - 可扩展的服务/中间件架构（日志、限流、Prometheus 指标等）
 
-快速开始提示：请先参考 `config/example_config.yaml` 填写配置，运行 `make swag` 生成 API 文档，使用 `go run main.go` 启动服务。
+快速开始提示：请先参考 `config/example_config.yaml` 填写配置，运行 `make swag` 生成 API 文档，使用 `go run .` 启动服务。
 
 ---
 
@@ -32,3 +32,5 @@ FeedBack-Backend 是一个基于 Go 的后端服务，用于收集和管理来�
 - 错误码必须为 6 位（例如：100001）。
 
 详细错误码请参考 [错误码文档](https://github.com/muxi-Infra/FeedBack-Backend/blob/main/errs/README.md)。
+
+V3 配置更新的生效窗口、事务 Outbox、审计与状态接口、指标和隔离测试方式见 [配置缓存运行说明](docs/v3-config-cache.md)。

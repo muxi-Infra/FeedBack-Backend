@@ -32,16 +32,21 @@ import (
 	"github.com/muxi-Infra/FeedBack-Backend/ioc"
 	"github.com/muxi-Infra/FeedBack-Backend/middleware"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/apikey"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configclock"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/configmetrics"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/constvar"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/errorx"
 	"github.com/muxi-Infra/FeedBack-Backend/pkg/ijwt"
 	larkmock "github.com/muxi-Infra/FeedBack-Backend/pkg/lark/mock"
+	"github.com/muxi-Infra/FeedBack-Backend/pkg/logger"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/cache"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/dao"
 	"github.com/muxi-Infra/FeedBack-Backend/repository/model"
 	"github.com/muxi-Infra/FeedBack-Backend/service"
 	"github.com/muxi-Infra/FeedBack-Backend/web"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
 )
@@ -60,14 +65,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// 本组读取和兑换测试不验证配置事件投递。
-// 消费方法立即返回，避免生产构造函数启动的订阅协程持续运行。
-type inertProjectEvents struct{}
-
-func (inertProjectEvents) PublishProjectChanged(context.Context, string) error       { return nil }
-func (inertProjectEvents) ConsumeProjectChanged(context.Context, func(string) error) {}
-
 type securityFixture struct {
+	local  *service.ProjectConfigCacheV3
 	db     *gorm.DB
 	redis  *miniredis.Miniredis
 	auth   service.V3AuthService
@@ -89,6 +88,7 @@ func newSecurityFixture(t *testing.T) *securityFixture {
 	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
 	require.NoError(t, db.AutoMigrate(&model.FeedbackProjectV3{}, &model.FeedbackProjectKeyV3{},
 		&model.FeedbackProjectTableV3{}, &model.FeedbackProjectScopeV3{},
+		&model.ConfigAuditV3{}, &model.ConfigOutboxV3{},
 		&model.Sheet{}, &model.FAQRecord{}, &model.FAQResolution{}))
 
 	r := miniredis.RunT(t)
@@ -96,8 +96,12 @@ func newSecurityFixture(t *testing.T) *securityFixture {
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	j := ijwt.NewV3JWT(config.JWTConfig{SecretKey: testJWTKey, Timeout: 3600}, nil)
 	d := dao.NewIntegrationDAOV3(db)
-	auth := service.NewV3AuthService(d, cache.NewIntegrationNonceStoreV3(client), inertProjectEvents{},
-		service.NewProjectConfigCacheV3(), j, &config.IntegrationAuthConfig{TimestampSkew: 300})
+	configs := dao.NewConfigDAOV3(db)
+	log := logger.NewZapLogger(zap.NewNop())
+	clock := configclock.New()
+	local := service.NewProjectConfigCacheV3(configs, config.DefaultV3ConfigCacheConfig(), clock, configmetrics.New(prometheus.NewRegistry()), log)
+	t.Cleanup(local.Close)
+	auth := service.NewV3AuthService(d, cache.NewIntegrationNonceStoreV3(client), local, j, &config.IntegrationAuthConfig{TimestampSkew: 300})
 	lark := larkmock.NewMockClient(gomock.NewController(t))
 	sheets := service.NewSheetServiceForTest(db, lark)
 	router := gin.New()
@@ -105,7 +109,7 @@ func newSecurityFixture(t *testing.T) *securityFixture {
 	mw := middleware.NewV3AuthMiddleware(j).MiddlewareFunc()
 	web.RegisterSheetHandlerV3(v3, controller.NewV3Sheet(sheets, nil, auth), mw)
 	web.RegisterAuthRouterV3(v3, controller.NewV3Auth(auth, nil), mw)
-	f := &securityFixture{db: db, redis: r, auth: auth, admin: service.NewV3AdminService(d, inertProjectEvents{}), jwt: j, router: router, lark: lark}
+	f := &securityFixture{db: db, redis: r, auth: auth, local: local, admin: service.NewV3AdminService(d, configs, local, clock, log, domain.NewConfigInstanceV3()), jwt: j, router: router, lark: lark}
 	for _, project := range []string{projectA, projectB} {
 		require.NoError(t, db.Create(&model.FeedbackProjectV3{ProjectID: project, ProjectName: project, School: "Fictional School", Status: "active"}).Error)
 		require.NoError(t, db.Create(&model.FeedbackProjectKeyV3{ProjectID: project, KeyID: project + "-key", APIKeyHash: apikey.Digest(testAPIKey), Status: "active"}).Error)
@@ -475,12 +479,16 @@ func TestV3APIKeyRotation(t *testing.T) {
 	}
 }
 
-func registerSecurityAdminRoutes(t *testing.T, f *securityFixture) string {
+func registerSecurityAdminRoutes(t *testing.T, f *securityFixture, permissions ...[]string) string {
 	t.Helper()
 	enforcer, err := ioc.InitCasbinV3(f.db)
 	require.NoError(t, err)
 	_, err = enforcer.AddPolicy("1", "key", "update")
 	require.NoError(t, err)
+	for _, permission := range permissions {
+		_, err = enforcer.AddPolicy(permission)
+		require.NoError(t, err)
+	}
 	adminJWT := ijwt.NewAdminJWTV3(config.AdminJWTConfig{
 		SecretKey: "fictional-admin-secret-for-tests-only", Issuer: "fictional-admin", Audience: "fictional-backend", Timeout: 3600,
 	})

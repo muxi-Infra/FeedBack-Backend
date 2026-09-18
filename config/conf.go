@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -24,6 +25,7 @@ var ProviderSet = wire.NewSet(
 	NewJWTConfig,
 	NewAdminJWTConfig,
 	NewIntegrationAuthConfig,
+	NewV3ConfigCacheConfig,
 	NewMiddlewareConfig,
 	NewBaseTable,
 	NewLarkMessageConfig,
@@ -363,18 +365,18 @@ type RedisConfig struct {
 	DB       int    `yaml:"db" mapstructure:"db"`
 }
 
-func NewRedisConfig() *RedisConfig {
+func NewRedisConfig() (*RedisConfig, error) {
 	redisConfig := &RedisConfig{
 		Addr:     vp.GetString("redis.addr"),
 		Password: vp.GetString("redis.password"),
 		DB:       vp.GetInt("redis.db"),
 	}
-	if redisConfig.Addr == "" {
-		panic("redis 配置无效: addr 不能为空")
+	host, port, err := net.SplitHostPort(redisConfig.Addr)
+	number, portErr := strconv.Atoi(port)
+	if err != nil || host == "" || portErr != nil || number < 1 || number > 65535 || redisConfig.DB < 0 {
+		return nil, errors.New("redis 配置无效: addr 必须为 host:port，db 不能为负数")
 	}
-
-	//fmt.Printf("redisConfig :%v\n", redisConfig)
-	return redisConfig
+	return redisConfig, nil
 }
 
 type MysqlConfig struct {

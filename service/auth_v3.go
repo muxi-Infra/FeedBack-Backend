@@ -67,7 +67,7 @@ type v3AuthService struct {
 	config      *config.IntegrationAuthConfig
 }
 
-func NewV3AuthService(d dao.IntegrationDAOV3, n cache.IntegrationNonceStoreV3, events cache.ProjectConfigEventBusV3, localCache *ProjectConfigCacheV3, jwt *ijwt.V3JWT, cfg *config.IntegrationAuthConfig) V3AuthService {
+func NewV3AuthService(d dao.IntegrationDAOV3, n cache.IntegrationNonceStoreV3, localCache *ProjectConfigCacheV3, jwt *ijwt.V3JWT, cfg *config.IntegrationAuthConfig) V3AuthService {
 	s := &v3AuthService{
 		dao:         d,
 		nonces:      n,
@@ -76,10 +76,6 @@ func NewV3AuthService(d dao.IntegrationDAOV3, n cache.IntegrationNonceStoreV3, e
 		config:      cfg,
 	}
 
-	go events.ConsumeProjectChanged(context.Background(), func(projectID string) error {
-		localCache.deleteProject(projectID)
-		return nil
-	})
 	return s
 }
 
@@ -146,35 +142,5 @@ func (s *v3AuthService) exchangeWithClock(ctx context.Context, input V3ExchangeI
 }
 
 func (s *v3AuthService) GetTableConfig(ctx context.Context, projectID, tableType string) (V3TableConfig, error) {
-	if projectID == "" || tableType == "" {
-		return V3TableConfig{}, errs.V3InvalidInputError(errors.New("project_id and table_type are required"))
-	}
-
-	if cached, ok := s.configCache.get(projectID, tableType); ok {
-		return cached, nil
-	}
-
-	if _, err := s.dao.GetProject(ctx, projectID); err != nil {
-		return V3TableConfig{}, errs.V3TableConfigError(err)
-	}
-
-	table, err := s.dao.GetTable(ctx, projectID, tableType)
-	if err != nil {
-		return V3TableConfig{}, errs.V3TableConfigError(err)
-	}
-
-	scopes, err := s.dao.ListScopes(ctx, projectID, table.TableIdentity)
-	if err != nil {
-		return V3TableConfig{}, errs.V3TableConfigError(err)
-	}
-
-	result := V3TableConfig{
-		ProjectID: projectID,
-		TableType: tableType,
-		Scopes:    scopes,
-		Table:     table,
-	}
-	s.configCache.set(result)
-
-	return result, nil
+	return s.configCache.Get(ctx, projectID, tableType)
 }

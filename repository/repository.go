@@ -16,6 +16,7 @@ var DaoSet = wire.NewSet(
 	dao.NewFAQDAO,
 	dao.NewIntegrationDAOV3,
 	dao.NewAdminUserDAOV3,
+	dao.NewConfigDAOV3,
 )
 
 var CacheSet = wire.NewSet(
@@ -34,6 +35,8 @@ func InitTables(db *gorm.DB) error {
 		&model.FeedbackProjectTableV3{},
 		&model.FeedbackProjectScopeV3{},
 		&model.AdminUserV3{},
+		&model.ConfigAuditV3{},
+		&model.ConfigOutboxV3{},
 	}
 
 	return db.AutoMigrate(models...)
