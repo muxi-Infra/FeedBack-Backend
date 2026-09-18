@@ -1,7 +1,7 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
@@ -37,13 +37,77 @@ func DefaultV3ConfigCacheConfig() *V3ConfigCacheConfig {
 }
 
 func (c *V3ConfigCacheConfig) Validate() error {
-	if c.StreamKey == "" || c.RefreshInterval <= 0 || c.RefreshTimeout <= 0 || c.LoadTimeout <= 0 ||
-		c.MaxAge <= 0 || c.RefreshInterval > c.MaxAge || c.RefreshTimeout > c.MaxAge-c.RefreshInterval || c.LoadTimeout > c.RefreshTimeout ||
-		c.Concurrency < 1 || c.RetryMin <= 0 || c.RetryMax < c.RetryMin ||
-		c.PublishInterval <= 0 || c.OutboxLease <= c.LoadTimeout || c.OutboxRetention <= 0 ||
-		c.StreamMaxLen < 1 || c.BacklogThreshold < 1 || c.BacklogThreshold > c.StreamMaxLen ||
-		c.HeartbeatInterval <= 0 || c.GroupLease < time.Millisecond || c.GroupLease/2 <= c.HeartbeatInterval || c.MaintenanceInterval <= 0 {
-		return fmt.Errorf("invalid v3_config_cache timing or capacity")
+	// Validate positive durations before comparing the refresh budget.
+	if c.StreamKey == "" {
+		return errors.New("v3_config_cache.stream_key must not be empty")
+	}
+	if c.RefreshInterval <= 0 {
+		return errors.New("v3_config_cache.refresh_interval must be > 0")
+	}
+	if c.RefreshTimeout <= 0 {
+		return errors.New("v3_config_cache.refresh_timeout must be > 0")
+	}
+	if c.LoadTimeout <= 0 {
+		return errors.New("v3_config_cache.load_timeout must be > 0")
+	}
+	if c.MaxAge <= 0 {
+		return errors.New("v3_config_cache.max_age must be > 0")
+	}
+	if c.RefreshInterval > c.MaxAge {
+		return errors.New("v3_config_cache.refresh_interval must be <= max_age")
+	}
+	if c.RefreshTimeout > c.MaxAge-c.RefreshInterval {
+		return errors.New("v3_config_cache.refresh_timeout must be <= max_age - refresh_interval")
+	}
+	if c.LoadTimeout > c.RefreshTimeout {
+		return errors.New("v3_config_cache.load_timeout must be <= refresh_timeout")
+	}
+
+	// Bound refresh concurrency and retry delays.
+	if c.Concurrency < 1 {
+		return errors.New("v3_config_cache.concurrency must be >= 1")
+	}
+	if c.RetryMin <= 0 {
+		return errors.New("v3_config_cache.retry_min must be > 0")
+	}
+	if c.RetryMax < c.RetryMin {
+		return errors.New("v3_config_cache.retry_max must be >= retry_min")
+	}
+
+	// Keep the outbox lease longer than a publish operation.
+	if c.PublishInterval <= 0 {
+		return errors.New("v3_config_cache.publish_interval must be > 0")
+	}
+	if c.OutboxLease <= c.LoadTimeout {
+		return errors.New("v3_config_cache.outbox_lease must be > load_timeout")
+	}
+	if c.OutboxRetention <= 0 {
+		return errors.New("v3_config_cache.outbox_retention must be > 0")
+	}
+
+	// Keep backlog detection within the retained stream capacity.
+	if c.StreamMaxLen < 1 {
+		return errors.New("v3_config_cache.stream_max_len must be >= 1")
+	}
+	if c.BacklogThreshold < 1 {
+		return errors.New("v3_config_cache.backlog_threshold must be >= 1")
+	}
+	if c.BacklogThreshold > c.StreamMaxLen {
+		return errors.New("v3_config_cache.backlog_threshold must be <= stream_max_len")
+	}
+
+	// Allow consumer heartbeats to renew the group lease before expiry.
+	if c.HeartbeatInterval <= 0 {
+		return errors.New("v3_config_cache.heartbeat_interval must be > 0")
+	}
+	if c.GroupLease < time.Millisecond {
+		return errors.New("v3_config_cache.group_lease must be >= 1ms")
+	}
+	if c.GroupLease/2 <= c.HeartbeatInterval {
+		return errors.New("v3_config_cache.group_lease / 2 must be > heartbeat_interval")
+	}
+	if c.MaintenanceInterval <= 0 {
+		return errors.New("v3_config_cache.maintenance_interval must be > 0")
 	}
 	return nil
 }
